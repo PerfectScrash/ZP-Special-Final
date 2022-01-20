@@ -251,7 +251,7 @@
 			- REMOVED Amx 1.8.2 SUPORT
 			- Fixed trigger_hurt when killing with bugged players.
 			- Fixed chat lang bug. (Sometimes appears in [en] language not in players language)
-			- Added Native: zp_force_user_class(id, specialid, zombie)
+			- Added Native: zp_force_user_class(id, spid, zombie, attacker = 0, sillentmode = 1)
 			- Added Native: zpsp_set_user_frozen(id, set, Float:Duration = -1.0)
 			- Added Native: zpsp_set_user_burn(id, set, Float:Duration = -1.0)
 
@@ -4605,7 +4605,7 @@ public menu_zclass(id, menuid, item) { // Zombie Class Menu?
 		else ArrayGetString(g_zclass_name, g_zombieclassnext[id], name, charsmax(name))
 		
 		// Show selected zombie class info and stats
-		client_print_color(id, print_team_default, "%L %L^x01:^x04 %s", id, "ZOMBIE_SELECT", id, "ZP_CHAT_TAG", name)
+		client_print_color(id, print_team_default, "%L %L^x01:^x04 %s", id, "ZP_CHAT_TAG", id, "ZOMBIE_SELECT", name)
 		client_print_color(id, print_team_default, "%L %L^x01:^x04 %d^x01 |^x01 %L^x01:^x04 %d^x01 |^x01 %L^x01:^x04 %d^x01 |^x01 %L^x01:^x04 %d%%", id, "ZP_CHAT_TAG", id, "ZOMBIE_ATTRIB1", ArrayGetCell(g_zclass_hp, g_zombieclassnext[id]), id, "ZOMBIE_ATTRIB2", ArrayGetCell(g_zclass_spd, g_zombieclassnext[id]),
 		id, "ZOMBIE_ATTRIB3", floatround(Float:ArrayGetCell(g_zclass_grav, g_zombieclassnext[id]) * 800.0), id, "ZOMBIE_ATTRIB4", floatround(Float:ArrayGetCell(g_zclass_kb, g_zombieclassnext[id]) * 100.0))
 
@@ -9382,7 +9382,7 @@ public native_make_user_special(id, spid, zombie) { // Native: zp_make_user_spec
 	}
 	return 1;
 }
-public native_force_user_class(id, spid, zombie, silent) {
+public native_force_user_class(id, spid, zombie, attacker, silent) {
 	if(!is_user_valid_alive(id)) return -1;
 
 	if(spid >= g_zm_specials_i && zombie || spid >= g_hm_specials_i && !zombie) {
@@ -9392,9 +9392,9 @@ public native_force_user_class(id, spid, zombie, silent) {
 	if(!g_pluginenabled) return -1; // ZP Special disabled
 
 	if(zombie) 
-		zombieme(id, 0, spid, silent, 0)
+		zombieme(id, attacker, spid, silent, 1)
 	else 
-		humanme(id, spid, silent, 0)
+		humanme(id, spid, silent, attacker)
 
 	return 1;
 }
