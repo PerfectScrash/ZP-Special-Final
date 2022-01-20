@@ -618,9 +618,7 @@ native zp_zombie_class_textadd(const text[]) // Add Text On Zombie Class (Like Z
 native zp_get_user_infectnade(id) // Get User Infect bomb
 native zp_set_user_infectnade(id, set) // Give/Remove User Infect bomb
 native zp_get_user_frozen(id) // Get User Frozen
-native zp_set_user_frozen(id, set) // Set User Burning
 native zp_get_user_burn(id) // Get User Burning
-native zp_set_user_burn(id, set) // Set User Burning
 native zp_get_user_madness(id) // Get user Madness
 native zp_set_user_madness(id, set) // Set user Madness
 native zp_get_human_special_class(id) // Get User Survivor/Sniper/Berserker/Etc
@@ -646,13 +644,23 @@ native zp_get_user_model(id, model[], len)
 
 #if AMXX_VERSION_NUM < 183
 native zp_set_extra_damage(victim, attacker, damage, weaponDescription[]) // Set User Extra Damage (Like Superhero Mod)
+native zp_set_user_frozen(id, set) // Set User Frozen
+native zp_set_user_burn(id, set) // Set User Burning
 #else
 /**
  * @deprecated This function are update your functions
  */ 
 #pragma deprecated Use zp_set_user_extra_damage(victim, attacker, damage, weaponDescription[], dmg_dealth = 0) instead.
 native zp_set_extra_damage(victim, attacker, damage, weaponDescription[]) // Set User Extra Damage (Like Superhero Mod)
+
+#pragma deprecated Use zpsp_set_user_frozen(id, set, Float:Duration = -1.0) instead.
+native zp_set_user_frozen(id, set) // Set User Frozen
+
+#pragma deprecated Use zpsp_set_user_burn(id, set, Float:Duration = -1.0) instead.
+native zp_set_user_burn(id, set) // Set User Burning
+
 #endif
+
 
 
 // New Natives (3.0 Version or higher Available)
@@ -759,6 +767,44 @@ native zp_set_user_extra_damage(victim, attacker, damage, weaponDescription[], d
 native zp_register_zombie_class(const name[], const info[], const model[], const clawmodel[], hp, speed, Float:gravity, Float:knockback)
 
 /**
+* Force user Special Class without checks
+*
+* Note: Special/Normal Rounds will not to be started auto, just setting class only
+* Note 2: Can only force in the base class or special class, cant change for other basic zombie class
+* @param id				Player Index
+* @param specialid		Special Class Index
+* @param zombie			Is Zombie or Human?
+* @param attacker		Attacker Index
+* @param sillentmode 	Hide Hud Messages
+* @return				An internal zombie class ID, or -1 on failure.
+*/
+native zp_force_user_class(id, spid, zombie, attacker = 0, sillentmode = 1)
+
+/**
+* Set Player Frozen
+* 
+* @param id					Player Index
+* @param set				Use UNSET for unfrost, SET for frost or SET_WITHOUT_IMMUNITY for frost players with frost immunity
+* @param Float:Duration		Frost duration, Use -1.0 for default duration
+* @return	Return true if frost or unfrost with sucess
+*/
+native zpsp_set_user_frozen(id, set, Float:Duration = -1.0) // Set User Frozen
+
+/**
+* Set Player Burning
+* 
+* @param id					Player Index
+* @param set				Use UNSET for unburn, SET for burn or SET_WITHOUT_IMMUNITY for burn players with Burning immunity
+* @param Float:Duration		Burning duration, Use -1.0 for default duration
+* @return	Return true if burn or unburn with sucess
+*/
+native zpsp_set_user_burn(id, set, Float:Duration = -1.0) // Set User Burning
+
+/***************************************************
+-------------------- Forwards ----------------------
+****************************************************/
+
+/**
  * Called when the ZP round starts, i.e. first zombie
  * is chosen or a game mode begins.
  *
@@ -794,7 +840,7 @@ forward zp_round_ended(winteam)
  *
  * @param id		Player index who was infected.
  * @param infector	Player index who infected him (if applicable).
- * @param nemesis	Whether the player was turned into a nemesis.
+ * @param classid	Special class index
  */
 forward zp_user_infected_pre(id, infector, classid)
 forward zp_user_infected_post(id, infector, classid)
@@ -803,10 +849,11 @@ forward zp_user_infected_post(id, infector, classid)
  * Called when a player turns back to human.
  *
  * @param id		Player index who was cured.
- * @param survivor	Whether the player was turned into a survivor.
+ * @param classid	Special Class index.
+ * @param attacker 	Attacker index
  */
-forward zp_user_humanized_pre(id, classid)
-forward zp_user_humanized_post(id, classid)
+forward zp_user_humanized_pre(id, classid, attacker)
+forward zp_user_humanized_post(id, classid, attacker)
 
 /**
  * Called on a player infect/cure attempt. You can use this to block
@@ -816,7 +863,7 @@ forward zp_user_humanized_post(id, classid)
  * situations (like blocking a first zombie's infection) are not yet handled.
  */
 forward zp_user_infect_attempt(id, infector, classid)
-forward zp_user_humanize_attempt(id, classid)
+forward zp_user_humanize_attempt(id, classid, attacker)
 
 /**
  * Called when an admin selects a custom game mode from the ZP admin menu.

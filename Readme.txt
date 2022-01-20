@@ -71,3 +71,11 @@ Bombardier (From ZP Shade), Wesker (From Zombie Apocalipse), Spy and Dragon
 	- Fixing 08/12/20:
 		- Fixed Armageddon Respawn - Before peoples respawn as human and not survivor
 		- Fixed Lang from Additional Extra Weapons (Grenades/AWP/ETC.)
+	
+	- Final Release:
+		- REMOVED Amx 1.8.2 SUPORT
+		- Fixed trigger_hurt when killing with bugged players.
+		- Fixed chat lang bug. (Sometimes appears in [en] language not in players language)
+		- Added Native: zp_force_user_class(id, specialid, zombie)
+		- Added Native: zpsp_set_user_frozen(id, set, Float:Duration = -1.0)
+		- Added Native: zpsp_set_user_burn(id, set, Float:Duration = -1.0)

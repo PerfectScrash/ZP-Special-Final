@@ -3,7 +3,7 @@
 #endif
 #define _zpsp_const_included
 
-#define ZPS_INC_VERSION 44 // Include Version
+#define ZPS_INC_VERSION 45 // Include Version
 
 /* Teams for zp_register_extra_item() */
 #define ZP_TEAM_ZOMBIE (1<<0)

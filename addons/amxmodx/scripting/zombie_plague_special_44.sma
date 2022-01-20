@@ -250,13 +250,18 @@
 		-- Final Release:
 			- REMOVED Amx 1.8.2 SUPORT
 			- Fixed trigger_hurt when killing with bugged players.
-			- Added Player Submodel Support (You can add more player models using only 1 .mdl)
-			- Added Native: zpsp_override_user_model(id, const model, body=0, modelindex=0)
-			- Removed "HANDLE MODELS ON SEPARATE ENT"
-			- Removed "MODELCHANGE DELAY"
-			- Now models system are using "cstrike" module
 			- Fixed chat lang bug. (Sometimes appears in [en] language not in players language)
+			- Added Native: zp_force_user_class(id, specialid, zombie)
+			- Added Native: zpsp_set_user_frozen(id, set, Float:Duration = -1.0)
+			- Added Native: zpsp_set_user_burn(id, set, Float:Duration = -1.0)
 
+
+			// Reverted Changes
+			//- Added Player Submodel Support (You can add more player models using only 1 .mdl)
+			//- Added Native: zpsp_override_user_model(id, const model, body=0, modelindex=0)
+			//- Removed "HANDLE MODELS ON SEPARATE ENT"
+			//- Removed "MODELCHANGE DELAY"
+			//- Now models system are using "cstrike" module
 
 ============================================================================================================================*/
 
@@ -741,7 +746,7 @@ cvar_flashdrain, cvar_zombiebleeding, cvar_removedoors, cvar_customflash, cvar_r
 cvar_firegrenades, cvar_frostgrenades, cvar_logcommands, cvar_spawnprotection, cvar_nvgsize, cvar_flareduration, cvar_zclasses, cvar_extraitems, cvar_showactivity, cvar_warmup, cvar_flashdist, cvar_flarecolor, cvar_fireduration, cvar_firedamage,
 cvar_flaregrenades, cvar_knockbackducking, cvar_knockbackdamage, cvar_knockbackzvel, cvar_multiratio, cvar_swarmratio, cvar_flaresize[2], cvar_spawndelay, cvar_extraantidote, cvar_extramadness, cvar_extraantidote_ze, cvar_extramadness_ze,
 cvar_extraweapons, cvar_extranvision, cvar_zm_nvggive[MAX_SPECIALS_ZOMBIES], cvar_hm_nvggive[MAX_SPECIALS_HUMANS], cvar_spec_nvggive, cvar_preventconsecutive, cvar_botquota, cvar_buycustom, cvar_fireslowdown, cvar_sniperfraggore, cvar_nemfraggore, cvar_humansurvive, cvar_antidote_minzms,
-cvar_extrainfbomb, cvar_extrainfbomb_ze, cvar_knockback, cvar_fragsinfect, cvar_ammodamage_zombie, cvar_fragskill, cvar_humanarmor, cvar_zombiesilent, cvar_removedropped, cvar_huddisplay, cvar_allow_buy_no_start,
+cvar_extrainfbomb, cvar_extrainfbomb_ze, cvar_knockback, cvar_ammo_disinfect, cvar_fragsinfect, cvar_frags_disinfect, cvar_ammodamage_zombie, cvar_fragskill, cvar_humanarmor, cvar_zombiesilent, cvar_removedropped, cvar_huddisplay, cvar_allow_buy_no_start,
 cvar_plagueratio, cvar_blocksuicide, cvar_knockbackdist,  cvar_respawnonsuicide, cvar_respawnafterlast, cvar_statssave, cvar_adminmodelshuman, cvar_vipmodelshuman,
 cvar_adminmodelszombie, cvar_vipmodelszombie, cvar_blockpushables, cvar_respawnworldspawnkill, cvar_madnessduration, cvar_plaguenemnum, cvar_plaguenemhpmulti, cvar_plaguesurvhpmulti,
 cvar_survweapon, cvar_plaguesurvnum, cvar_infectionscreenfade, cvar_infectionscreenshake, cvar_infectionsparkle, cvar_infectiontracers, cvar_infectionparticles, cvar_infbomblimit,
@@ -863,6 +868,7 @@ public plugin_natives() {
 	register_native("zp_set_user_burn", "native_set_user_burn", 1);
 	register_native("zp_get_user_frozen", "native_get_user_frozen", 1);
 	register_native("zp_set_user_frozen", "native_set_user_frozen", 1);
+	
 	register_native("zp_get_user_infectnade", "native_get_user_infectnade", 1);
 	register_native("zp_set_user_infectnade", "native_set_user_infectnade", 1);
 	register_native("zp_extra_item_textadd", "native_menu_textadd", 1);
@@ -944,6 +950,9 @@ public plugin_natives() {
 	register_native("zp_set_user_extra_damage", "native_set_user_extra_damage", 1);
 	register_native("zpsp_register_gamemode", "native_register_gamemode", 1);
 	register_native("zp_get_custom_extra_start", "native_get_custom_extra_start", 1);
+	register_native("zp_force_user_class", "native_force_user_class", 1);
+	register_native("zpsp_set_user_frozen", "native_set_user_frozen2", 1);
+	register_native("zpsp_set_user_burn", "native_set_user_burn2", 1);
 }
 public plugin_precache() {
 	register_plugin(PLUGIN, VERSION, AUTHOR) // Register earlier to show up in plugins list properly after plugin disable/error at loading
@@ -1680,6 +1689,8 @@ public plugin_init() {
 	cvar_ammodamage = register_cvar("zp_human_damage_reward", "500")
 	cvar_fragskill = register_cvar("zp_human_frags_for_kill", "1")
 	cvar_hm_allow_weight_spd = register_cvar("zp_human_wpn_weight_enable", "1")
+	cvar_frags_disinfect = register_cvar("zp_human_frags_for_disinfect", "1")
+	cvar_ammo_disinfect = register_cvar("zp_human_disnfect_reward", "1")
 	
 	// CVARS - Custom Grenades
 	cvar_firegrenades = register_cvar("zp_fire_grenades", "1")
@@ -1707,6 +1718,7 @@ public plugin_init() {
 	cvar_ammoinfect = register_cvar("zp_zombie_infect_reward", "1")
 	cvar_ammodamage_zombie = register_cvar("zp_zombie_damage_reward", "0")
 	cvar_fragsinfect = register_cvar("zp_zombie_frags_for_infect", "1")
+	
 	cvar_block_zm_use_button = register_cvar("zp_zombie_blockuse_button", "1")
 	cvar_zm_idle_sound = register_cvar("zp_zombie_idle_sound", "1")
 	
@@ -1952,10 +1964,10 @@ public plugin_init() {
 	g_forwards[ROUND_END] = CreateMultiForward("zp_round_ended", ET_IGNORE, FP_CELL)
 	g_forwards[INFECTED_PRE] = CreateMultiForward("zp_user_infected_pre", ET_IGNORE, FP_CELL, FP_CELL, FP_CELL)
 	g_forwards[INFECTED_POST] = CreateMultiForward("zp_user_infected_post", ET_IGNORE, FP_CELL, FP_CELL, FP_CELL)
-	g_forwards[HUMANIZED_PRE] = CreateMultiForward("zp_user_humanized_pre", ET_IGNORE, FP_CELL, FP_CELL)
-	g_forwards[HUMANIZED_POST] = CreateMultiForward("zp_user_humanized_post", ET_IGNORE, FP_CELL, FP_CELL)
+	g_forwards[HUMANIZED_PRE] = CreateMultiForward("zp_user_humanized_pre", ET_IGNORE, FP_CELL, FP_CELL, FP_CELL)
+	g_forwards[HUMANIZED_POST] = CreateMultiForward("zp_user_humanized_post", ET_IGNORE, FP_CELL, FP_CELL, FP_CELL)
 	g_forwards[INFECT_ATTEMP] = CreateMultiForward("zp_user_infect_attempt", ET_CONTINUE, FP_CELL, FP_CELL, FP_CELL)
-	g_forwards[HUMANIZE_ATTEMP] = CreateMultiForward("zp_user_humanize_attempt", ET_CONTINUE, FP_CELL, FP_CELL)
+	g_forwards[HUMANIZE_ATTEMP] = CreateMultiForward("zp_user_humanize_attempt", ET_CONTINUE, FP_CELL, FP_CELL, FP_CELL)
 	g_forwards[ITEM_SELECTED_POST] = CreateMultiForward("zp_extra_item_selected", ET_CONTINUE, FP_CELL, FP_CELL)
 	g_forwards[USER_UNFROZEN] = CreateMultiForward("zp_user_unfrozen", ET_IGNORE, FP_CELL)
 	g_forwards[USER_LAST_ZOMBIE] = CreateMultiForward("zp_user_last_zombie", ET_IGNORE, FP_CELL)
@@ -2312,7 +2324,7 @@ public fw_PlayerSpawn_Post(id) { // Ham Player Spawn Post Forward
 	if(g_cached_customflash) set_task(1.0, "flashlight_charge", id+TASK_CHARGE, _, _, "b") // Set the flashlight charge task to update battery status
 
 	if(g_currentmode == MODE_LNJ && get_pcvar_num(cvar_lnjrespsurv)) { // Respawn as a survivor on LNJ round ?
-		humanme(id, SURVIVOR, 0) // Make him survivor right away			
+		humanme(id, SURVIVOR, 0, 0) // Make him survivor right away			
 		fm_set_user_health(id, floatround(float(pev(id, pev_health)) * get_pcvar_float(cvar_lnjsurvhpmulti))) // Apply the survivor health multiplier
 	}
 	
@@ -4459,7 +4471,7 @@ buy_extra_item(id, itemid, ignorecost = 0) { // Buy Extra Item
 		}
 		case EXTRA_ANTIDOTE: {
 			g_antidotecounter++ // Increase antidote purchase count for this round
-			humanme(id, 0, 0)
+			humanme(id, 0, 0, 0)
 		}
 		case EXTRA_MADNESS: { // Zombie Madness
 			g_madnesscounter++ // Increase madness purchase count for this round
@@ -5491,7 +5503,7 @@ start_swarm_mode(id, mode) { // Start swarm mode
 			if(!g_isalive[id]) continue; // Only those of them who aren't zombies
 
 			if(!is_zombie[id] && g_zombie[id] || g_hm_special[id])
-				humanme(id, 0, 1)
+				humanme(id, 0, 1, 0)
 			
 			// Switch to CT
 			if(!g_zombie[id]) {
@@ -5566,7 +5578,7 @@ start_plague_mode(id, mode) { // Start plague mode
 				
 				if(g_hm_special[id] == SURVIVOR) continue; // Already a survivor?
 				
-				humanme(id, SURVIVOR, 0) // If not, turn him into one
+				humanme(id, SURVIVOR, 0, 0) // If not, turn him into one
 				iSurvivors++
 
 				fm_set_user_health(id, floatround(float(pev(id, pev_health)) * get_pcvar_float(cvar_plaguesurvhpmulti))) // Apply survivor health multiplier
@@ -5696,7 +5708,7 @@ start_multi_mode(id, mode) { // Start multiple infection mode
 		for(id = 1; id <= MaxPlayers; id++) { // Turn the remaining players into humans
 			if(!g_isalive[id]) continue; // Only those of them who aren't zombies
 
-			if(!is_zombie[id] && g_zombie[id] || g_hm_special[id]) humanme(id, 0, 1)
+			if(!is_zombie[id] && g_zombie[id] || g_hm_special[id]) humanme(id, 0, 1, 0)
 
 			if(!g_zombie[id]) {
 				if(fm_cs_get_user_team(id) != FM_CS_TEAM_CT) // need to change team?
@@ -5782,7 +5794,7 @@ start_lnj_mode(id, mode) { // Start LNJ mode
 
 		for(id = 1; id <= MaxPlayers; id++) { // Turn the remaining players into survivors
 			if(!g_isalive[id] || g_zm_special[id] == NEMESIS) continue; // Only those of them who arent nemesis
-			humanme(id, SURVIVOR, 0) // Turn into a Survivor
+			humanme(id, SURVIVOR, 0, 0) // Turn into a Survivor
 			fm_set_user_health(id, floatround(float(pev(id, pev_health)) * get_pcvar_float(cvar_lnjsurvhpmulti)))
 		}
 		
@@ -5911,7 +5923,7 @@ set_special_human_mode(id, mode, class) {
 		if(mode == MODE_NONE || !id && mode == MODE_SET) id = fnGetRandomAlive(random_num(1, iPlayersnum)) // Choose player randomly?
 
 		forward_id = id // Remember id for calling our forward later
-		humanme(id, class, 0) // Turn player into a special human
+		humanme(id, class, 0, 0) // Turn player into a special human
 		
 		for(id = 1; id <= MaxPlayers; id++) { // Turn the remaining players into zombies
 			if(!g_isalive[id]) continue; // Not alive
@@ -5995,7 +6007,7 @@ set_special_zombie_mode(id, mode, class) {
 			
 			if(forward_id == id) continue;
 			
-			if(g_zombie[id] || g_hm_special[id]) humanme(id, 0, 1) // Turn others players to human (When forces start round after round alterady started by native)
+			if(g_zombie[id] || g_hm_special[id]) humanme(id, 0, 1, 0) // Turn others players to human (When forces start round after round alterady started by native)
 
 			// Switch to CT
 			if(fm_cs_get_user_team(id) != FM_CS_TEAM_CT) { // need to change team?
@@ -6134,7 +6146,7 @@ start_infection_mode(id, mode) { // Start the default infection mode
 		if(!g_isalive[id] || forward_id == id) continue;
 
 		if(g_zombie[id] || g_hm_special[id])
-			humanme(id, 0, 1)
+			humanme(id, 0, 1, 0)
 		
 		// Switch to CT
 		if(fm_cs_get_user_team(id) != FM_CS_TEAM_CT) { // need to change team?
@@ -6198,7 +6210,7 @@ zombieme(id, infector, classid, silentmode, rewards) {
 	
 	// Reset burning duration counter (bugfix)
 	g_burning_dur[id] = 0
-	if(silentmode != 2 || classid > 0) native_set_user_frozen(id, 0)
+	if(silentmode != 2 || classid > 0) set_user_frozen(id, 0, 0.1)
 	
 	// Show deathmsg and reward infector?
 	if(rewards && infector) {
@@ -6399,15 +6411,15 @@ zombieme(id, infector, classid, silentmode, rewards) {
 	ExecuteForward(g_forwards[INFECTED_POST], g_fwDummyResult, id, infector, classid) // Post user infect forward
 	fnCheckLastZombie() // Last Zombie Check
 }
-humanme(id, classid, silentmode) { // Function Human Me (player id, turn into a survivor, silent mode)
-	ExecuteForward(g_forwards[HUMANIZE_ATTEMP], g_fwDummyResult, id, classid) // User humanize attempt forward
+humanme(id, classid, silentmode, attacker) { // Function Human Me (player id, turn into a survivor, silent mode)
+	ExecuteForward(g_forwards[HUMANIZE_ATTEMP], g_fwDummyResult, id, classid, attacker) // User humanize attempt forward
 	
 	// One or more plugins blocked the "humanization". Only allow this after making sure it's
 	// not going to leave us with no humans. Take into account a last player leaving case.
 	// BUGFIX: only allow after a mode has started, to prevent blocking first survivor e.g.
 	if(g_fwDummyResult >= ZP_PLUGIN_HANDLED && g_modestarted && fnGetHumans() > g_lastplayerleaving) return;
 
-	ExecuteForward(g_forwards[HUMANIZED_PRE], g_fwDummyResult, id, classid) // Pre user humanize forward
+	ExecuteForward(g_forwards[HUMANIZED_PRE], g_fwDummyResult, id, classid, attacker) // Pre user humanize forward
 	
 	// Remove previous tasks
 	remove_task(id+TASK_MODEL)
@@ -6435,7 +6447,7 @@ humanme(id, classid, silentmode) { // Function Human Me (player id, turn into a 
 	set_pev(id, pev_takedamage, DAMAGE_AIM)
 	set_pev(id, pev_effects, pev(id, pev_effects) &~ EF_NODRAW)
 
-	native_set_user_frozen(id, 0)
+	set_user_frozen(id, 0, 0.1)
 
 	g_burning_dur[id] = 0 // Reset burning duration counter (bugfix)
 
@@ -6450,6 +6462,18 @@ humanme(id, classid, silentmode) { // Function Human Me (player id, turn into a 
 	// Strip off from weapons
 	fm_strip_user_weapons(id) 
 	fm_give_item(id, "weapon_knife")
+
+	// Show deathmsg and reward infector?
+	if(attacker) {
+		// Send death notice and fix the "dead" attrib on scoreboard
+		SendDeathMsg(attacker, id)
+		FixDeadAttrib(id)
+		
+		// Reward frags, deaths, health, and ammo packs
+		UpdateFrags(attacker, id, get_pcvar_num(cvar_frags_disinfect), 1, 1)
+		g_ammopacks[attacker] += get_pcvar_num(cvar_ammo_disinfect)
+		//fm_set_user_health(infector, pev(infector, pev_health) + get_pcvar_num(cvar_zm_basehp[0]))
+	}
 
 	if(classid >= MAX_SPECIALS_HUMANS) { // Set human attributes based on the mode
 		g_hm_special[id] = classid
@@ -6504,9 +6528,10 @@ humanme(id, classid, silentmode) { // Function Human Me (player id, turn into a 
 
 		// Set human attributes based on the mode
 		if(g_hm_special[id] == SURVIVOR) {
-			static survweapon[32]; get_pcvar_string(cvar_survweapon, survweapon, charsmax(survweapon))
+			static survweapon[32], wpn_id; get_pcvar_string(cvar_survweapon, survweapon, charsmax(survweapon))
+			wpn_id = cs_weapon_name_to_id(survweapon)
 			fm_give_item(id, survweapon)
-			ExecuteHamB(Ham_GiveAmmo, id, MAXBPAMMO[cs_weapon_name_to_id(survweapon)], AMMOTYPE[cs_weapon_name_to_id(survweapon)], MAXBPAMMO[cs_weapon_name_to_id(survweapon)])
+			ExecuteHamB(Ham_GiveAmmo, id, MAXBPAMMO[wpn_id], AMMOTYPE[wpn_id], MAXBPAMMO[wpn_id])
 		}
 		else if(g_hm_special[id] == SNIPER) {
 			fm_give_item(id, "weapon_awp")
@@ -6590,7 +6615,7 @@ humanme(id, classid, silentmode) { // Function Human Me (player id, turn into a 
 
 	reset_user_rendering(id) // Reset user Rendering
 
-	ExecuteForward(g_forwards[HUMANIZED_POST], g_fwDummyResult, id, classid) // Post user humanize forward
+	ExecuteForward(g_forwards[HUMANIZED_POST], g_fwDummyResult, id, classid, attacker) // Post user humanize forward
 	fnCheckLastZombie() // Last Zombie Check
 }
 /*================================================================================
@@ -7516,7 +7541,7 @@ check_round(leaving_player) { // Check Round Task -check that we still have both
 		client_print_color(0, print_team_default, "%L %L", LANG_PLAYER, "ZP_CHAT_TAG", LANG_PLAYER, "LAST_HUMAN_LEFT", g_playername[id]) // Show last human left notice
 
 		g_lastplayerleaving = true // Set player leaving flag
-		humanme(id, g_hm_special[leaving_player], 0) // Turn into a Special class or just a human?
+		humanme(id, g_hm_special[leaving_player], 0, 0) // Turn into a Special class or just a human?
 		g_lastplayerleaving = false // Remove player leaving flag
 		
 		if(get_pcvar_num(cvar_keephealthondisconnect) && (g_hm_special[leaving_player] > 0))
@@ -7795,8 +7820,8 @@ grenade_explode(ent, type) { // Grenade Explosion
 		else {
 			if(!g_zombie[victim] || g_frozen[victim] && type == NADE_TYPE_FROST)  continue; // Only effect zombies
 
-			if(type == NADE_TYPE_FROST) native_set_user_frozen(victim, 1)
-			else native_set_user_burn(victim, 1)
+			if(type == NADE_TYPE_FROST) set_user_frozen(victim, 1, get_pcvar_float(cvar_freezeduration))
+			else set_user_burn(victim, 1, get_pcvar_float(cvar_fireduration))
 		}
 	}
 	engfunc(EngFunc_RemoveEntity, ent) // Get rid of the grenade
@@ -8416,7 +8441,7 @@ command_zombie(id, player) { // Admin Command. zp_zombie
 }
 command_human(id, player) { // Admin Command. zp_human
 	zp_log_message(id, player, "CMD_DISINFECT") // Log and Print Message
-	humanme(player, 0, 0) // Turn to human
+	humanme(player, 0, 0, 0) // Turn to human
 }
 
 new const hm_cmd_langs[MAX_SPECIALS_HUMANS-1][] = { "CMD_SURVIVAL", "CMD_SNIPER", "CMD_BERSERKER", "CMD_WESKER", "CMD_SPY" }
@@ -8457,7 +8482,7 @@ command_special(id, player, spid, zm) {
 	}
 	else { // Turn player into a Special Class
 		if(zm) zombieme(player, 0, spid, 0, 0)
-		else humanme(player, spid, 0)
+		else humanme(player, spid, 0, 0)
 	}
 	ExecuteForward(g_forwards[zm ? ZM_SP_CHOSSED_POST : HM_SP_CHOSSED_POST], g_fwDummyResult, id, spid);
 }
@@ -8507,7 +8532,7 @@ command_custom_special(id, player, spid, zombie) {
 		log_to_file(filename, logdata)
 	}
 	if(zombie) zombieme(player, 0, spid, 0, 0)
-	else humanme(player, spid, 0)
+	else humanme(player, spid, 0, 0)
 
 	ExecuteForward(g_forwards[zombie ? ZM_SP_CHOSSED_POST : HM_SP_CHOSSED_POST], g_fwDummyResult, id, spid);
 }
@@ -9150,7 +9175,19 @@ public native_set_user_madness(id, set) {
 
 	return true;
 }
+// Native: zp_set_user_frozen
 public native_set_user_frozen(id, set) {
+	return set_user_frozen(id, set, get_pcvar_float(cvar_freezeduration))
+}
+
+// Native: zpsp_set_user_frozen
+public native_set_user_frozen2(id, set, Float:Duration) {
+	if(Duration == -1.0)
+		Duration = get_pcvar_float(cvar_fireduration)
+
+	return set_user_frozen(id, set, Duration);
+}
+public set_user_frozen(id, set, Float:Duration) {
 	if(!is_user_valid(id)) return false;
 
 	if(!g_pluginenabled) return false;
@@ -9229,13 +9266,25 @@ public native_set_user_frozen(id, set) {
 
 		ExecuteHamB(Ham_Player_ResetMaxSpeed, id) // Prevent from moving
 		ExecuteForward(g_forwards[FROZEN_POST], g_fwDummyResult, id);
-		set_task(get_pcvar_float(cvar_freezeduration), "remove_freeze", id)
+		
+		if(Duration) 
+			set_task(Duration, "remove_freeze", id)
 	}
 	else remove_freeze(id)
 
 	return true
 }
 public native_set_user_burn(id, set) {
+	return set_user_burn(id, set, get_pcvar_float(cvar_fireduration))
+}
+public native_set_user_burn2(id, set, Float:Duration) {
+
+	if(Duration == -1.0)
+		Duration = get_pcvar_float(cvar_fireduration)
+
+	return set_user_burn(id, set, Duration)
+}
+public set_user_burn(id, set, Float:Duration) {
 	if(!is_user_valid(id)) return false;
 	if(!g_pluginenabled) return false;
 	
@@ -9256,8 +9305,11 @@ public native_set_user_burn(id, set) {
 			message_end()
 		}
 
-		if(!get_allowed_burn(id)  && set > 2|| g_hm_special[id] > 0 && set > 2) g_burning_dur[id] += get_pcvar_num(cvar_fireduration)
-		else g_burning_dur[id] += get_pcvar_num(cvar_fireduration) * 5
+		if(Duration) {
+			if(!get_allowed_burn(id)  && set > 2|| g_hm_special[id] > 0 && set > 2) g_burning_dur[id] += floatround(Duration)
+			else g_burning_dur[id] += floatround(Duration * 5)
+		}
+		else g_burning_dur[id] = 999999 // Permanent
 		
 		if(g_burning_dur[id] > 0) ExecuteForward(g_forwards[BURN_POST], g_fwDummyResult, id);
 
@@ -9295,7 +9347,7 @@ public native_disinfect_user(id, silent) { // Native: zp_disinfect_user
 	if(!is_user_valid_alive(id)) return false;
 	if(!allowed_human(id)) return false; // Not allowed to be human
 
-	humanme(id, 0, (silent == 1) ? 1 : 0) // Turn to human
+	humanme(id, 0, (silent == 1) ? 1 : 0, 0) // Turn to human
 	return true;
 }
 public native_make_user_nemesis(id) return native_make_user_special(id, NEMESIS, 1); // Native: zp_make_user_nemesis
@@ -9325,9 +9377,25 @@ public native_make_user_special(id, spid, zombie) { // Native: zp_make_user_spec
 		else set_special_human_mode(id, MODE_SET, spid)
 	}
 	else { // Turn player into a Special Class
-		if(zombie)  zombieme(id, 0, spid, 0, 0)
-		else humanme(id, spid, 0)
+		if(zombie) zombieme(id, 0, spid, 0, 0)
+		else humanme(id, spid, 0, 0)
 	}
+	return 1;
+}
+public native_force_user_class(id, spid, zombie, silent) {
+	if(!is_user_valid_alive(id)) return -1;
+
+	if(spid >= g_zm_specials_i && zombie || spid >= g_hm_specials_i && !zombie) {
+		log_error(AMX_ERR_NATIVE, "[ZP] Invalid Special class id (%d)", spid)
+		return -1;
+	}
+	if(!g_pluginenabled) return -1; // ZP Special disabled
+
+	if(zombie) 
+		zombieme(id, 0, spid, silent, 0)
+	else 
+		humanme(id, spid, silent, 0)
+
 	return 1;
 }
 public native_respawn_user(id, team) { // Native: zp_respawn_user
@@ -11553,8 +11621,8 @@ public use_cmd(player) { // Dragon Habilities
 	get_user_aiming(player, target, body, get_pcvar_num(cvar_dragon_power_distance))
 	if(is_user_valid_alive(target) && !g_zombie[target]) {
 		switch(random_num(0,1)) {
-			case 0: native_set_user_frozen(target, 2), sprite_control(player, 0)
-			case 1: native_set_user_burn(target, 2), sprite_control(player, 1)
+			case 0: set_user_frozen(target, 2, get_pcvar_float(cvar_freezeduration)), sprite_control(player, 0)
+			case 1: set_user_burn(target, 2, get_pcvar_float(cvar_fireduration)), sprite_control(player, 1)
 		}
 	}
 	else sprite_control(player, random_num(0,1))
