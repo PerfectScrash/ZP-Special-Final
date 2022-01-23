@@ -9383,13 +9383,13 @@ public native_make_user_special(id, spid, zombie) { // Native: zp_make_user_spec
 	return 1;
 }
 public native_force_user_class(id, spid, zombie, attacker, silent) {
+	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!is_user_valid_alive(id)) return -1;
 
 	if(spid >= g_zm_specials_i && zombie || spid >= g_hm_specials_i && !zombie) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid Special class id (%d)", spid)
 		return -1;
 	}
-	if(!g_pluginenabled) return -1; // ZP Special disabled
 
 	if(zombie) 
 		zombieme(id, attacker, spid, silent, 1)
