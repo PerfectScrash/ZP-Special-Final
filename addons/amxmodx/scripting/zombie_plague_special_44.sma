@@ -254,6 +254,7 @@
 			- Added Native: zp_force_user_class(id, spid, zombie, attacker = 0, sillentmode = 1)
 			- Added Native: zpsp_set_user_frozen(id, set, Float:Duration = -1.0)
 			- Added Native: zpsp_set_user_burn(id, set, Float:Duration = -1.0)
+			- Added Cvars: zp_human_frags_for_disinfect, zp_human_disnfect_reward
 			- Removed "HANDLE MODELS ON SEPARATE ENT"
 
 

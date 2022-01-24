@@ -79,3 +79,4 @@ Bombardier (From ZP Shade), Wesker (From Zombie Apocalipse), Spy and Dragon
 		- Added Native: zp_force_user_class(id, specialid, zombie)
 		- Added Native: zpsp_set_user_frozen(id, set, Float:Duration = -1.0)
 		- Added Native: zpsp_set_user_burn(id, set, Float:Duration = -1.0)
+		- Removed "HANDLE MODELS ON SEPARATE ENT"
