@@ -1,0 +1,3 @@
+addons/amxmodx/plugins/*
+addons/amxmodx/logs/*
+*.amxx

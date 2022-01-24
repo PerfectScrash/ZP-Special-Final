@@ -11,18 +11,15 @@
 #define AUTHOR  "[P]erfect [S]crash"
 
 new g_itemid
-public plugin_init()
-{
+public plugin_init() {
 	register_plugin(PLUGIN, VERSION, AUTHOR)
 
 	// New Extra Item Native Can Make Extra Item for Wesker, Spy, Bombardier, Dragon and Custom Specials Classes 
 	// That are impossible with old native (Old native are working yet for compatibility)
 	g_itemid = zpsp_register_extra_item("New Native Extra Example", 0, "BERSERKER, SPY, WESKER, MORPHEUS, BOMBARDIER", 1, "LANG_ITEM_EXAMPLE")
-
 }
 
-public zp_extra_item_selected(id, itemid)
-{
+public zp_extra_item_selected(id, itemid) {
 	if(g_itemid != itemid)
 		return;
 

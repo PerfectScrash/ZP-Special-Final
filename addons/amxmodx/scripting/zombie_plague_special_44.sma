@@ -254,12 +254,12 @@
 			- Added Native: zp_force_user_class(id, spid, zombie, attacker = 0, sillentmode = 1)
 			- Added Native: zpsp_set_user_frozen(id, set, Float:Duration = -1.0)
 			- Added Native: zpsp_set_user_burn(id, set, Float:Duration = -1.0)
+			- Removed "HANDLE MODELS ON SEPARATE ENT"
 
 
 			// Reverted Changes
 			//- Added Player Submodel Support (You can add more player models using only 1 .mdl)
 			//- Added Native: zpsp_override_user_model(id, const model, body=0, modelindex=0)
-			//- Removed "HANDLE MODELS ON SEPARATE ENT"
 			//- Removed "MODELCHANGE DELAY"
 			//- Now models system are using "cstrike" module
 
@@ -580,10 +580,6 @@ const SECONDARY_WEAPONS_BIT_SUM = (1<<CSW_P228)|(1<<CSW_ELITE)|(1<<CSW_FIVESEVEN
 // Allowed weapons for zombies (added grenades/bomb for sub-plugin support, since they shouldn't be getting them anyway)
 const ZOMBIE_ALLOWED_WEAPONS_BITSUM = (1<<CSW_KNIFE)|(1<<CSW_HEGRENADE)|(1<<CSW_FLASHBANG)|(1<<CSW_SMOKEGRENADE)|(1<<CSW_C4);
 
-// Classnames for separate model entities
-new const MODEL_ENT_CLASSNAME[] = "player_model";
-new const WEAPON_ENT_CLASSNAME[] = "weapon_model";
-
 // Menu keys
 const KEYSMENU = MENU_KEY_1|MENU_KEY_2|MENU_KEY_3|MENU_KEY_4|MENU_KEY_5|MENU_KEY_6|MENU_KEY_7|MENU_KEY_8|MENU_KEY_9|MENU_KEY_0;
 
@@ -647,7 +643,7 @@ new g_hud_type[33], g_hud_color[2][33], g_flashlight_color[33], g_flashlight_rgb
 new g_zombie[33], g_firstzombie[33], g_lastzombie[33], g_lasthuman[33], g_frozen[33], g_nodamage[33], g_respawn_as_zombie[33], Float:g_frozen_gravity[33], Float:g_buytime[33];
 new g_nvision[33], g_nvisionenabled[33], g_nvg_enabled_mode[33], g_zombieclass[33], g_zombieclassnext[33], g_flashlight[33], g_flashbattery[33] = { 100, ... };
 new g_canbuy[33], g_ammopacks[33], g_damagedealt[33], how_many_rewards, Float:g_lastleaptime[33], Float:g_lastflashtime[33], g_playermodel[33][32], g_bot_extra_count[33];
-new g_menu_data[33][14], g_ent_playermodel[33], g_ent_weaponmodel[33], g_burning_dur[33], Float:g_current_maxspeed[33], g_user_custom_speed[33];
+new g_menu_data[33][14], g_burning_dur[33], Float:g_current_maxspeed[33], g_user_custom_speed[33];
 
 // Game vars;
 new g_pluginenabled, g_newround, g_endround, g_modestarted, g_allowinfection, g_deathmatchmode, g_currentmode, g_lastmode, g_nextmode;
@@ -734,7 +730,7 @@ model_knife_admin_human[MAX_WPN_MDL][64], model_knife_vip_human[MAX_WPN_MDL][64]
 Array:sound_win_zombies, Array:sound_win_humans, Array:sound_win_no_one, Array:ar_sound[MAX_ARRAY_SOUNDS],  Array:zombie_pain[MAX_SPECIALS_ZOMBIES], g_ambience_rain,
 Array:g_additional_items, Array:g_weapon_is_custom[2], Array:g_weapon_realname[2], Array:g_weapon_name[2], Array:g_weapon_name_by_lang[2], Array:g_weapon_lang_key[2], g_def_wpn_use_lang, g_weapon_i[2], Array:g_weapon_ids[2],
 Array:g_extraweapon_names, Array:g_extraweapon_items, Array:g_extraweapon_costs, g_extraweapon_name_by_lang, Array:g_extraweapon_lang_key, g_extra_costs2[EXTRA_WEAPONS_STARTID], g_ambience_snow, g_ambience_fog, g_fog_density[10], g_fog_color[12], g_sky_enable,
-Array:g_sky_names, Array:lights_thunder, Array:zombie_decals, Array:g_objective_ents, Array:g_escape_maps, Float:g_modelchange_delay, g_set_modelindex_offset, g_handle_models_on_separate_ent, 
+Array:g_sky_names, Array:lights_thunder, Array:zombie_decals, Array:g_objective_ents, Array:g_escape_maps, Float:g_modelchange_delay, g_set_modelindex_offset, 
 Float:kb_weapon_power[31] = { -1.0, ... }, g_force_consistency, g_choosed_zclass[33], g_enable_end_round_sounds,
 g_ambience_sounds[MAX_AMBIENCE_SOUNDS], Array:sound_mod[MAX_GAME_MODES], Array:sound_ambience[MAX_AMBIENCE_SOUNDS], Array:sound_ambience_duration[MAX_AMBIENCE_SOUNDS],
 enable_trail[MAX_GRENADES], enable_explode[MAX_GRENADES], enable_gib[MAX_GRENADES], sprite_grenade_trail[MAX_GRENADES][64], sprite_grenade_explode[MAX_GRENADES][64], sprite_grenade_gib[MAX_GRENADES][64], 
@@ -1374,7 +1370,7 @@ public plugin_init() {
 	register_forward(FM_ClientDisconnect, "fw_ClientDisconnect_Post", 1)
 	register_forward(FM_ClientKill, "fw_ClientKill")
 	register_forward(FM_EmitSound, "fw_EmitSound")
-	if(!g_handle_models_on_separate_ent) register_forward(FM_SetClientKeyValue, "fw_SetClientKeyValue")
+	register_forward(FM_SetClientKeyValue, "fw_SetClientKeyValue")
 	register_forward(FM_ClientUserInfoChanged, "fw_ClientUserInfoChanged")
 	register_forward(FM_GetGameDescription, "fw_GetGameDescription")
 	register_forward(FM_SetModel, "fw_SetModel")
@@ -1442,7 +1438,6 @@ public plugin_init() {
 	register_message(g_msgFlashBat, "message_flashbat")
 	register_message(g_msgScreenFade, "message_screenfade")
 	register_message(g_msgNVGToggle, "message_nvgtoggle")
-	if(g_handle_models_on_separate_ent) register_message(get_user_msgid("ClCorpse"), "message_clcorpse")
 	register_message(get_user_msgid("WeapPickup"), "message_weappickup")
 	register_message(g_msgAmmoPickup, "message_ammopickup")
 	register_message(get_user_msgid("Scenario"), "message_scenario")
@@ -2114,7 +2109,6 @@ public logevent_round_end() { // Log Event Round End
 	static sound[64], Array:Sound_WinTeam, Win_Team_Color[3], Win_Team_MSG[250], Win_Team_Index, HM_Index, ZM_Index;
 	HM_Index = GetTeamIndex(TEAM_HUMAN)
 	ZM_Index = GetTeamIndex(TEAM_ZOMBIE)
-	
 
 	if(!fnGetZombies()) { // Human team wins
 		Sound_WinTeam = sound_win_humans;
@@ -2547,8 +2541,8 @@ public fw_TakeDamage(victim, inflictor, attacker, Float:damage, damage_type) { /
 		}
 
 		if(g_zm_special[victim] == PREDATOR) {
-			if(get_pcvar_num(cvar_zm_glow[PREDATOR])) fm_set_rendering(g_handle_models_on_separate_ent ? g_ent_playermodel[victim] : victim, kRenderFxGlowShell, 250, 250, 250, kRenderNormal, 15)
-			else fm_set_rendering(g_handle_models_on_separate_ent ? g_ent_playermodel[victim] : victim, kRenderFxGlowShell, 0, 0, 0, kRenderNormal, 15)
+			if(get_pcvar_num(cvar_zm_glow[PREDATOR])) fm_set_rendering(victim, kRenderFxGlowShell, 250, 250, 250, kRenderNormal, 15)
+			else fm_set_rendering(victim, kRenderFxGlowShell, 0, 0, 0, kRenderNormal, 15)
 			set_task(1.0, "turn_invisible", victim)
 		}
 
@@ -2573,8 +2567,8 @@ public fw_TakeDamage(victim, inflictor, attacker, Float:damage, damage_type) { /
 	if(g_zm_special[attacker] >= MAX_SPECIALS_ZOMBIES) return HAM_IGNORED;
 
 	if(g_hm_special[victim] == SPY) {
-		if(get_pcvar_num(cvar_hm_glow[SPY])) fm_set_rendering(g_handle_models_on_separate_ent ? g_ent_playermodel[victim] : victim, kRenderFxGlowShell, get_pcvar_num(cvar_hm_red[SPY]), get_pcvar_num(cvar_hm_green[SPY]), get_pcvar_num(cvar_hm_blue[SPY]), kRenderNormal, 15)
-		else fm_set_rendering(g_handle_models_on_separate_ent ? g_ent_playermodel[victim] : victim, kRenderFxGlowShell, 0, 0, 0, kRenderNormal, 15)
+		if(get_pcvar_num(cvar_hm_glow[SPY])) fm_set_rendering(victim, kRenderFxGlowShell, get_pcvar_num(cvar_hm_red[SPY]), get_pcvar_num(cvar_hm_green[SPY]), get_pcvar_num(cvar_hm_blue[SPY]), kRenderNormal, 15)
+		else fm_set_rendering(victim, kRenderFxGlowShell, 0, 0, 0, kRenderNormal, 15)
 		set_task(1.0, "turn_invisible", victim)
 	}
 
@@ -2831,8 +2825,6 @@ public fw_ClientDisconnect(id) { // Client leaving
 	remove_task(id+TASK_NVISION)
 	remove_task(id+TASK_SHOWHUD)
 	
-	if(g_handle_models_on_separate_ent) fm_remove_model_ents(id) // Remove custom model entities
-	
 	// Player left, clear cached flags
 	g_isconnected[id] = false
 	g_isbot[id] = false
@@ -2913,11 +2905,9 @@ public fw_SetClientKeyValue(id, const infobuffer[], const key[]) { // Forward Se
 }
 public fw_ClientUserInfoChanged(id) { // Forward Client User Info Changed -prevent players from changing models-
 	get_user_name(id, g_playername[id], charsmax(g_playername[])) // Cache player's name
-	
-	if(!g_handle_models_on_separate_ent) {
-		static currentmodel[32]; fm_cs_get_user_model(id, currentmodel, charsmax(currentmodel)) // Get current model
-		if(!equal(currentmodel, g_playermodel[id]) && !task_exists(id+TASK_MODEL)) fm_cs_set_user_model(id+TASK_MODEL) // If they're different, set model again
-	}
+	static currentmodel[32]; fm_cs_get_user_model(id, currentmodel, charsmax(currentmodel)) // Get current model
+	if(!equal(currentmodel, g_playermodel[id]) && !task_exists(id+TASK_MODEL)) 
+		fm_cs_set_user_model(id+TASK_MODEL) // If they're different, set model again
 }
 public fw_GetGameDescription() { // Forward Get Game Description
 	forward_return(FMV_STRING, g_modname) // Return the mod name so it can be easily identified
@@ -5348,7 +5338,6 @@ public message_screenfade(msg_id, msg_dest, msg_entity) { // Flashbangs should o
 	return PLUGIN_HANDLED;
 }
 public message_nvgtoggle() return PLUGIN_HANDLED; // Prevent spectators' nightvision from being turned off when switching targets, etc.
-public message_clcorpse() set_msg_arg_string(1, g_playermodel[get_msg_arg_int(12)]) // Set correct model on player corpses
 
 public message_weappickup(msg_id, msg_dest, msg_entity) { // Prevent zombies from seeing any weapon pickup icon
 	if(g_zombie[msg_entity]) return PLUGIN_HANDLED;
@@ -6924,7 +6913,6 @@ load_customization_from_files() {
 
 	// SVC_BAD Prevention
 	amx_load_setting_float(ZP_CUSTOMIZATION_FILE, "SVC_BAD Prevention", "MODELCHANGE DELAY", g_modelchange_delay)
-	amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "SVC_BAD Prevention", "HANDLE MODELS ON SEPARATE ENT", g_handle_models_on_separate_ent)
 	amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "SVC_BAD Prevention", "SET MODELINDEX OFFSET", g_set_modelindex_offset)
 
 	// Load Zombie Special Class Death Sounds //
@@ -7980,8 +7968,6 @@ replace_weapon_models(id, weaponid) { // Set Custom Weapon Models
 		set_pev(id, pev_viewmodel2, model_v_weapon_human[SURVIVOR])
 		set_pev(id, pev_weaponmodel2, model_p_weapon_human[SURVIVOR])
 	}
-
-	if(g_handle_models_on_separate_ent) fm_set_weaponmodel_ent(id) // Update model on weaponmodel ent
 }
 reset_vars(id, resetall) { // Reset Player Vars
 	g_zombie[id] = false
@@ -8797,7 +8783,7 @@ public native_set_rendering(id, fx, r, g, b, render, amount) { // Native: zp_set
 	if(!is_user_valid(id)) return false;
 	if(!g_isconnected[id] || !g_isalive[id]) return false;
 
-	fm_set_rendering(g_handle_models_on_separate_ent ? g_ent_playermodel[id] : id, fx, r, g, b, render, amount)
+	fm_set_rendering(id, fx, r, g, b, render, amount)
 	return true;
 }
 public native_reset_user_rendering(id) { // Native: zp_reset_user_rendering
@@ -9241,7 +9227,7 @@ public set_user_frozen(id, set, Float:Duration) {
 		}
 		
 		// Light blue glow while frozen
-		fm_set_rendering(g_handle_models_on_separate_ent ? g_ent_playermodel[id] : id, kRenderFxGlowShell, 0, 100, 200, kRenderNormal, 25)
+		fm_set_rendering(id, kRenderFxGlowShell, 0, 100, 200, kRenderNormal, 25)
 
 		ArrayGetString(ar_sound[15], random_num(0, ArraySize(ar_sound[15]) - 1), sound, charsmax(sound))
 		emit_sound(id, CHAN_BODY, sound, 1.0, ATTN_NORM, 0, PITCH_NORM) // Freeze sound
@@ -9477,23 +9463,15 @@ public native_override_user_model(id, const newmodel[], modelindex) { // Native:
 	remove_task(id+TASK_MODEL) // Remove previous tasks
 
 	static currentmodel[32] // Custom models stuff
-	if(g_handle_models_on_separate_ent) {
+	fm_cs_get_user_model(id, currentmodel, charsmax(currentmodel))// Get current model for comparing it with the current one
+	if(!equal(currentmodel, newmodel)) { // Set the right model, after checking that we don't already have it
 		copy(g_playermodel[id], charsmax(g_playermodel[]), newmodel)
-		if(g_set_modelindex_offset && modelindex) fm_cs_set_user_model_index(id, modelindex) // Set the right model
-
-		fm_set_playermodel_ent(id) // Set model on player model entity
-	}
-	else {
-		fm_cs_get_user_model(id, currentmodel, charsmax(currentmodel))// Get current model for comparing it with the current one
-		if(!equal(currentmodel, newmodel)) { // Set the right model, after checking that we don't already have it
-			copy(g_playermodel[id], charsmax(g_playermodel[]), newmodel)
-			if(g_set_modelindex_offset && modelindex) fm_cs_set_user_model_index(id, modelindex)
-			
-			// An additional delay is offset at round start
-			// since SVC_BAD is more likely to be triggered there
-			if(g_newround) set_task(5.0 * g_modelchange_delay, "fm_user_model_update", id+TASK_MODEL)
-			else fm_user_model_update(id+TASK_MODEL)
-		}
+		if(g_set_modelindex_offset && modelindex) fm_cs_set_user_model_index(id, modelindex)
+		
+		// An additional delay is offset at round start
+		// since SVC_BAD is more likely to be triggered there
+		if(g_newround) set_task(5.0 * g_modelchange_delay, "fm_user_model_update", id+TASK_MODEL)
+		else fm_user_model_update(id+TASK_MODEL)
 	}
 	ExecuteForward(g_forwards[MODEL_CHANGE_POST], g_fwDummyResult, id, newmodel)
 	return true;
@@ -11287,51 +11265,6 @@ stock fm_cs_set_user_model_index(id, value) { // Set the precached model index (
 
 	set_pdata_int(id, OFFSET_MODELINDEX, value, OFFSET_LINUX)
 }
-stock fm_set_playermodel_ent(id) { // Set Player Model on Entity
-	// Make original player entity invisible without hiding shadows or firing effects
-	fm_set_rendering(id, kRenderFxNone, 255, 255, 255, kRenderTransTexture, 1)
-	
-	static model[100] // Format model string
-	formatex(model, charsmax(model), "models/player/%s/%s.mdl", g_playermodel[id], g_playermodel[id])
-
-	if(!pev_valid(g_ent_playermodel[id])) { // Set model on entity or make a new one if unexistant
-		g_ent_playermodel[id] = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "info_target"))
-		if(!pev_valid(g_ent_playermodel[id])) return;
-		
-		set_pev(g_ent_playermodel[id], pev_classname, MODEL_ENT_CLASSNAME)
-		set_pev(g_ent_playermodel[id], pev_movetype, MOVETYPE_FOLLOW)
-		set_pev(g_ent_playermodel[id], pev_aiment, id)
-		set_pev(g_ent_playermodel[id], pev_owner, id)
-	}
-	engfunc(EngFunc_SetModel, g_ent_playermodel[id], model)
-}
-stock fm_set_weaponmodel_ent(id) { // Set Weapon Model on Entity
-	static model[100] // Get player's p_ weapon model
-	pev(id, pev_weaponmodel2, model, charsmax(model))
-
-	if(!pev_valid(g_ent_weaponmodel[id])) { // Set model on entity or make a new one if unexistant
-		g_ent_weaponmodel[id] = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "info_target"))
-		if(!pev_valid(g_ent_weaponmodel[id])) return;
-
-		set_pev(g_ent_weaponmodel[id], pev_classname, WEAPON_ENT_CLASSNAME)
-		set_pev(g_ent_weaponmodel[id], pev_movetype, MOVETYPE_FOLLOW)
-		set_pev(g_ent_weaponmodel[id], pev_aiment, id)
-		set_pev(g_ent_weaponmodel[id], pev_owner, id)
-	}
-	engfunc(EngFunc_SetModel, g_ent_weaponmodel[id], model)
-}
-
-
-stock fm_remove_model_ents(id) { // Remove Custom Model Entities
-	if(pev_valid(g_ent_playermodel[id])) { // Remove "playermodel" ent if present
-		engfunc(EngFunc_RemoveEntity, g_ent_playermodel[id])
-		g_ent_playermodel[id] = 0
-	}
-	if(pev_valid(g_ent_weaponmodel[id])) { // Remove "weaponmodel" ent if present;
-		engfunc(EngFunc_RemoveEntity, g_ent_weaponmodel[id])
-		g_ent_weaponmodel[id] = 0
-	}
-}
 public fm_cs_set_user_model(taskid) set_user_info(ID_MODEL, "model", g_playermodel[ID_MODEL]); // Set User Model;
 stock fm_cs_get_user_model(player, model[], len) get_user_info(player, "model", model, len); // Get User Model -model passed byref-
 
@@ -11349,13 +11282,13 @@ public fm_user_model_update(taskid) { // Update Player's Model on all clients (a
 
 public turn_invisible(id) { // Predator/Spy Invisible Powers
 	if(g_zm_special[id] == PREDATOR) {
-		if(get_pcvar_num(cvar_zm_glow[PREDATOR])) fm_set_rendering(g_handle_models_on_separate_ent ? g_ent_playermodel[id] : id, kRenderFxGlowShell, get_pcvar_num(cvar_zm_red[PREDATOR]), get_pcvar_num(cvar_zm_green[PREDATOR]), get_pcvar_num(cvar_zm_blue[PREDATOR]), kRenderTransAdd, 5)
-		else fm_set_rendering(g_handle_models_on_separate_ent ? g_ent_playermodel[id] : id, kRenderFxGlowShell, 0, 0, 0, kRenderTransAdd, 5)
+		if(get_pcvar_num(cvar_zm_glow[PREDATOR])) fm_set_rendering(id, kRenderFxGlowShell, get_pcvar_num(cvar_zm_red[PREDATOR]), get_pcvar_num(cvar_zm_green[PREDATOR]), get_pcvar_num(cvar_zm_blue[PREDATOR]), kRenderTransAdd, 5)
+		else fm_set_rendering(id, kRenderFxGlowShell, 0, 0, 0, kRenderTransAdd, 5)
 	}
 	
 	if(g_hm_special[id] == SPY) {
-		if(get_pcvar_num(cvar_hm_glow[SPY])) fm_set_rendering(g_handle_models_on_separate_ent ? g_ent_playermodel[id] : id, kRenderFxGlowShell, get_pcvar_num(cvar_hm_red[SPY]), get_pcvar_num(cvar_hm_green[SPY]), get_pcvar_num(cvar_hm_blue[SPY]), kRenderTransAdd, 5)
-		else fm_set_rendering(g_handle_models_on_separate_ent ? g_ent_playermodel[id] : id, kRenderFxGlowShell, 0, 0, 0, kRenderTransAdd, 5)
+		if(get_pcvar_num(cvar_hm_glow[SPY])) fm_set_rendering(id, kRenderFxGlowShell, get_pcvar_num(cvar_hm_red[SPY]), get_pcvar_num(cvar_hm_green[SPY]), get_pcvar_num(cvar_hm_blue[SPY]), kRenderTransAdd, 5)
+		else fm_set_rendering(id, kRenderFxGlowShell, 0, 0, 0, kRenderTransAdd, 5)
 	}
 }
 
@@ -11692,7 +11625,7 @@ public sqrt(num) {
 }
 public reset_user_rendering(id) {
 	static ent_id
-	ent_id = g_handle_models_on_separate_ent ? g_ent_playermodel[id] : id
+	ent_id = id
 	
 	ExecuteForward(g_forwards[RESET_RENDERING_PRE], g_fwDummyResult, id)
 
@@ -11728,233 +11661,154 @@ public reset_user_rendering(id) {
 public reset_player_models(id) {
 	static currentmodel[32], newmodel[32], already_has_model, i, iRand, size, model_index
 	already_has_model = false
-	
-	if(g_handle_models_on_separate_ent) {
-		if(g_zombie[id]) {
-			// Set the right model
-			if(g_zm_special[id] >= MAX_SPECIALS_ZOMBIES) {
+
+	if(g_zombie[id]) {
+		fm_cs_get_user_model(id, currentmodel, charsmax(currentmodel)) // Get current model for comparing it with the current one
+		if(g_zm_special[id] >= MAX_SPECIALS_ZOMBIES) {
+			for(i = ArrayGetCell(g_zm_special_modelstart, g_zm_special[id]-MAX_SPECIALS_ZOMBIES); i < ArrayGetCell(g_zm_special_modelsend, g_zm_special[id]-MAX_SPECIALS_ZOMBIES) - 1; i++) {
+				ArrayGetString(g_zm_special_model, i, newmodel, charsmax(newmodel))
+				if(equal(currentmodel, newmodel)) already_has_model = true
+			}
+			if(!already_has_model) {
 				iRand = random_num(ArrayGetCell(g_zm_special_modelstart, g_zm_special[id]-MAX_SPECIALS_ZOMBIES), ArrayGetCell(g_zm_special_modelsend, g_zm_special[id]-MAX_SPECIALS_ZOMBIES) - 1)
 				ArrayGetString(g_zm_special_model, iRand, newmodel, charsmax(newmodel))
 				if(g_set_modelindex_offset) model_index = ArrayGetCell(g_zm_special_modelindex, iRand)
 			}
-			else if(g_zm_special[id] > 0 && g_zm_special[id] < MAX_SPECIALS_ZOMBIES) {
-				if(g_zm_special[id] > 0 && zm_special_enable[g_zm_special[id]]) {
-					iRand = random_num(0, ArraySize(model_zm_special[g_zm_special[id]]) - 1)
+		}
+		else if(g_zm_special[id] > 0 && g_zm_special[id] < MAX_SPECIALS_ZOMBIES) {
+			if(g_zm_special[id] > 0 && zm_special_enable[g_zm_special[id]]) {
+				size = ArraySize(model_zm_special[g_zm_special[id]]) // Set the right model, after checking that we don't already have it
+				for(i = 0; i < size; i++) {
+					ArrayGetString(model_zm_special[g_zm_special[id]], i, newmodel, charsmax(newmodel))
+					if(equal(currentmodel, newmodel)) already_has_model = true
+				}
+				if(!already_has_model) {
+					iRand = random_num(0, size - 1)
 					ArrayGetString(model_zm_special[g_zm_special[id]], iRand, newmodel, charsmax(newmodel))
 					if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_zm_sp[g_zm_special[id]], iRand)
 				}
 			}
-			else {
-				if(get_pcvar_num(cvar_adminmodelszombie) && (get_user_flags(id) & g_access_flag[ACCESS_ADMIN_MODELS])) {
-					iRand = random_num(0, ArraySize(model_admin_zombie) - 1)
+		}
+		else {
+			if(get_pcvar_num(cvar_adminmodelszombie) && (get_user_flags(id) & g_access_flag[ACCESS_ADMIN_MODELS])) {
+				size = ArraySize(model_admin_zombie)
+				for(i = 0; i < size; i++) {
+					ArrayGetString(model_admin_zombie, i, newmodel, charsmax(newmodel))
+					if(equal(currentmodel, newmodel)) already_has_model = true
+				}
+				if(!already_has_model) {
+					iRand = random_num(0, size - 1)
 					ArrayGetString(model_admin_zombie, iRand, newmodel, charsmax(newmodel))
 					if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_admin_zombie, iRand)
 				}
-				else if(get_pcvar_num(cvar_vipmodelszombie) && (get_user_flags(id) & g_access_flag[ACCESS_VIP_MODELS])) {
-					iRand = random_num(0, ArraySize(model_vip_zombie) - 1)
+			}
+			else if(get_pcvar_num(cvar_vipmodelszombie) && (get_user_flags(id) & g_access_flag[ACCESS_VIP_MODELS])) {
+				size = ArraySize(model_vip_zombie)
+				for(i = 0; i < size; i++) {
+					ArrayGetString(model_vip_zombie, i, newmodel, charsmax(newmodel))
+					if(equal(currentmodel, newmodel)) already_has_model = true
+				}
+				if(!already_has_model) {
+					iRand = random_num(0, size - 1)
 					ArrayGetString(model_vip_zombie, iRand, newmodel, charsmax(newmodel))
 					if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_vip_zombie, iRand)
 				}
-				else {
+			} 
+			else {
+				for(i = ArrayGetCell(g_zclass_modelsstart, g_zombieclass[id]); i < ArrayGetCell(g_zclass_modelsend, g_zombieclass[id]); i++) {
+					ArrayGetString(g_zclass_playermodel, i, newmodel, charsmax(newmodel))
+					if(equal(currentmodel, newmodel)) already_has_model = true
+				}
+				if(!already_has_model) {
 					iRand = random_num(ArrayGetCell(g_zclass_modelsstart, g_zombieclass[id]), ArrayGetCell(g_zclass_modelsend, g_zombieclass[id]) - 1)
 					ArrayGetString(g_zclass_playermodel, iRand, newmodel, charsmax(newmodel))
 					if(g_set_modelindex_offset) model_index = ArrayGetCell(g_zclass_modelindex, iRand)
 				}
 			}
 		}
-		else { // Set the right model
-			if(g_hm_special[id] >= MAX_SPECIALS_HUMANS) {
+	}
+	else {
+		fm_cs_get_user_model(id, currentmodel, charsmax(currentmodel)) // Get current model for comparing it with the current one
+		if(g_hm_special[id] >= MAX_SPECIALS_HUMANS) { // Set the right model, after checking that we don't already have it
+			for(i = ArrayGetCell(g_hm_special_modelstart, g_hm_special[id]-MAX_SPECIALS_HUMANS); i < ArrayGetCell(g_hm_special_modelsend, g_hm_special[id]-MAX_SPECIALS_HUMANS) - 1; i++) {
+				ArrayGetString(g_hm_special_model, i, newmodel, charsmax(newmodel))
+				if(equal(currentmodel, newmodel)) already_has_model = true
+			}
+			if(!already_has_model) {
 				iRand = random_num(ArrayGetCell(g_hm_special_modelstart, g_hm_special[id]-MAX_SPECIALS_HUMANS), ArrayGetCell(g_hm_special_modelsend, g_hm_special[id]-MAX_SPECIALS_HUMANS) - 1)
 				ArrayGetString(g_hm_special_model, iRand, newmodel, charsmax(newmodel))
 				if(g_set_modelindex_offset) model_index = ArrayGetCell(g_hm_special_modelindex, iRand)
 			}
-			else if(g_hm_special[id] > 0 && g_hm_special[id] < MAX_SPECIALS_HUMANS) {	
-				if(g_hm_special[id] > 0 && hm_special_enable[g_hm_special[id]]) {
-					iRand = random_num(0, ArraySize(model_human[g_hm_special[id]]) - 1)
+		}			
+		else if(g_hm_special[id] > 0 && g_hm_special[id] < MAX_SPECIALS_HUMANS) {
+			if(g_hm_special[id] > 0 && hm_special_enable[g_hm_special[id]]) {
+				size = ArraySize(model_human[g_hm_special[id]])
+				for(i = 0; i < size; i++) {
+					ArrayGetString(model_human[g_hm_special[id]], i, newmodel, charsmax(newmodel))
+					if(equal(currentmodel, newmodel)) already_has_model = true
+				}
+				if(!already_has_model) {
+					iRand = random_num(0, size - 1)
 					ArrayGetString(model_human[g_hm_special[id]], iRand, newmodel, charsmax(newmodel))
 					if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_human[g_hm_special[id]], iRand)
 				}
 			}
-			else {
-				if(get_pcvar_num(cvar_adminmodelshuman) && (get_user_flags(id) & g_access_flag[ACCESS_ADMIN_MODELS])) {
-					iRand = random_num(0, ArraySize(model_admin_human) - 1)
+		}
+		else {
+			if(get_pcvar_num(cvar_adminmodelshuman) && (get_user_flags(id) & g_access_flag[ACCESS_ADMIN_MODELS])) {
+				size = ArraySize(model_admin_human)
+				for(i = 0; i < size; i++) {
+					ArrayGetString(model_admin_human, i, newmodel, charsmax(newmodel))
+					if(equal(currentmodel, newmodel)) already_has_model = true
+				}
+				if(!already_has_model) {
+					iRand = random_num(0, size - 1)
 					ArrayGetString(model_admin_human, iRand, newmodel, charsmax(newmodel))
 					if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_admin_human, iRand)
 				}
-				else if(get_pcvar_num(cvar_vipmodelshuman) && (get_user_flags(id) & g_access_flag[ACCESS_VIP_MODELS])) {
-					iRand = random_num(0, ArraySize(model_vip_human) - 1)
+			}
+			else if(get_pcvar_num(cvar_vipmodelshuman) && (get_user_flags(id) & g_access_flag[ACCESS_VIP_MODELS])) {
+				size = ArraySize(model_vip_human)
+				for(i = 0; i < size; i++) {
+					ArrayGetString(model_vip_human, i, newmodel, charsmax(newmodel))
+					if(equal(currentmodel, newmodel)) already_has_model = true
+				}
+				if(!already_has_model) {
+					iRand = random_num(0, size - 1)
 					ArrayGetString(model_vip_human, iRand, newmodel, charsmax(newmodel))
 					if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_vip_human, iRand)
 				}
-				else {
-					iRand = random_num(0, ArraySize(model_human[0]) - 1)
+			}
+			else {
+				size = ArraySize(model_human[0])
+				for(i = 0; i < size; i++) {
+					ArrayGetString(model_human[0], i, newmodel, charsmax(newmodel))
+					if(equal(currentmodel, newmodel)) already_has_model = true
+				}
+				if(!already_has_model) {
+					iRand = random_num(0, size - 1)
 					ArrayGetString(model_human[0], iRand, newmodel, charsmax(newmodel))
 					if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_human[0], iRand)
 				}
 			}
 		}
-		if(!equal(g_playermodel[id], newmodel)) {
-			g_ForwardParameter[0] = 0
-			ExecuteForward(g_forwards[MODEL_CHANGE_PRE], g_fwDummyResult, id, newmodel)			
-			if(g_fwDummyResult >= ZP_PLUGIN_HANDLED) return;
-
-			if(g_ForwardParameter[0]) formatex(newmodel, charsmax(newmodel), g_ForwardParameter) // Check if forward not changed the param
-
-			formatex(g_playermodel[id], charsmax(g_playermodel[]), newmodel) // Set model on player model entity
-
-			if(g_set_modelindex_offset) fm_cs_set_user_model_index(id, model_index)
-			fm_set_playermodel_ent(id)
-			ExecuteForward(g_forwards[MODEL_CHANGE_POST], g_fwDummyResult, id, newmodel)
-		}
 	}
-	else {
-		if(g_zombie[id]) {
-			fm_cs_get_user_model(id, currentmodel, charsmax(currentmodel)) // Get current model for comparing it with the current one
-			if(g_zm_special[id] >= MAX_SPECIALS_ZOMBIES) {
-				for(i = ArrayGetCell(g_zm_special_modelstart, g_zm_special[id]-MAX_SPECIALS_ZOMBIES); i < ArrayGetCell(g_zm_special_modelsend, g_zm_special[id]-MAX_SPECIALS_ZOMBIES) - 1; i++) {
-					ArrayGetString(g_zm_special_model, i, newmodel, charsmax(newmodel))
-					if(equal(currentmodel, newmodel)) already_has_model = true
-				}
-				if(!already_has_model) {
-					iRand = random_num(ArrayGetCell(g_zm_special_modelstart, g_zm_special[id]-MAX_SPECIALS_ZOMBIES), ArrayGetCell(g_zm_special_modelsend, g_zm_special[id]-MAX_SPECIALS_ZOMBIES) - 1)
-					ArrayGetString(g_zm_special_model, iRand, newmodel, charsmax(newmodel))
-					if(g_set_modelindex_offset) model_index = ArrayGetCell(g_zm_special_modelindex, iRand)
-				}
-			}
-			else if(g_zm_special[id] > 0 && g_zm_special[id] < MAX_SPECIALS_ZOMBIES) {
-				if(g_zm_special[id] > 0 && zm_special_enable[g_zm_special[id]]) {
-					size = ArraySize(model_zm_special[g_zm_special[id]]) // Set the right model, after checking that we don't already have it
-					for(i = 0; i < size; i++) {
-						ArrayGetString(model_zm_special[g_zm_special[id]], i, newmodel, charsmax(newmodel))
-						if(equal(currentmodel, newmodel)) already_has_model = true
-					}
-					if(!already_has_model) {
-						iRand = random_num(0, size - 1)
-						ArrayGetString(model_zm_special[g_zm_special[id]], iRand, newmodel, charsmax(newmodel))
-						if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_zm_sp[g_zm_special[id]], iRand)
-					}
-				}
-			}
-			else {
-				if(get_pcvar_num(cvar_adminmodelszombie) && (get_user_flags(id) & g_access_flag[ACCESS_ADMIN_MODELS])) {
-					size = ArraySize(model_admin_zombie)
-					for(i = 0; i < size; i++) {
-						ArrayGetString(model_admin_zombie, i, newmodel, charsmax(newmodel))
-						if(equal(currentmodel, newmodel)) already_has_model = true
-					}
-					if(!already_has_model) {
-						iRand = random_num(0, size - 1)
-						ArrayGetString(model_admin_zombie, iRand, newmodel, charsmax(newmodel))
-						if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_admin_zombie, iRand)
-					}
-				}
-				else if(get_pcvar_num(cvar_vipmodelszombie) && (get_user_flags(id) & g_access_flag[ACCESS_VIP_MODELS])) {
-					size = ArraySize(model_vip_zombie)
-					for(i = 0; i < size; i++) {
-						ArrayGetString(model_vip_zombie, i, newmodel, charsmax(newmodel))
-						if(equal(currentmodel, newmodel)) already_has_model = true
-					}
-					if(!already_has_model) {
-						iRand = random_num(0, size - 1)
-						ArrayGetString(model_vip_zombie, iRand, newmodel, charsmax(newmodel))
-						if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_vip_zombie, iRand)
-					}
-				} 
-				else {
-					for(i = ArrayGetCell(g_zclass_modelsstart, g_zombieclass[id]); i < ArrayGetCell(g_zclass_modelsend, g_zombieclass[id]); i++) {
-						ArrayGetString(g_zclass_playermodel, i, newmodel, charsmax(newmodel))
-						if(equal(currentmodel, newmodel)) already_has_model = true
-					}
-					if(!already_has_model) {
-						iRand = random_num(ArrayGetCell(g_zclass_modelsstart, g_zombieclass[id]), ArrayGetCell(g_zclass_modelsend, g_zombieclass[id]) - 1)
-						ArrayGetString(g_zclass_playermodel, iRand, newmodel, charsmax(newmodel))
-						if(g_set_modelindex_offset) model_index = ArrayGetCell(g_zclass_modelindex, iRand)
-					}
-				}
-			}
-		}
-		else {
-			fm_cs_get_user_model(id, currentmodel, charsmax(currentmodel)) // Get current model for comparing it with the current one
-			if(g_hm_special[id] >= MAX_SPECIALS_HUMANS) { // Set the right model, after checking that we don't already have it
-				for(i = ArrayGetCell(g_hm_special_modelstart, g_hm_special[id]-MAX_SPECIALS_HUMANS); i < ArrayGetCell(g_hm_special_modelsend, g_hm_special[id]-MAX_SPECIALS_HUMANS) - 1; i++) {
-					ArrayGetString(g_hm_special_model, i, newmodel, charsmax(newmodel))
-					if(equal(currentmodel, newmodel)) already_has_model = true
-				}
-				if(!already_has_model) {
-					iRand = random_num(ArrayGetCell(g_hm_special_modelstart, g_hm_special[id]-MAX_SPECIALS_HUMANS), ArrayGetCell(g_hm_special_modelsend, g_hm_special[id]-MAX_SPECIALS_HUMANS) - 1)
-					ArrayGetString(g_hm_special_model, iRand, newmodel, charsmax(newmodel))
-					if(g_set_modelindex_offset) model_index = ArrayGetCell(g_hm_special_modelindex, iRand)
-				}
-			}			
-			else if(g_hm_special[id] > 0 && g_hm_special[id] < MAX_SPECIALS_HUMANS) {
-				if(g_hm_special[id] > 0 && hm_special_enable[g_hm_special[id]]) {
-					size = ArraySize(model_human[g_hm_special[id]])
-					for(i = 0; i < size; i++) {
-						ArrayGetString(model_human[g_hm_special[id]], i, newmodel, charsmax(newmodel))
-						if(equal(currentmodel, newmodel)) already_has_model = true
-					}
-					if(!already_has_model) {
-						iRand = random_num(0, size - 1)
-						ArrayGetString(model_human[g_hm_special[id]], iRand, newmodel, charsmax(newmodel))
-						if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_human[g_hm_special[id]], iRand)
-					}
-				}
-			}
-			else {
-				if(get_pcvar_num(cvar_adminmodelshuman) && (get_user_flags(id) & g_access_flag[ACCESS_ADMIN_MODELS])) {
-					size = ArraySize(model_admin_human)
-					for(i = 0; i < size; i++) {
-						ArrayGetString(model_admin_human, i, newmodel, charsmax(newmodel))
-						if(equal(currentmodel, newmodel)) already_has_model = true
-					}
-					if(!already_has_model) {
-						iRand = random_num(0, size - 1)
-						ArrayGetString(model_admin_human, iRand, newmodel, charsmax(newmodel))
-						if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_admin_human, iRand)
-					}
-				}
-				else if(get_pcvar_num(cvar_vipmodelshuman) && (get_user_flags(id) & g_access_flag[ACCESS_VIP_MODELS])) {
-					size = ArraySize(model_vip_human)
-					for(i = 0; i < size; i++) {
-						ArrayGetString(model_vip_human, i, newmodel, charsmax(newmodel))
-						if(equal(currentmodel, newmodel)) already_has_model = true
-					}
-					if(!already_has_model) {
-						iRand = random_num(0, size - 1)
-						ArrayGetString(model_vip_human, iRand, newmodel, charsmax(newmodel))
-						if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_vip_human, iRand)
-					}
-				}
-				else {
-					size = ArraySize(model_human[0])
-					for(i = 0; i < size; i++) {
-						ArrayGetString(model_human[0], i, newmodel, charsmax(newmodel))
-						if(equal(currentmodel, newmodel)) already_has_model = true
-					}
-					if(!already_has_model) {
-						iRand = random_num(0, size - 1)
-						ArrayGetString(model_human[0], iRand, newmodel, charsmax(newmodel))
-						if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_human[0], iRand)
-					}
-				}
-			}
-		}
-		if(!already_has_model) { // Need to change the model?
-			g_ForwardParameter[0] = 0
-			ExecuteForward(g_forwards[MODEL_CHANGE_PRE], g_fwDummyResult, id, newmodel)
+	if(!already_has_model) { // Need to change the model?
+		g_ForwardParameter[0] = 0
+		ExecuteForward(g_forwards[MODEL_CHANGE_PRE], g_fwDummyResult, id, newmodel)
 
-			if(g_fwDummyResult >= ZP_PLUGIN_SUPERCEDE) return // The game mode didnt accept some conditions
+		if(g_fwDummyResult >= ZP_PLUGIN_SUPERCEDE) return // The game mode didnt accept some conditions
 
-			if(g_ForwardParameter[0]) formatex(newmodel, charsmax(newmodel), g_ForwardParameter) // Check if forward not changed the param
+		if(g_ForwardParameter[0]) formatex(newmodel, charsmax(newmodel), g_ForwardParameter) // Check if forward not changed the param
 
-			formatex(g_playermodel[id], charsmax(g_playermodel[]), newmodel)
-			if(g_set_modelindex_offset) fm_cs_set_user_model_index(id, model_index)
-			
-			if(g_newround) set_task(5.0 * g_modelchange_delay, "fm_user_model_update", id+TASK_MODEL)
-			else fm_user_model_update(id+TASK_MODEL)
-			ExecuteForward(g_forwards[MODEL_CHANGE_POST], g_fwDummyResult, id, newmodel)
-		}
+		formatex(g_playermodel[id], charsmax(g_playermodel[]), newmodel)
+		if(g_set_modelindex_offset) fm_cs_set_user_model_index(id, model_index)
+		
+		if(g_newround) set_task(5.0 * g_modelchange_delay, "fm_user_model_update", id+TASK_MODEL)
+		else fm_user_model_update(id+TASK_MODEL)
+		ExecuteForward(g_forwards[MODEL_CHANGE_POST], g_fwDummyResult, id, newmodel)
 	}
+
 }
 
 
@@ -12022,12 +11876,12 @@ bool:get_allowed_burn(id) {
 }
 
 bool:is_escape_map() {
-	static map_name[32], buffer[32]
+	static map_name[32], buffer[32], i
 	get_mapname(map_name, sizeof(map_name))
 	if(equal(map_name, "ze_", 3)) return true; // ze_ map prefix
 
 	if(ArraySize(g_escape_maps) > 0) {
-		for(new i = 0; i < ArraySize(g_escape_maps); i++) { // zombie escape maps that not have ze_ prefix 
+		for(i = 0; i < ArraySize(g_escape_maps); i++) { // zombie escape maps that not have ze_ prefix 
 			ArrayGetString(g_escape_maps, i, buffer, charsmax(buffer))
 			if(equal(map_name, buffer))
 				return true;
@@ -12036,8 +11890,7 @@ bool:is_escape_map() {
 	return false
 }
 
-stock damage_dealth(attacker, victim, damage)
-{
+stock damage_dealth(attacker, victim, damage) {
 	if(!is_user_valid_alive(attacker) || !is_user_valid_alive(victim)) 
 		return;
 
@@ -12085,16 +11938,14 @@ stock damage_dealth(attacker, victim, damage)
 	}
 }
 
-public is_gamemode_enable(modeid)
-{
+public is_gamemode_enable(modeid) {
 	if(modeid <= MODE_NONE)
 		return 0
 
 	if(modeid == MODE_INFECTION)
 		return 1;
 
-	if(modeid < MAX_GAME_MODES) // Internal Game Modes
-	{
+	if(modeid < MAX_GAME_MODES) { // Internal Game Modes
 		if(!get_pcvar_num(cvar_mod_enable[modeid]) || get_pcvar_num(cvar_mod_enable[modeid]) == 2 && !g_escape_map || get_pcvar_num(cvar_mod_enable[modeid]) == 3 && g_escape_map)
 			return 0
 
@@ -12114,8 +11965,7 @@ public is_gamemode_enable(modeid)
 		if((modeid == MODE_PLAGUE || modeid == MODE_LNJ) && (!zm_special_enable[NEMESIS] || !hm_special_enable[SURVIVOR]))
 			return 0
 	}
-	else // Custom/External game modes
-	{
+	else { // Custom/External game modes
 		if((modeid-MAX_GAME_MODES) >= ArraySize(g_gamemode_enable))
 			return 0
 
@@ -12140,7 +11990,6 @@ precache_player_model(const modelname[]) {
 	return index
 }
 
-
 public set_player_light(id, const LightStyle[])
 {
 	if(!is_user_connected(id))
@@ -12151,7 +12000,6 @@ public set_player_light(id, const LightStyle[])
 	write_string(LightStyle)
 	message_end()
 }
-
 
 public set_user_fade_nvg(id, nosound)
 {
