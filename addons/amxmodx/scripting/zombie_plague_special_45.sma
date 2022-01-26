@@ -243,11 +243,11 @@
 			- Added Cvar: "zp_human_wpn_weight_enable"
 			- Added Lang Option for Extra Item Name, Gamemode Name, Special Class Name, Zombie Class Name/Info, Weapons/Custom Weapons Name. Just edit "zpsp_lang_itens_classes.txt"
 
-			- Fixing 08/12/20:
-				- Fixed Armageddon Respawn - Before peoples respawn as human and not survivor
-				- Fixed Lang from Additional Extra Weapons (Grenades/AWP/ETC.)
+		-- Fixing 08/12/20:
+			- Fixed Armageddon Respawn - Before peoples respawn as human and not survivor
+			- Fixed Lang from Additional Extra Weapons (Grenades/AWP/ETC.)
 
-		-- Final Release:
+		* 4.5:
 			- REMOVED Amx 1.8.2 SUPORT
 			- Fixed trigger_hurt when killing with bugged players.
 			- Fixed chat lang bug. (Sometimes appears in [en] language not in players language)
@@ -256,21 +256,20 @@
 			- Added Native: zpsp_set_user_burn(id, set, Float:Duration = -1.0)
 			- Added Cvars: zp_human_frags_for_disinfect, zp_human_disnfect_reward
 			- Removed "HANDLE MODELS ON SEPARATE ENT"
+			- Removed "MODELCHANGE DELAY"
+			- Now models system are using "cstrike" module
+			- Added Native: zpsp_override_user_model(id, const model, body=0, skin=0, modelindex=0)
+			- Added Player Submodel Support (You can add more player models using only 1 .mdl)
+			- Added Player Skin Support (You can use other textures with 1 .mdl)
 
-
-			// Reverted Changes
-			//- Added Player Submodel Support (You can add more player models using only 1 .mdl)
-			//- Added Native: zpsp_override_user_model(id, const model, body=0, modelindex=0)
-			//- Removed "MODELCHANGE DELAY"
-			//- Now models system are using "cstrike" module
 
 ============================================================================================================================*/
 
 /*================================================================================
  [Plugin Info]
 =================================================================================*/
-#define PLUGIN "\r[Z]\wombie \r[P]\wlague \r[S]\wpecial"
-#define VERSION "4.4"
+#define PLUGIN "Zombie Plague Special (4.5 Stable)"
+#define VERSION "4.5"
 #define AUTHOR "MeRcyLeZZ | @bdul! | [P]erfect [S]crash"
 
 /*================================================================================
@@ -364,8 +363,7 @@ enum { // Access flags
 	MAX_ACCESS_FLAGS
 };
 enum (+= 100) { // Task offsets
-	TASK_MODEL = 2000,
-	TASK_TEAM,
+	TASK_TEAM = 2000,
 	TASK_SPAWN,
 	TASK_BLOOD,
 	TASK_AURA,
@@ -380,9 +378,9 @@ enum (+= 100) { // Task offsets
 	TASK_THUNDER,
 	TASK_AMBIENCESOUNDS,
 	TASK_MADNESS
+	// TASK_UPDATE_BODYSKIN
 };
 // IDs inside tasks
-#define ID_MODEL (taskid - TASK_MODEL)
 #define ID_TEAM (taskid - TASK_TEAM)
 #define ID_SPAWN (taskid - TASK_SPAWN)
 #define ID_BLOOD (taskid - TASK_BLOOD)
@@ -470,7 +468,6 @@ enum {
 #define GetTeamIndex(%1) (1<<ArrayGetCell(ZP_TEAM_INDEX, %1))
 #define IsTeam(%1) (team & (1<<ArrayGetCell(ZP_TEAM_INDEX, %1)))
 new Array:ZP_TEAM_NAMES, Array:ZP_TEAM_INDEX, Array:itens_teams_index_human, Array:itens_teams_index_zombie;
-
 new Array:temp_array[3]; // Create an temporary Array
 
 const ZCLASS_NONE = -1; // Zombie classes
@@ -495,7 +492,6 @@ const OFFSET_CSMONEY = 115;
 const OFFSET_CSMENUCODE = 205;
 const OFFSET_FLASHLIGHT_BATTERY = 244;
 const OFFSET_CSDEATHS = 444;
-const OFFSET_MODELINDEX = 491; // Orangutanz;
 
 const OFFSET_ACTIVE_ITEM = 373; // CS Player CBase Offsets (win32)
 
@@ -627,29 +623,32 @@ enum { NEMESIS = 1, ASSASSIN, PREDATOR, BOMBARDIER, DRAGON, MAX_SPECIALS_ZOMBIES
 enum { SURVIVOR = 1, SNIPER, BERSERKER, WESKER, SPY, MAX_SPECIALS_HUMANS };
 
 // Special Class Vars
-new Array:g_hm_special_realname, Array:g_hm_special_name, Array:g_hm_special_model, Array:g_hm_special_modelindex, Array:g_hm_special_health, Array:g_hm_special_speed, Array:g_hm_special_uclip,
+new Array:g_hm_special_realname, Array:g_hm_special_name, Array:g_hm_special_model, Array:g_hm_special_health, Array:g_hm_special_speed, Array:g_hm_special_uclip,
 Array:g_hm_special_gravity, Array:g_hm_special_leap, Array:g_hm_special_leap_f, Array:g_hm_special_ignorefrag, Array:g_hm_special_ignoreammo, Array:g_hm_special_flags,
 Array:g_hm_special_leap_h, Array:g_hm_special_leap_c, Array:g_hm_specials, Array:g_hm_special_respawn, Array:g_hm_special_painfree, Array:g_hm_special_modelstart, Array:g_hm_special_modelsend,
-Array:g_hm_special_aurarad, Array:g_hm_special_glow, Array:g_hm_special_r, Array:g_hm_special_g, Array:g_hm_special_b, Array:g_hm_special_enable, Array:g_hm_special_nvision;
-new g_hm_specials_i = MAX_SPECIALS_HUMANS, g_hm_special[33], Array:g_hm_special_name_by_lang, Array:g_hm_special_lang_key;
+Array:g_hm_special_aurarad, Array:g_hm_special_glow, Array:g_hm_special_r, Array:g_hm_special_g, Array:g_hm_special_b, Array:g_hm_special_enable, Array:g_hm_special_nvision,
+Array:g_hm_special_body, Array:g_hm_special_skin, Array:g_hm_special_name_by_lang, Array:g_hm_special_lang_key;
+new g_hm_specials_i = MAX_SPECIALS_HUMANS, g_hm_special[33];
 
-new Array:g_zm_special_realname, Array:g_zm_special_name, Array:g_zm_special_model, Array:g_zm_special_painsound, Array:g_zm_special_knifemodel, Array:g_zm_special_modelindex, Array:g_zm_special_health, Array:g_zm_special_speed, Array:g_zm_special_knockback,
+
+new Array:g_zm_special_realname, Array:g_zm_special_name, Array:g_zm_special_model, Array:g_zm_special_painsound, Array:g_zm_special_knifemodel, Array:g_zm_special_health, Array:g_zm_special_speed, Array:g_zm_special_knockback,
 Array:g_zm_special_gravity, Array:g_zm_special_leap, Array:g_zm_special_leap_f, Array:g_zm_special_ignorefrag, Array:g_zm_special_ignoreammo, Array:g_zm_special_flags, Array:g_zm_special_painsndstart, Array:g_zm_special_painsndsend,
 Array:g_zm_special_leap_h, Array:g_zm_special_leap_c, Array:g_zm_specials, Array:g_zm_special_respawn, Array:g_zm_special_painfree, Array:g_zm_special_modelstart, Array:g_zm_special_modelsend,
-Array:g_zm_special_aurarad, Array:g_zm_special_glow, Array:g_zm_special_r, Array:g_zm_special_g, Array:g_zm_special_b, Array:g_zm_special_allow_burn, Array:g_zm_special_allow_frost, Array:g_zm_special_enable, Array:g_zm_special_nvision;
-new g_zm_specials_i = MAX_SPECIALS_ZOMBIES, g_zm_special[33], Array:g_zm_sp_deathsnd, Array:g_zm_sp_deathsnd_start, Array:g_zm_sp_deathsnd_end, Array:g_zm_special_name_by_lang, Array:g_zm_special_lang_key;
+Array:g_zm_special_aurarad, Array:g_zm_special_glow, Array:g_zm_special_r, Array:g_zm_special_g, Array:g_zm_special_b, Array:g_zm_special_allow_burn, Array:g_zm_special_allow_frost, Array:g_zm_special_enable, Array:g_zm_special_nvision,
+Array:g_zm_special_body, Array:g_zm_special_skin, Array:g_zm_sp_deathsnd, Array:g_zm_sp_deathsnd_start, Array:g_zm_sp_deathsnd_end, Array:g_zm_special_name_by_lang, Array:g_zm_special_lang_key
+new g_zm_specials_i = MAX_SPECIALS_ZOMBIES, g_zm_special[33];
 
 // Player vars;
 new g_hud_type[33], g_hud_color[2][33], g_flashlight_color[33], g_flashlight_rgb[3], g_nv_color[2][33], g_nvrgb[3], g_respawn_count[33];
 new g_zombie[33], g_firstzombie[33], g_lastzombie[33], g_lasthuman[33], g_frozen[33], g_nodamage[33], g_respawn_as_zombie[33], Float:g_frozen_gravity[33], Float:g_buytime[33];
 new g_nvision[33], g_nvisionenabled[33], g_nvg_enabled_mode[33], g_zombieclass[33], g_zombieclassnext[33], g_flashlight[33], g_flashbattery[33] = { 100, ... };
-new g_canbuy[33], g_ammopacks[33], g_damagedealt[33], how_many_rewards, Float:g_lastleaptime[33], Float:g_lastflashtime[33], g_playermodel[33][32], g_bot_extra_count[33];
+new g_canbuy[33], g_ammopacks[33], g_damagedealt[33], how_many_rewards, Float:g_lastleaptime[33], Float:g_lastflashtime[33], g_playermodel[33][32], g_playerbody[33], g_playerskin[33], g_bot_extra_count[33];
 new g_menu_data[33][14], g_burning_dur[33], Float:g_current_maxspeed[33], g_user_custom_speed[33];
 
 // Game vars;
 new g_pluginenabled, g_newround, g_endround, g_modestarted, g_allowinfection, g_deathmatchmode, g_currentmode, g_lastmode, g_nextmode;
 new g_scorezombies, g_scorehumans, g_gamecommencing, g_spawnCount, g_spawnCount2, Float:g_spawns[MAX_CSDM_SPAWNS][3], Float:g_spawns2[MAX_CSDM_SPAWNS][3];
-new g_lights_i, g_lights_cycle[32], g_lights_cycle_len, Float:g_models_targettime, Float:g_teams_targettime, g_MsgSync[3];
+new g_lights_i, g_lights_cycle[32], g_lights_cycle_len, Float:g_teams_targettime, g_MsgSync[3];
 new g_trailSpr[MAX_GRENADES], g_ExplodeSpr[MAX_GRENADES], g_GibSpr[MAX_GRENADES], g_RingSpr, g_flameSpr, g_smokeSpr, g_glassSpr, g_modname[32], g_freezetime, MaxPlayers, g_czero;
 new g_hamczbots, g_fwSpawn, g_fwPrecacheSound, g_infbombcounter, g_antidotecounter, g_madnesscounter, g_arrays_created, g_escape_map;
 new g_lastplayerleaving, g_switchingteam, g_buyzone_ent, zm_special_enable[MAX_SPECIALS_ZOMBIES], hm_special_enable[MAX_SPECIALS_HUMANS];
@@ -709,30 +708,28 @@ enum { VIEW_MODEL = 0, PLAYER_MODEL, WORLD_MODEL, MAX_WPN_MDL }; // Weapon Model
 new db_name[MAX_STATS_SAVED][32], db_ammopacks[MAX_STATS_SAVED], db_zombieclass[MAX_STATS_SAVED], db_slot_i;
 
 // Custom Game Modes vars
-new Array:g_gamemode_realname, Array:g_gamemode_name, Array:g_gamemode_enable, Array:g_gamemode_enable_on_ze_map, Array:g_gamemode_flag, Array:g_gamemode_chance, 
-Array:g_gamemode_allow, Array:g_gamemode_dm, Array:g_gamemodes_new, Array:g_gamemode_respawn_limit, Array:g_gamemode_name_by_lang, Array:g_gamemode_lang_key, g_gamemodes_i = MAX_GAME_MODES;
+new Array:g_gm_realname, Array:g_gm_name, Array:g_gm_enable, Array:g_gm_enable_on_ze_map, Array:g_gm_flag, Array:g_gm_chance, Array:g_gm_allow, Array:g_gm_dm, Array:g_gamemodes_new, Array:g_gm_respawn_limit, Array:g_gm_name_by_lang, Array:g_gm_lang_key, g_gamemodes_i = MAX_GAME_MODES;
 
 // Extra Items vars
 new Array:g_extraitem_realname, Array:g_extraitem_name, Array:g_extraitem_cost, Array:g_extraitem_team, g_extraitem_i, g_AdditionalMenuText[32], Array:g_extraitem_new, Array:g_extraitem_name_by_lang, Array:g_extraitem_lang_key;
 
 // Zombie Classes vars;
 new Array:g_zclass_real_name, Array:g_zclass_name, Array:g_zclass_info, Array:g_zclass_modelsstart, Array:g_zclass_modelsend, Array:g_zclass_playermodel;
-new Array:g_zclass_modelindex, Array:g_zclass_clawmodel, Array:g_zclass_hp, Array:g_zclass_spd, Array:g_zclass_grav, Array:g_zclass_kb, g_zclass_i, Array:g_zclass_new;
+new Array:g_zclass_clawmodel, Array:g_zclass_hp, Array:g_zclass_spd, Array:g_zclass_grav, Array:g_zclass_kb, g_zclass_i, Array:g_zclass_new;
 new Array:g_zclass_deathsnd, Array:g_zclass_deathsnd_start, Array:g_zclass_deathsnd_end, Array:g_zclass_painsnd, Array:g_zclass_painsnd_start, Array:g_zclass_painsnd_end;
-new Array:g_zclass_lang_enable, Array:g_zclass_name_lang_key, Array:g_zclass_info_lang_key;
+new Array:g_zclass_lang_enable, Array:g_zclass_name_lang_key, Array:g_zclass_info_lang_key, Array:g_zclass_body, Array:g_zclass_skin;
 
 #define MAX_ARRAY_SOUNDS 20 // Max Array Sounds
 
 // Customization vars
-new g_access_flag[MAX_ACCESS_FLAGS], Array:model_zm_special[MAX_SPECIALS_ZOMBIES], Array:model_human[MAX_SPECIALS_HUMANS], Array:g_modelindex_human[MAX_SPECIALS_HUMANS], Array:model_admin_zombie,  Array:model_vip_zombie, Array:model_admin_human, Array:model_vip_human,
-Array:g_modelindex_zm_sp[MAX_SPECIALS_ZOMBIES], g_same_models_for_all, Array:g_modelindex_admin_zombie, Array:g_modelindex_vip_zombie, Array:g_modelindex_admin_human, Array:g_modelindex_vip_human,
-model_vknife_zm_special[MAX_SPECIALS_ZOMBIES][64], model_v_weapon_human[MAX_SPECIALS_HUMANS][64], model_p_weapon_human[MAX_SPECIALS_HUMANS][64], model_grenade_infect[MAX_WPN_MDL][64], model_grenade_bombardier[MAX_WPN_MDL][64], model_grenade_fire[MAX_WPN_MDL][64], model_grenade_frost[MAX_WPN_MDL][64], model_grenade_flare[MAX_WPN_MDL][64],
+new g_access_flag[MAX_ACCESS_FLAGS], Array:model_human[MAX_SPECIALS_HUMANS], Array:model_human_body[MAX_SPECIALS_HUMANS], Array:model_human_skin[MAX_SPECIALS_HUMANS], Array:model_zm_special[MAX_SPECIALS_ZOMBIES], Array:model_zm_special_body[MAX_SPECIALS_ZOMBIES], Array:model_zm_special_skin[MAX_SPECIALS_ZOMBIES],
+Array:model_adm_hm, Array:model_adm_hm_body, Array:model_adm_hm_skin, Array:model_vip_hm, Array:model_vip_hm_body, Array:model_vip_hm_skin, Array:model_adm_zm, Array:model_adm_zm_body, Array:model_adm_zm_skin, Array:model_vip_zm, Array:model_vip_zm_body, Array:model_vip_zm_skin, 
+g_same_models_for_all, model_vknife_zm_special[MAX_SPECIALS_ZOMBIES][64], model_v_weapon_human[MAX_SPECIALS_HUMANS][64], model_p_weapon_human[MAX_SPECIALS_HUMANS][64], model_grenade_infect[MAX_WPN_MDL][64], model_grenade_bombardier[MAX_WPN_MDL][64], model_grenade_fire[MAX_WPN_MDL][64], model_grenade_frost[MAX_WPN_MDL][64], model_grenade_flare[MAX_WPN_MDL][64],
 model_knife_admin_human[MAX_WPN_MDL][64], model_knife_vip_human[MAX_WPN_MDL][64], model_vknife_admin_zombie[64], model_vknife_vip_zombie[64], 
 Array:sound_win_zombies, Array:sound_win_humans, Array:sound_win_no_one, Array:ar_sound[MAX_ARRAY_SOUNDS],  Array:zombie_pain[MAX_SPECIALS_ZOMBIES], g_ambience_rain,
 Array:g_additional_items, Array:g_weapon_is_custom[2], Array:g_weapon_realname[2], Array:g_weapon_name[2], Array:g_weapon_name_by_lang[2], Array:g_weapon_lang_key[2], g_def_wpn_use_lang, g_weapon_i[2], Array:g_weapon_ids[2],
 Array:g_extraweapon_names, Array:g_extraweapon_items, Array:g_extraweapon_costs, g_extraweapon_name_by_lang, Array:g_extraweapon_lang_key, g_extra_costs2[EXTRA_WEAPONS_STARTID], g_ambience_snow, g_ambience_fog, g_fog_density[10], g_fog_color[12], g_sky_enable,
-Array:g_sky_names, Array:lights_thunder, Array:zombie_decals, Array:g_objective_ents, Array:g_escape_maps, Float:g_modelchange_delay, g_set_modelindex_offset, 
-Float:kb_weapon_power[31] = { -1.0, ... }, g_force_consistency, g_choosed_zclass[33], g_enable_end_round_sounds,
+Array:g_sky_names, Array:lights_thunder, Array:zombie_decals, Array:g_objective_ents, Array:g_escape_maps, g_set_modelindex_offset, Float:kb_weapon_power[31] = { -1.0, ... }, g_force_consistency, g_choosed_zclass[33], g_enable_end_round_sounds,
 g_ambience_sounds[MAX_AMBIENCE_SOUNDS], Array:sound_mod[MAX_GAME_MODES], Array:sound_ambience[MAX_AMBIENCE_SOUNDS], Array:sound_ambience_duration[MAX_AMBIENCE_SOUNDS],
 enable_trail[MAX_GRENADES], enable_explode[MAX_GRENADES], enable_gib[MAX_GRENADES], sprite_grenade_trail[MAX_GRENADES][64], sprite_grenade_explode[MAX_GRENADES][64], sprite_grenade_gib[MAX_GRENADES][64], 
 sprite_grenade_ring[64], sprite_grenade_fire[64], sprite_grenade_smoke[64], sprite_grenade_glass[64], grenade_rgb[MAX_GRENADES][3], Float:weapon_spd_multi[31] = { 1.0, ... };
@@ -947,9 +944,12 @@ public plugin_natives() {
 	register_native("zp_set_user_extra_damage", "native_set_user_extra_damage", 1);
 	register_native("zpsp_register_gamemode", "native_register_gamemode", 1);
 	register_native("zp_get_custom_extra_start", "native_get_custom_extra_start", 1);
+
+	// New Natives (4.5 or High Available)
 	register_native("zp_force_user_class", "native_force_user_class", 1);
 	register_native("zpsp_set_user_frozen", "native_set_user_frozen2", 1);
 	register_native("zpsp_set_user_burn", "native_set_user_burn2", 1);
+	register_native("zpsp_override_user_model", "native_override_user_model2", 1);
 }
 public plugin_precache() {
 	register_plugin(PLUGIN, VERSION, AUTHOR) // Register earlier to show up in plugins list properly after plugin disable/error at loading
@@ -966,13 +966,15 @@ public plugin_precache() {
 
 	for(i = 0; i < MAX_SPECIALS_HUMANS; i++) {
 		model_human[i] = ArrayCreate(32, 1)
-		g_modelindex_human[i] = ArrayCreate(1, 1)
+		model_human_body[i] = ArrayCreate(1, 1)
+		model_human_skin[i] = ArrayCreate(1, 1)
 	}
 	for(i = 0; i < MAX_SPECIALS_ZOMBIES; i++) {
 		zombie_pain[i] = ArrayCreate(64, 1)
 		if(i > 0) {
 			model_zm_special[i] = ArrayCreate(32, 1)
-			g_modelindex_zm_sp[i] = ArrayCreate(1, 1)
+			model_zm_special_body[i] = ArrayCreate(1, 1)
+			model_zm_special_skin[i] = ArrayCreate(1, 1)
 		}
 	}
 	for(i = 0; i < MAX_AMBIENCE_SOUNDS; i++) {
@@ -984,14 +986,18 @@ public plugin_precache() {
 
 	itens_teams_index_human = ArrayCreate(1, 1);
 	itens_teams_index_zombie = ArrayCreate(1, 1);
-	model_admin_human = ArrayCreate(32, 1);
-	model_vip_human = ArrayCreate(32, 1);
-	model_admin_zombie = ArrayCreate(32, 1);
-	model_vip_zombie = ArrayCreate(32, 1);
-	g_modelindex_admin_human = ArrayCreate(1, 1);
-	g_modelindex_vip_human = ArrayCreate(1, 1);
-	g_modelindex_admin_zombie = ArrayCreate(1, 1);
-	g_modelindex_vip_zombie = ArrayCreate(1, 1);
+	model_adm_hm = ArrayCreate(32, 1);
+	model_adm_hm_body = ArrayCreate(1, 1);
+	model_adm_hm_skin = ArrayCreate(1, 1);
+	model_vip_hm = ArrayCreate(32, 1);
+	model_vip_hm_body = ArrayCreate(1, 1);
+	model_vip_hm_skin = ArrayCreate(1, 1);
+	model_adm_zm = ArrayCreate(32, 1);
+	model_adm_zm_body = ArrayCreate(1, 1);
+	model_adm_zm_skin = ArrayCreate(1, 1);
+	model_vip_zm = ArrayCreate(32, 1);
+	model_vip_zm_body = ArrayCreate(1, 1);
+	model_vip_zm_skin = ArrayCreate(1, 1);
 	sound_win_zombies = ArrayCreate(64, 1);
 	sound_win_humans = ArrayCreate(64, 1);
 	sound_win_no_one = ArrayCreate(64, 1);
@@ -1005,17 +1011,17 @@ public plugin_precache() {
 	zombie_decals = ArrayCreate(32, 1);
 	g_objective_ents = ArrayCreate(32, 1);
 	g_escape_maps = ArrayCreate(32, 1);
-	g_gamemode_realname = ArrayCreate(32, 1);
-	g_gamemode_name = ArrayCreate(32, 1);
-	g_gamemode_flag = ArrayCreate(1, 1);
-	g_gamemode_name_by_lang = ArrayCreate(1, 1);
-	g_gamemode_lang_key = ArrayCreate(32, 1);
-	g_gamemode_chance = ArrayCreate(1, 1);
-	g_gamemode_allow = ArrayCreate(1, 1);
-	g_gamemode_dm = ArrayCreate(1, 1);
-	g_gamemode_enable = ArrayCreate(1, 1);
-	g_gamemode_enable_on_ze_map = ArrayCreate(1, 1);
-	g_gamemode_respawn_limit = ArrayCreate(1, 1);
+	g_gm_realname = ArrayCreate(32, 1);
+	g_gm_name = ArrayCreate(32, 1);
+	g_gm_flag = ArrayCreate(1, 1);
+	g_gm_name_by_lang = ArrayCreate(1, 1);
+	g_gm_lang_key = ArrayCreate(32, 1);
+	g_gm_chance = ArrayCreate(1, 1);
+	g_gm_allow = ArrayCreate(1, 1);
+	g_gm_dm = ArrayCreate(1, 1);
+	g_gm_enable = ArrayCreate(1, 1);
+	g_gm_enable_on_ze_map = ArrayCreate(1, 1);
+	g_gm_respawn_limit = ArrayCreate(1, 1);
 	g_gamemodes_new = ArrayCreate(1, 1);
 	g_extraitem_name = ArrayCreate(32, 1);
 	g_extraitem_realname = ArrayCreate(32, 1);
@@ -1033,7 +1039,8 @@ public plugin_precache() {
 	g_zclass_modelsstart = ArrayCreate(1, 1);
 	g_zclass_modelsend = ArrayCreate(1, 1);
 	g_zclass_playermodel = ArrayCreate(32, 1);
-	g_zclass_modelindex = ArrayCreate(1, 1);
+	g_zclass_body = ArrayCreate(1, 1);
+	g_zclass_skin = ArrayCreate(1, 1);
 	g_zclass_clawmodel = ArrayCreate(32, 1);
 	g_zclass_hp = ArrayCreate(1, 1);
 	g_zclass_spd = ArrayCreate(1, 1);
@@ -1049,7 +1056,8 @@ public plugin_precache() {
 	g_hm_special_realname = ArrayCreate(32, 1);
 	g_hm_special_name = ArrayCreate(32, 1);
 	g_hm_special_model = ArrayCreate(32, 1);
-	g_hm_special_modelindex = ArrayCreate(1, 1);
+	g_hm_special_body = ArrayCreate(1, 1);
+	g_hm_special_skin = ArrayCreate(1, 1);
 	g_hm_special_health = ArrayCreate(1, 1);
 	g_hm_special_speed = ArrayCreate(1, 1);
 	g_hm_special_gravity = ArrayCreate(1, 1);
@@ -1077,9 +1085,10 @@ public plugin_precache() {
 	g_zm_special_realname = ArrayCreate(32, 1);
 	g_zm_special_name = ArrayCreate(32, 1);
 	g_zm_special_model = ArrayCreate(32, 1);
+	g_zm_special_body = ArrayCreate(1, 1);
+	g_zm_special_skin = ArrayCreate(1, 1);
 	g_zm_special_knifemodel = ArrayCreate(64, 1);
 	g_zm_special_painsound = ArrayCreate(64, 1);
-	g_zm_special_modelindex = ArrayCreate(1, 1);
 	g_zm_special_health = ArrayCreate(1, 1);
 	g_zm_special_speed = ArrayCreate(1, 1);
 	g_zm_special_gravity = ArrayCreate(1, 1);
@@ -1167,27 +1176,27 @@ public plugin_precache() {
 	}
 
 	// Custom player models
-	for(i = 0; i < ArraySize(model_admin_zombie); i++) {
-		ArrayGetString(model_admin_zombie, i, buffer, charsmax(buffer))
-		ArrayPushCell(g_modelindex_admin_zombie, precache_player_model(buffer))
+	for(i = 0; i < ArraySize(model_adm_zm); i++) {
+		ArrayGetString(model_adm_zm, i, buffer, charsmax(buffer))
+		precache_player_model(buffer)
 	}
-	for(i = 0; i < ArraySize(model_vip_zombie); i++) {
-		ArrayGetString(model_vip_zombie, i, buffer, charsmax(buffer))
-		ArrayPushCell(g_modelindex_vip_zombie, precache_player_model(buffer))
+	for(i = 0; i < ArraySize(model_vip_zm); i++) {
+		ArrayGetString(model_vip_zm, i, buffer, charsmax(buffer))
+		precache_player_model(buffer)
 	}
-	for(i = 0; i < ArraySize(model_admin_human); i++) {
-		ArrayGetString(model_admin_human, i, buffer, charsmax(buffer))
-		ArrayPushCell(g_modelindex_admin_human, precache_player_model(buffer))
+	for(i = 0; i < ArraySize(model_adm_hm); i++) {
+		ArrayGetString(model_adm_hm, i, buffer, charsmax(buffer))
+		precache_player_model(buffer)
 	}
-	for(i = 0; i < ArraySize(model_vip_human); i++)	{
-		ArrayGetString(model_vip_human, i, buffer, charsmax(buffer))
-		ArrayPushCell(g_modelindex_vip_human, precache_player_model(buffer))
+	for(i = 0; i < ArraySize(model_vip_hm); i++)	{
+		ArrayGetString(model_vip_hm, i, buffer, charsmax(buffer))
+		precache_player_model(buffer)
 	}
 	for(x = 1; x < MAX_SPECIALS_ZOMBIES; x++) {
 		if(zm_special_enable[x]) {
 			for(i = 0; i < ArraySize(model_zm_special[x]); i++) {
 				ArrayGetString(model_zm_special[x], i, buffer, charsmax(buffer))
-				ArrayPushCell(g_modelindex_zm_sp[x], precache_player_model(buffer))
+				precache_player_model(buffer)
 			}
 			engfunc(EngFunc_PrecacheModel, model_vknife_zm_special[x])
 			if(x == DRAGON) frostsprite = engfunc(EngFunc_PrecacheModel, "sprites/frost_explode.spr")
@@ -1197,7 +1206,7 @@ public plugin_precache() {
 		if(hm_special_enable[x] || x == 0) {
 			for(i = 0; i < ArraySize(model_human[x]); i++) {
 				ArrayGetString(model_human[x], i, buffer, charsmax(buffer))
-				ArrayPushCell(g_modelindex_human[x], precache_player_model(buffer))
+				precache_player_model(buffer)
 			}
 			engfunc(EngFunc_PrecacheModel, model_v_weapon_human[x])
 			engfunc(EngFunc_PrecacheModel, model_p_weapon_human[x])
@@ -1983,8 +1992,8 @@ public plugin_init() {
 	// New Forwards (4.0 or Higher)
 	g_forwards[RESET_RENDERING_PRE] = CreateMultiForward("zp_user_rendering_reset_pre", ET_CONTINUE, FP_CELL)
 	g_forwards[RESET_RENDERING_POST] = CreateMultiForward("zp_user_rendering_reset_post", ET_IGNORE, FP_CELL)
-	g_forwards[MODEL_CHANGE_PRE] = CreateMultiForward("zp_user_model_change_pre", ET_CONTINUE, FP_CELL, FP_STRING)
-	g_forwards[MODEL_CHANGE_POST] = CreateMultiForward("zp_user_model_change_post", ET_IGNORE, FP_CELL, FP_STRING)
+	g_forwards[MODEL_CHANGE_PRE] = CreateMultiForward("zp_user_model_change_pre", ET_CONTINUE, FP_CELL, FP_STRING, FP_CELL, FP_CELL)
+	g_forwards[MODEL_CHANGE_POST] = CreateMultiForward("zp_user_model_change_post", ET_IGNORE, FP_CELL, FP_STRING, FP_CELL, FP_CELL)
 	g_forwards[HM_SP_CHOSSED_PRE] = CreateMultiForward("zp_human_special_choosed_pre", ET_CONTINUE, FP_CELL, FP_CELL)
 	g_forwards[HM_SP_CHOSSED_POST] = CreateMultiForward("zp_human_special_choosed_post", ET_IGNORE, FP_CELL, FP_CELL)
 	g_forwards[ZM_SP_CHOSSED_PRE] = CreateMultiForward("zp_zombie_special_choosed_pre", ET_CONTINUE, FP_CELL, FP_CELL)
@@ -2225,7 +2234,6 @@ public fw_PlayerSpawn_Post(id) { // Ham Player Spawn Post Forward
 	g_isalive[id] = true // Player spawned
 
 	remove_task(id+TASK_SPAWN)
-	remove_task(id+TASK_MODEL)
 	remove_task(id+TASK_BLOOD)
 	remove_task(id+TASK_BURN)		// Remove previous tasks
 	remove_task(id+TASK_AURA)
@@ -2456,7 +2464,7 @@ public fw_PlayerKilled_Post(victim, attacker, shouldgib) { // Ham Player Killed 
 		limit_resp = 0
 
 		if(g_currentmode >= MAX_GAME_MODES)
-			limit_resp = ArrayGetCell(g_gamemode_respawn_limit, (g_currentmode - MAX_GAME_MODES))
+			limit_resp = ArrayGetCell(g_gm_respawn_limit, (g_currentmode - MAX_GAME_MODES))
 
 		else if(g_currentmode == MODE_INFECTION || g_currentmode == MODE_MULTI)
 			limit_resp = get_pcvar_num(cvar_respawn_limit[MODE_INFECTION])
@@ -2816,7 +2824,6 @@ public fw_ClientDisconnect(id) { // Client leaving
 	
 	// Remove previous tasks
 	remove_task(id+TASK_TEAM)
-	remove_task(id+TASK_MODEL)
 	remove_task(id+TASK_FLASH)
 	remove_task(id+TASK_CHARGE)
 	remove_task(id+TASK_SPAWN)
@@ -2905,10 +2912,16 @@ public fw_SetClientKeyValue(id, const infobuffer[], const key[]) { // Forward Se
 	return FMRES_IGNORED;
 }
 public fw_ClientUserInfoChanged(id) { // Forward Client User Info Changed -prevent players from changing models-
+	if(!is_user_valid_alive(id))
+		return;
+
 	get_user_name(id, g_playername[id], charsmax(g_playername[])) // Cache player's name
-	static currentmodel[32]; fm_cs_get_user_model(id, currentmodel, charsmax(currentmodel)) // Get current model
-	if(!equal(currentmodel, g_playermodel[id]) && !task_exists(id+TASK_MODEL)) 
-		fm_cs_set_user_model(id+TASK_MODEL) // If they're different, set model again
+	static currentmodel[32]; cs_get_user_model(id, currentmodel, charsmax(currentmodel)) // Get current model
+	if(!equal(currentmodel, g_playermodel[id]) || pev(id, pev_body) != g_playerbody[id] || pev(id, pev_skin) != g_playerskin[id]) {
+		cs_set_user_model(id, g_playermodel[id], g_set_modelindex_offset ? true : false)
+		set_pev(id, pev_body, g_playerbody[id])
+		set_pev(id, pev_skin, g_playerskin[id])
+	}
 }
 public fw_GetGameDescription() { // Forward Get Game Description
 	forward_return(FMV_STRING, g_modname) // Return the mod name so it can be easily identified
@@ -3550,16 +3563,16 @@ public show_menu_game_mode(id) { // Custom game mode menu
 
 		gm_id = (game - MAX_GAME_MODES)
 
-		if(ArrayGetCell(g_gamemode_name_by_lang, gm_id)) {
-			ArrayGetString(g_gamemode_lang_key, gm_id, buffer, charsmax(buffer)) // Retrieve the game mode's name
+		if(ArrayGetCell(g_gm_name_by_lang, gm_id)) {
+			ArrayGetString(g_gm_lang_key, gm_id, buffer, charsmax(buffer)) // Retrieve the game mode's name
 			formatex(buffer, charsmax(buffer), "%L", id, buffer)
 		}
 		else {
-			ArrayGetString(g_gamemode_name, gm_id, buffer, charsmax(buffer)) // Retrieve the game mode's name
+			ArrayGetString(g_gm_name, gm_id, buffer, charsmax(buffer)) // Retrieve the game mode's name
 		}
 		
 		// Check for access flags and other conditions
-		if((get_user_flags(id) & ArrayGetCell(g_gamemode_flag, gm_id)) && allowed_custom_game() && is_gamemode_enable(game) && g_fwDummyResult < ZP_PLUGIN_HANDLED) {	
+		if((get_user_flags(id) & ArrayGetCell(g_gm_flag, gm_id)) && allowed_custom_game() && is_gamemode_enable(game) && g_fwDummyResult < ZP_PLUGIN_HANDLED) {	
 			formatex(menu, charsmax(menu), "%L %s ", id, "MENU_ADMIN1_CUSTOM", buffer)
 			buffer[0] = game
 			buffer[1] = 0
@@ -4272,7 +4285,6 @@ public menu_game(id, key) { // Game Menu
 			
 			// Remove previous tasks
 			remove_task(id+TASK_TEAM)
-			remove_task(id+TASK_MODEL)
 			remove_task(id+TASK_FLASH)
 			remove_task(id+TASK_CHARGE)
 			remove_task(id+TASK_SPAWN)
@@ -4631,7 +4643,7 @@ public menu_mode(id, menuid, item) { // Custom game mode menu
 		return PLUGIN_HANDLED;
 	}
 	
-	if(get_user_flags(id) & ArrayGetCell(g_gamemode_flag, (gameid - MAX_GAME_MODES))) { // Check users access level
+	if(get_user_flags(id) & ArrayGetCell(g_gm_flag, (gameid - MAX_GAME_MODES))) { // Check users access level
 		// Only allow the game mode to proceed after some checks
 		if(allowed_custom_game() && is_gamemode_enable(gameid)) command_custom_game(gameid, id)
 		else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
@@ -6054,7 +6066,7 @@ start_custom_mode() { // Start custom game mode
 	static game
 	for(game = MAX_GAME_MODES; game < g_gamemodes_i; game++) {
 		// Apply chance level and check if the last played mode was not the same as this one
-		if((random_num(1, ArrayGetCell(g_gamemode_chance, (game - MAX_GAME_MODES))) == 1) && (!get_pcvar_num(cvar_preventconsecutive) || g_lastmode != game) 
+		if((random_num(1, ArrayGetCell(g_gm_chance, (game - MAX_GAME_MODES))) == 1) && (!get_pcvar_num(cvar_preventconsecutive) || g_lastmode != game) 
 		&& is_gamemode_enable(game)) {
 			// Execute our round start pre forward
 			// This is were the game mode will decide whether to run itself or block it self
@@ -6069,8 +6081,8 @@ start_custom_mode() { // Start custom game mode
 				g_currentmode = game
 				g_lastmode = game
 
-				g_allowinfection = (ArrayGetCell(g_gamemode_allow, (game - MAX_GAME_MODES)) == 1) ? true : false // Check whether or not to allow infection during this game mode
-				g_deathmatchmode = ArrayGetCell(g_gamemode_dm, (game - MAX_GAME_MODES)) // Check the death match mode required by the game mode
+				g_allowinfection = (ArrayGetCell(g_gm_allow, (game - MAX_GAME_MODES)) == 1) ? true : false // Check whether or not to allow infection during this game mode
+				g_deathmatchmode = ArrayGetCell(g_gm_dm, (game - MAX_GAME_MODES)) // Check the death match mode required by the game mode
 				g_modestarted = true // Our custom game mode has fully started
 				
 				ExecuteForward(g_forwards[ROUND_START], g_fwDummyResult, game, 0) // Execute our round start forward with the game mode id
@@ -6320,7 +6332,6 @@ zombieme(id, infector, classid, silentmode, rewards) {
 	}
 	
 	// Remove previous tasks
-	remove_task(id+TASK_MODEL)
 	remove_task(id+TASK_BLOOD)
 	remove_task(id+TASK_AURA)
 	remove_task(id+TASK_BURN)
@@ -6412,7 +6423,6 @@ humanme(id, classid, silentmode, attacker) { // Function Human Me (player id, tu
 	ExecuteForward(g_forwards[HUMANIZED_PRE], g_fwDummyResult, id, classid, attacker) // Pre user humanize forward
 	
 	// Remove previous tasks
-	remove_task(id+TASK_MODEL)
 	remove_task(id+TASK_BLOOD)
 	remove_task(id+TASK_AURA)
 	remove_task(id+TASK_BURN)
@@ -6682,23 +6692,44 @@ load_customization_from_files() {
 	}	
 
 	// Player Models
-	for(i = 0; i < MAX_SPECIALS_HUMANS; i++) amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", human_special_names[i], model_human[i])
-	for(i = 1; i < MAX_SPECIALS_ZOMBIES; i++) amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", zombie_special_names[i], model_zm_special[i])
+	for(i = 0; i < MAX_SPECIALS_HUMANS; i++) {
+		amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", human_special_names[i], model_human[i])
+		amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", fmt("%s BODY", human_special_names[i]), model_human_body[i])
+		amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", fmt("%s SKIN", human_special_names[i]), model_human_skin[i])
+	}
+	for(i = 1; i < MAX_SPECIALS_ZOMBIES; i++) {
+		amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", zombie_special_names[i], model_zm_special[i])
+		amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", fmt("%s BODY", zombie_special_names[i]), model_zm_special_body[i])
+		amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", fmt("%s SKIN", zombie_special_names[i]), model_zm_special_skin[i])
+	}
 
-	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ADMIN ZOMBIE", model_admin_zombie)
-	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "VIP ZOMBIE", model_vip_zombie)
-	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ADMIN HUMAN", model_admin_human)
-	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "VIP HUMAN", model_vip_human)
+	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ADMIN ZOMBIE", model_adm_zm)
+	amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ADMIN ZOMBIE BODY", model_adm_zm_body)
+	amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ADMIN ZOMBIE SKIN", model_adm_zm_skin)
+
+	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "VIP ZOMBIE", model_vip_zm)
+	amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "VIP ZOMBIE BODY", model_vip_zm_body)
+	amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "VIP ZOMBIE SKIN", model_vip_zm_skin)
+
+	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ADMIN HUMAN", model_adm_hm)
+	amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ADMIN HUMAN BODY", model_adm_hm_body)
+	amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ADMIN HUMAN SKIN", model_adm_hm_skin)
+
+	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "VIP HUMAN", model_vip_hm)
+	amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "VIP HUMAN BODY", model_vip_hm_body)
+	amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "VIP HUMAN SKIN", model_vip_hm_skin)
 
 	amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "Player Models", "FORCE CONSISTENCY", g_force_consistency)
 	amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "Player Models", "SAME MODELS FOR ALL", g_same_models_for_all)
 
 	if(g_same_models_for_all) {
 		amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ZOMBIE", g_zclass_playermodel)
+		amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ZOMBIE BODY", g_zclass_body)
+		amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ZOMBIE SKIN", g_zclass_skin)
 
 		for(i = 0; i < ArraySize(g_zclass_playermodel); i++) { // Precache model and retrieve its modelindex
 			ArrayGetString(g_zclass_playermodel, i, szKey, charsmax(szKey))
-			ArrayPushCell(g_zclass_modelindex, precache_player_model(szKey))			
+			precache_player_model(szKey)
 		}
 		
 	}
@@ -6913,7 +6944,6 @@ load_customization_from_files() {
 	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Objective Entities", "CLASSNAMES", g_objective_ents) // Objective Entities
 
 	// SVC_BAD Prevention
-	amx_load_setting_float(ZP_CUSTOMIZATION_FILE, "SVC_BAD Prevention", "MODELCHANGE DELAY", g_modelchange_delay)
 	amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "SVC_BAD Prevention", "SET MODELINDEX OFFSET", g_set_modelindex_offset)
 
 	// Load Zombie Special Class Death Sounds //
@@ -6955,15 +6985,26 @@ save_customization() { // Save customization from files
 			if(!amx_load_setting_string(ZP_ZOMBIECLASSES_FILE, section, "INFO", buffer, charsmax(buffer)))
 				amx_save_setting_string(ZP_ZOMBIECLASSES_FILE, section, "INFO", buffer) 
 			
-			temp_array[0] = ArrayCreate(32, 1)	
+			temp_array[0] = ArrayCreate(32, 1)
+			temp_array[1] = ArrayCreate(1, 1)	
+			temp_array[2] = ArrayCreate(1, 1)	
 			for(k = ArrayGetCell(g_zclass_modelsstart, i); k < ArrayGetCell(g_zclass_modelsend, i); k++) {
 				ArrayGetString(g_zclass_playermodel, k, buffer, charsmax(buffer))
 				ArrayPushString(temp_array[0], buffer)
+				ArrayPushCell(temp_array[1], ArrayGetCell(g_zclass_body, k))
+				ArrayPushCell(temp_array[2], ArrayGetCell(g_zclass_skin, k))
 			}
 			if(!amx_load_setting_string_arr(ZP_ZOMBIECLASSES_FILE, section, "MODELS", temp_array[0]))
 				amx_save_setting_string_arr(ZP_ZOMBIECLASSES_FILE, section, "MODELS", temp_array[0]) // Add models
 
+			if(!amx_load_setting_int_arr(ZP_ZOMBIECLASSES_FILE, section, "BODY", temp_array[1]))
+				amx_save_setting_int_arr(ZP_ZOMBIECLASSES_FILE, section, "BODY", temp_array[1]) // Add Body
+
+			if(!amx_load_setting_int_arr(ZP_ZOMBIECLASSES_FILE, section, "SKIN", temp_array[2]))
+				amx_save_setting_int_arr(ZP_ZOMBIECLASSES_FILE, section, "SKIN", temp_array[2]) // Add Skin
+
 			ArrayDestroy(temp_array[0])
+
 
 			temp_array[1] = ArrayCreate(64, 1)
 			for(k = ArrayGetCell(g_zclass_deathsnd_start, i); k < ArrayGetCell(g_zclass_deathsnd_end, i); k++) {
@@ -7060,37 +7101,37 @@ save_customization() { // Save customization from files
 		gameid = i-MAX_GAME_MODES
 		if(ArrayGetCell(g_gamemodes_new, gameid)) {
 
-			ArrayGetString(g_gamemode_realname, gameid, section, charsmax(section)) // Add real name
+			ArrayGetString(g_gm_realname, gameid, section, charsmax(section)) // Add real name
 			
-			ArrayGetString(g_gamemode_name, gameid, buffer, charsmax(buffer))
+			ArrayGetString(g_gm_name, gameid, buffer, charsmax(buffer))
 			if(!amx_load_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE NAME", buffer, charsmax(buffer)))
 				amx_save_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE NAME", buffer) // Add Name
 
-			value = ArrayGetCell(g_gamemode_enable, gameid)
+			value = ArrayGetCell(g_gm_enable, gameid)
 			if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE", value))
 				amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE", value) // Add Value
 
-			value = ArrayGetCell(g_gamemode_enable_on_ze_map, gameid)
+			value = ArrayGetCell(g_gm_enable_on_ze_map, gameid)
 			if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE ON ESCAPE MAP", value))
 				amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE ON ESCAPE MAP", value) // Add Value
 
-			value = ArrayGetCell(g_gamemode_chance, gameid)
+			value = ArrayGetCell(g_gm_chance, gameid)
 			if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE CHANCE", value))
 				amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE CHANCE", value) // Add Value
 				
-			value = ArrayGetCell(g_gamemode_dm, gameid)
+			value = ArrayGetCell(g_gm_dm, gameid)
 			if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE RESPAWN MODE", value))
 				amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE RESPAWN MODE", value) // Add Value
 
-			value = ArrayGetCell(g_gamemode_respawn_limit, gameid)
+			value = ArrayGetCell(g_gm_respawn_limit, gameid)
 			if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE RESPAWN LIMIT", value))
 				amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE RESPAWN LIMIT", value) // Add Value
 
-			value = ArrayGetCell(g_gamemode_name_by_lang, gameid)
+			value = ArrayGetCell(g_gm_name_by_lang, gameid)
 			if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE NAME BY LANG", value))
 				amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE NAME BY LANG", value) // Add Value	
 
-			ArrayGetString(g_gamemode_lang_key, gameid, buffer, charsmax(buffer))
+			ArrayGetString(g_gm_lang_key, gameid, buffer, charsmax(buffer))
 			if(!amx_load_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE LANG KEY", buffer, charsmax(buffer)))
 				amx_save_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE LANG KEY", buffer) // Add Name
 		}
@@ -7106,13 +7147,23 @@ save_customization() { // Save customization from files
 				amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "NAME", buffer)
 			
 			temp_array[0] = ArrayCreate(32, 1)
+			temp_array[1] = ArrayCreate(1, 1)	
+			temp_array[2] = ArrayCreate(1, 1)	
 			for(k = ArrayGetCell(g_hm_special_modelstart, specialid); k < ArrayGetCell(g_hm_special_modelsend, specialid); k++) {
 				ArrayGetString(g_hm_special_model, k, buffer, charsmax(buffer))
 				ArrayPushString(temp_array[0], buffer)
+				ArrayPushCell(temp_array[1], ArrayGetCell(g_hm_special_body, k))
+				ArrayPushCell(temp_array[2], ArrayGetCell(g_hm_special_skin, k))
 			}
 			if(!amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", temp_array[0]))
 				amx_save_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", temp_array[0]) // Add models
 
+			if(!amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "BODY", temp_array[1]))
+				amx_save_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "BODY", temp_array[1]) // Add Body
+
+			if(!amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", temp_array[2]))
+				amx_save_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", temp_array[2]) // Add Skin
+				
 			ArrayDestroy(temp_array[0])
 
 			value = ArrayGetCell(g_hm_special_health, specialid)
@@ -7211,18 +7262,29 @@ save_customization() { // Save customization from files
 				amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "NAME", buffer)
 			
 			temp_array[0] = ArrayCreate(32, 1)
+			temp_array[1] = ArrayCreate(1, 1)	
+			temp_array[2] = ArrayCreate(1, 1)	
 			for(k = ArrayGetCell(g_zm_special_modelstart, specialid); k < ArrayGetCell(g_zm_special_modelsend, specialid); k++) {
 				ArrayGetString(g_zm_special_model, k, buffer, charsmax(buffer))
 				ArrayPushString(temp_array[0], buffer)
+				ArrayPushCell(temp_array[1], ArrayGetCell(g_zm_special_body, k))
+				ArrayPushCell(temp_array[2], ArrayGetCell(g_zm_special_skin, k))
 			}
 			if(!amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", temp_array[0]))
 				amx_save_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", temp_array[0]) // Add models
+
+			if(!amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "BODY", temp_array[1]))
+				amx_save_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "BODY", temp_array[1]) // Add Body
+
+			if(!amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", temp_array[2]))
+				amx_save_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", temp_array[2]) // Add Skin
 
 			ArrayDestroy(temp_array[0])
 
 			ArrayGetString(g_zm_special_knifemodel, specialid, buffer, charsmax(buffer))
 			if(!amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "V_KNIFE MODEL", buffer, charsmax(buffer)))
 				amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "V_KNIFE MODEL", buffer)
+
 			
 			temp_array[1] = ArrayCreate(64, 1)
 			for(k = ArrayGetCell(g_zm_special_painsndstart, specialid); k < ArrayGetCell(g_zm_special_painsndsend, specialid); k++) {
@@ -8088,12 +8150,12 @@ public ShowHUD(taskid) { // Show HUD Task
 		if(g_currentmode >= MAX_GAME_MODES && !g_endround) {
 			gm_id = (g_currentmode - MAX_GAME_MODES)
 
-			if(ArrayGetCell(g_gamemode_name_by_lang, gm_id)) {
-				ArrayGetString(g_gamemode_lang_key, gm_id, g_ModeName, charsmax(g_ModeName)) // Retrieve the game mode's name
+			if(ArrayGetCell(g_gm_name_by_lang, gm_id)) {
+				ArrayGetString(g_gm_lang_key, gm_id, g_ModeName, charsmax(g_ModeName)) // Retrieve the game mode's name
 				formatex(g_ModeName, charsmax(g_ModeName), "%L", ID_SHOWHUD, g_ModeName)
 			}
 			else {
-				ArrayGetString(g_gamemode_name, gm_id, g_ModeName, charsmax(g_ModeName)) // Retrieve the game mode's name
+				ArrayGetString(g_gm_name, gm_id, g_ModeName, charsmax(g_ModeName)) // Retrieve the game mode's name
 			}
 		}
 		else formatex(g_ModeName, charsmax(g_ModeName), "%L", ID_SHOWHUD, g_endround ? "ROUND_ENDED" : mode_langs[g_currentmode])
@@ -8584,12 +8646,12 @@ command_custom_game(gameid, id) { // Admin command for a custom game mode
 
 	gm_id = (gameid - MAX_GAME_MODES)
 
-	if(ArrayGetCell(g_gamemode_name_by_lang, gm_id)) {
-		ArrayGetString(g_gamemode_lang_key, gm_id, buffer, charsmax(buffer)) // Retrieve the game mode's name
+	if(ArrayGetCell(g_gm_name_by_lang, gm_id)) {
+		ArrayGetString(g_gm_lang_key, gm_id, buffer, charsmax(buffer)) // Retrieve the game mode's name
 		formatex(buffer, charsmax(buffer), "%L", LANG_PLAYER, buffer)
 	}
 	else {
-		ArrayGetString(g_gamemode_name, gm_id, buffer, charsmax(buffer)) // Retrieve the game mode's name
+		ArrayGetString(g_gm_name, gm_id, buffer, charsmax(buffer)) // Retrieve the game mode's name
 	}
 	
 	if(id != 0) {
@@ -8603,7 +8665,7 @@ command_custom_game(gameid, id) { // Admin command for a custom game mode
 			get_user_authid(id, authid, charsmax(authid))
 			get_user_ip(id, ip, charsmax(ip), 1)
 
-			ArrayGetString(g_gamemode_name, gm_id, buffer, charsmax(buffer)) // Retrieve the game mode's name
+			ArrayGetString(g_gm_name, gm_id, buffer, charsmax(buffer)) // Retrieve the game mode's name
 			formatex(logdata, charsmax(logdata), "*ADMIN* %s <%s><%s> - %L %s (Players: %d/%d)", g_playername[id], authid, ip, LANG_SERVER, "MENU_ADMIN2_CUSTOM", buffer, fnGetPlaying(), MaxPlayers)
 			
 			format_time(filename, charsmax(filename), "%d-%m-%Y");
@@ -8617,8 +8679,8 @@ command_custom_game(gameid, id) { // Admin command for a custom game mode
 	g_newround = false // No more a new round
 	g_currentmode = gameid // Current game mode and last game mode are equal to the game mode id
 	g_lastmode = gameid
-	g_allowinfection = (ArrayGetCell(g_gamemode_allow, (gameid - MAX_GAME_MODES)) == 1) ? true : false // Check whether or not to allow infection during this game mode	
-	g_deathmatchmode = ArrayGetCell(g_gamemode_dm, (gameid - MAX_GAME_MODES)) // Check the death match mode required by the game mode
+	g_allowinfection = (ArrayGetCell(g_gm_allow, (gameid - MAX_GAME_MODES)) == 1) ? true : false // Check whether or not to allow infection during this game mode	
+	g_deathmatchmode = ArrayGetCell(g_gm_dm, (gameid - MAX_GAME_MODES)) // Check the death match mode required by the game mode
 	g_modestarted = true // Our custom game mode has fully started
 	ExecuteForward(g_forwards[ROUND_START], g_fwDummyResult, gameid, 0) // Execute our round start forward with the game mode id [BUGFIX]
 	ExecuteForward(g_forwards[GAME_MODE_SELECTED], g_fwDummyResult, gameid, id) // Execute our game mode selected forward
@@ -8896,7 +8958,7 @@ public native_get_current_mode_name(plugin_id, param_nums) { // Native: zp_get_c
 	"Survivor", "Sniper", "Berserker", "Wesker", "Spy", "Swarm", "Multi-Infection", "Plague", "Armageddon", "Undefined" }
 	
 	static g_ModeName[64]
-	if(g_currentmode >= MAX_GAME_MODES) ArrayGetString(g_gamemode_name, (g_currentmode - MAX_GAME_MODES), g_ModeName, charsmax(g_ModeName))
+	if(g_currentmode >= MAX_GAME_MODES) ArrayGetString(g_gm_name, (g_currentmode - MAX_GAME_MODES), g_ModeName, charsmax(g_ModeName))
 	else formatex(g_ModeName, charsmax(g_ModeName), "%s", mode_name[g_currentmode])
 
 	set_string(1, g_ModeName, get_param(2))
@@ -8918,7 +8980,7 @@ public native_get_gamemode_id(const name[]) { // Native: zp_get_gamemode_id(cons
 		for(i = MAX_GAME_MODES; i < g_gamemodes_i; i++) {
 			gameid = i-MAX_GAME_MODES
 			if(ArrayGetCell(g_gamemodes_new, gameid)) {
-				ArrayGetString(g_gamemode_realname, gameid, custom_gamemode_name, charsmax(custom_gamemode_name)) // Add real name
+				ArrayGetString(g_gm_realname, gameid, custom_gamemode_name, charsmax(custom_gamemode_name)) // Add real name
 				if(equal(name, custom_gamemode_name)) mode_id = i
 			}
 		}
@@ -9445,36 +9507,49 @@ public native_get_user_model(plugin_id, param_nums) { // Native: zp_get_user_mod
 	if(!is_user_valid_alive(id)) return 0; // Not an alive player or invalid player
 
 	static current_model[32] // Retrieve the player's current model
-	fm_cs_get_user_model(id, current_model, charsmax(current_model))
+	
+	cs_get_user_model(id, current_model, charsmax(current_model))
 	
 	set_string(2, current_model, get_param(3)) // Copy the model name into the array passed
 	return 1;
 }
+
 public native_override_user_model(id, const newmodel[], modelindex) { // Native: zp_override_user_model
+	param_convert(2) // Strings passed byref
+	return override_user_model(id, newmodel, 0, 0, modelindex);
+}
+
+public native_override_user_model2(id, const newmodel[], body, skin, modelindex) {// Native: zpsp_override_user_model
+	param_convert(2) // Strings passed byref
+	return override_user_model(id, newmodel, body, skin, modelindex);
+}
+
+public override_user_model(id, const newmodel[], body, skin, modelindex) { 
 	if(!g_pluginenabled) return false; // ZP Special disabled
 	if(!is_user_valid_alive(id)) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid Player (%d)", id)
 		return false;
 	}
 
-	param_convert(2) // Strings passed byref
-	ExecuteForward(g_forwards[MODEL_CHANGE_PRE], g_fwDummyResult, id, newmodel)
+	ExecuteForward(g_forwards[MODEL_CHANGE_PRE], g_fwDummyResult, id, newmodel, body, skin)
 
 	if(g_fwDummyResult >= ZP_PLUGIN_SUPERCEDE) return false // The game mode didnt accept some conditions
-	remove_task(id+TASK_MODEL) // Remove previous tasks
 
 	static currentmodel[32] // Custom models stuff
-	fm_cs_get_user_model(id, currentmodel, charsmax(currentmodel))// Get current model for comparing it with the current one
+	cs_get_user_model(id, currentmodel, charsmax(currentmodel))// Get current model for comparing it with the current one
+	
 	if(!equal(currentmodel, newmodel)) { // Set the right model, after checking that we don't already have it
 		copy(g_playermodel[id], charsmax(g_playermodel[]), newmodel)
-		if(g_set_modelindex_offset && modelindex) fm_cs_set_user_model_index(id, modelindex)
-		
-		// An additional delay is offset at round start
-		// since SVC_BAD is more likely to be triggered there
-		if(g_newround) set_task(5.0 * g_modelchange_delay, "fm_user_model_update", id+TASK_MODEL)
-		else fm_user_model_update(id+TASK_MODEL)
+		cs_set_user_model(id, newmodel, modelindex ? true : false)
 	}
-	ExecuteForward(g_forwards[MODEL_CHANGE_POST], g_fwDummyResult, id, newmodel)
+
+	g_playerbody[id] = body
+	g_playerskin[id] = skin
+
+	set_pev(id, pev_body, g_playerbody[id]);
+	set_pev(id, pev_skin, g_playerskin[id]);
+
+	ExecuteForward(g_forwards[MODEL_CHANGE_POST], g_fwDummyResult, id, newmodel, body, skin)
 	return true;
 }
 public native_has_round_started() { // Native: zp_has_round_started
@@ -9531,9 +9606,9 @@ public native_register_human_special(const name[], const model[], hp, speed, Flo
 		return -1;
 	}
 
-	static index, sp_name[32]
-	for(index = MAX_SPECIALS_HUMANS; index < g_hm_specials_i; index++) {
-		ArrayGetString(g_hm_special_realname, index-MAX_SPECIALS_HUMANS, sp_name, charsmax(sp_name))
+	static i, sp_name[32]
+	for(i = MAX_SPECIALS_HUMANS; i < g_hm_specials_i; i++) {
+		ArrayGetString(g_hm_special_realname, i-MAX_SPECIALS_HUMANS, sp_name, charsmax(sp_name))
 		if(equali(name, sp_name)) {
 			log_error(AMX_ERR_NATIVE, "[ZP] Custom Special Class already registered (%s)", sp_name)
 			return -1;
@@ -9543,6 +9618,8 @@ public native_register_human_special(const name[], const model[], hp, speed, Flo
 	ArrayPushString(g_hm_special_realname, name)
 	ArrayPushString(g_hm_special_name, name)
 	ArrayPushString(g_hm_special_model, model)
+	ArrayPushCell(g_hm_special_body, 0)
+	ArrayPushCell(g_hm_special_skin, 0)
 	ArrayPushCell(g_hm_special_health, hp)
 	ArrayPushCell(g_hm_special_speed, speed)
 	ArrayPushCell(g_hm_special_gravity, gravity)
@@ -9574,12 +9651,11 @@ public native_register_human_special(const name[], const model[], hp, speed, Flo
 	strtoupper(sp_name)
 	ArrayPushString(ZP_TEAM_NAMES, sp_name)
 	
-	new section[64]
-	new specialid = g_hm_specials_i-MAX_SPECIALS_HUMANS
+	static section[64], buffer[64], value, Float:value_f, specialid
+	specialid = g_hm_specials_i-MAX_SPECIALS_HUMANS
 	ArrayGetString(g_hm_special_realname, specialid, section, charsmax(section))
 	
 	// Load Custom Special Classes
-	new buffer[64], value, Float:value_f
 	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ENABLE", value)) {
 		if(value == 1 || value == 2 && !g_escape_map || value >= 3 && g_escape_map) ArraySetCell(g_hm_special_enable, specialid, 1)
 		else ArraySetCell(g_hm_special_enable, specialid, 0)
@@ -9587,24 +9663,37 @@ public native_register_human_special(const name[], const model[], hp, speed, Flo
 	
 	if(amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "NAME", buffer, charsmax(buffer))) ArraySetString(g_hm_special_name, specialid, buffer)
 	
-	// Load Models //
+	// Load Models/Body/Skin //
 	temp_array[0] = ArrayCreate(32, 1) // Create a Temporary Array
+	temp_array[1] = ArrayCreate(1, 1)
+	temp_array[2] = ArrayCreate(1, 1)
 	ArrayPushCell(g_hm_special_modelstart, ArraySize(g_hm_special_model))
 	amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", temp_array[0])
+	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "BODY", temp_array[1])
+	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", temp_array[2])
 	if(ArraySize(temp_array[0]) > 0) {
-		for(new i = 0; i < ArraySize(temp_array[0]); i++) {
+		for(i = 0; i < ArraySize(temp_array[0]); i++) {
 			ArrayGetString(temp_array[0], i, buffer, charsmax(buffer))
 			ArrayPushString(g_hm_special_model, buffer)
-			ArrayPushCell(g_hm_special_modelindex, -1)
+
+			if(ArraySize(temp_array[1]) >= i)
+				ArrayPushCell(g_hm_special_body, ArrayGetCell(temp_array[1], i))
+			else 
+				ArrayPushCell(g_hm_special_body, 0)
+			
+			if(ArraySize(temp_array[2]) >= i)
+				ArrayPushCell(g_hm_special_skin, ArrayGetCell(temp_array[2], i))
+			else
+				ArrayPushCell(g_hm_special_skin, 0)
 		}
 	}
 	else {
 		ArrayPushString(g_hm_special_model, model)
-		ArrayPushCell(g_hm_special_modelindex, -1)
+		ArrayPushCell(g_hm_special_body, 0)
+		ArrayPushCell(g_hm_special_skin, 0)
 	}
-	ArrayPushCell(g_hm_special_modelindex, -1)
 	ArrayPushCell(g_hm_special_modelsend, ArraySize(g_hm_special_model))
-	ArrayDestroy(temp_array[0]) // Destroy a Temporary Array
+	for(i = 0; i < 3; i++) ArrayDestroy(temp_array[i]); // Destroy a Temporary Array
 	//----------------------------------------------------------------------------
 	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "HEALTH", value)) ArraySetCell(g_hm_special_health, specialid, value);
 	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "SPEED", value)) ArraySetCell(g_hm_special_speed, specialid, value);
@@ -9628,11 +9717,10 @@ public native_register_human_special(const name[], const model[], hp, speed, Flo
 	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", value)) ArraySetCell(g_hm_special_name_by_lang, specialid, value);
 	if(amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "LANG KEY", buffer, charsmax(buffer))) ArraySetString(g_hm_special_lang_key, specialid, buffer);
 	
-	if(ArrayGetCell(g_hm_special_enable, specialid) >= 1) {
-		// Precache player model
-		for(new i = ArrayGetCell(g_hm_special_modelstart, specialid); i < ArrayGetCell(g_hm_special_modelsend, specialid); i++) {
+	if(ArrayGetCell(g_hm_special_enable, specialid) >= 1) { // Precache player model
+		for(i = ArrayGetCell(g_hm_special_modelstart, specialid); i < ArrayGetCell(g_hm_special_modelsend, specialid); i++) {
 			ArrayGetString(g_hm_special_model, i, buffer, charsmax(buffer))
-			ArraySetCell(g_hm_special_modelindex, i, precache_player_model(buffer))
+			precache_player_model(buffer)
 		}
 	}
 	g_hm_specials_i++ // Increase registered special humans counter
@@ -9650,9 +9738,9 @@ public native_register_zombie_special(const name[], const model[], const knifemo
 		return -1;
 	}
 
-	static index, sp_name[32]
-	for(index = MAX_SPECIALS_ZOMBIES; index < g_zm_specials_i; index++) {
-		ArrayGetString(g_zm_special_realname, index-MAX_SPECIALS_ZOMBIES, sp_name, charsmax(sp_name))
+	static i, sp_name[32]
+	for(i = MAX_SPECIALS_ZOMBIES; i < g_zm_specials_i; i++) {
+		ArrayGetString(g_zm_special_realname, i-MAX_SPECIALS_ZOMBIES, sp_name, charsmax(sp_name))
 		if(equali(name, sp_name)) {
 			log_error(AMX_ERR_NATIVE, "[ZP] Custom Special Class already registered (%s)", sp_name)
 			return -1;
@@ -9662,6 +9750,8 @@ public native_register_zombie_special(const name[], const model[], const knifemo
 	ArrayPushString(g_zm_special_realname, name)
 	ArrayPushString(g_zm_special_name, name)
 	ArrayPushString(g_zm_special_model, model)
+	ArrayPushCell(g_zm_special_body, 0)
+	ArrayPushCell(g_zm_special_skin, 0)
 	ArrayPushString(g_zm_special_knifemodel, knifemodel)
 	ArrayPushString(g_zm_special_painsound, pain_sound)
 	ArrayPushCell(g_zm_special_health, hp)
@@ -9697,12 +9787,11 @@ public native_register_zombie_special(const name[], const model[], const knifemo
 
 	ArrayPushCell(g_zm_specials, 1)
 
-	new section[64]
-	new specialid = g_zm_specials_i-MAX_SPECIALS_ZOMBIES
+	static section[64], specialid, buffer[64], value, Float:value_f
+	specialid = g_zm_specials_i-MAX_SPECIALS_ZOMBIES
 	ArrayGetString(g_zm_special_realname, specialid, section, charsmax(section))
 	
 	// Load Custom Special Classes
-	new buffer[64], value, Float:value_f, i
 	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ENABLE", value)) {
 		if(value == 1 || value == 2 && !g_escape_map || value >= 3 && g_escape_map) ArraySetCell(g_zm_special_enable, specialid, 1)
 		else ArraySetCell(g_zm_special_enable, specialid, 0)
@@ -9712,22 +9801,35 @@ public native_register_zombie_special(const name[], const model[], const knifemo
 		
 	// Load Models //
 	temp_array[0] = ArrayCreate(32, 1) // Create a Temporary Array
+	temp_array[1] = ArrayCreate(1, 1)
+	temp_array[2] = ArrayCreate(1, 1)
 	ArrayPushCell(g_zm_special_modelstart, ArraySize(g_zm_special_model))
 	amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", temp_array[0])
+	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "BODY", temp_array[1])
+	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", temp_array[2])
 	if(ArraySize(temp_array[0]) > 0) {
 		for(i = 0; i < ArraySize(temp_array[0]); i++) {
 			ArrayGetString(temp_array[0], i, buffer, charsmax(buffer))
 			ArrayPushString(g_zm_special_model, buffer)
-			ArrayPushCell(g_zm_special_modelindex, -1)
+
+			if(ArraySize(temp_array[1]) >= i)
+				ArrayPushCell(g_zm_special_body, ArrayGetCell(temp_array[1], i))
+			else 
+				ArrayPushCell(g_zm_special_body, 0)
+			
+			if(ArraySize(temp_array[2]) >= i)
+				ArrayPushCell(g_zm_special_skin, ArrayGetCell(temp_array[2], i))
+			else
+				ArrayPushCell(g_zm_special_skin, 0)
 		}
 	}
 	else {
 		ArrayPushString(g_zm_special_model, model)
-		ArrayPushCell(g_zm_special_modelindex, -1)
+		ArrayPushCell(g_zm_special_body, 0)
+		ArrayPushCell(g_zm_special_skin, 0)
 	}
-	ArrayPushCell(g_zm_special_modelindex, -1)
 	ArrayPushCell(g_zm_special_modelsend, ArraySize(g_zm_special_model))
-	ArrayDestroy(temp_array[0])
+	for(i = 0; i < 3; i++) ArrayDestroy(temp_array[i])
 	//----------------------------------------------------------------------------
 
 	// Knife model //
@@ -9809,7 +9911,7 @@ public native_register_zombie_special(const name[], const model[], const knifemo
 		}
 		for(i = ArrayGetCell(g_zm_special_modelstart, specialid); i < ArrayGetCell(g_zm_special_modelsend, specialid); i++) {
 			ArrayGetString(g_zm_special_model, i, buffer, charsmax(buffer))
-			ArraySetCell(g_zm_special_modelindex, i, precache_player_model(buffer)) // Precache player model
+			precache_player_model(buffer)
 		}
 		for(i = ArrayGetCell(g_zm_sp_deathsnd_start, specialid); i < ArrayGetCell(g_zm_sp_deathsnd_end, specialid); i++) {
 			ArrayGetString(g_zm_sp_deathsnd, i, buffer, charsmax(buffer))
@@ -9836,41 +9938,41 @@ public native_register_gamemode(const name[], flags, chance, allow, dm_mode, res
 	}
 	static index, gm_name[32]
 	for(index = MAX_GAME_MODES; index < g_gamemodes_i; index++) {
-		ArrayGetString(g_gamemode_realname, index-MAX_GAME_MODES, gm_name, charsmax(gm_name))
+		ArrayGetString(g_gm_realname, index-MAX_GAME_MODES, gm_name, charsmax(gm_name))
 		if(equali(name, gm_name)) {
 			log_error(AMX_ERR_NATIVE, "[ZP] Game Mode already registered (%s)", gm_name)
 			return -1;
 		}
 	}
 	// Add the game mode
-	ArrayPushString(g_gamemode_realname, name)
-	ArrayPushString(g_gamemode_name, name)
-	ArrayPushCell(g_gamemode_flag, flags)
-	ArrayPushCell(g_gamemode_chance, chance)
-	ArrayPushCell(g_gamemode_allow, allow)
-	ArrayPushCell(g_gamemode_dm, dm_mode)
-	ArrayPushCell(g_gamemode_respawn_limit, resp_limit)
-	ArrayPushCell(g_gamemode_enable_on_ze_map, enable_in_ze)
-	ArrayPushCell(g_gamemode_enable, 1)
+	ArrayPushString(g_gm_realname, name)
+	ArrayPushString(g_gm_name, name)
+	ArrayPushCell(g_gm_flag, flags)
+	ArrayPushCell(g_gm_chance, chance)
+	ArrayPushCell(g_gm_allow, allow)
+	ArrayPushCell(g_gm_dm, dm_mode)
+	ArrayPushCell(g_gm_respawn_limit, resp_limit)
+	ArrayPushCell(g_gm_enable_on_ze_map, enable_in_ze)
+	ArrayPushCell(g_gm_enable, 1)
 	ArrayPushCell(g_gamemodes_new, 1)
 
-	ArrayPushCell(g_gamemode_name_by_lang, 0)
-	ArrayPushString(g_gamemode_lang_key, "ITEM_LANG_DEFAULT_KEY")
+	ArrayPushCell(g_gm_name_by_lang, 0)
+	ArrayPushString(g_gm_lang_key, "ITEM_LANG_DEFAULT_KEY")
 
 	new section[64], szName[32], value
 	new gameid = g_gamemodes_i-MAX_GAME_MODES
-	ArrayGetString(g_gamemode_realname, gameid, section, charsmax(section))
+	ArrayGetString(g_gm_realname, gameid, section, charsmax(section))
 	
 	// Load Custom Game Modes	
-	if(amx_load_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE NAME", szName, charsmax(szName))) ArraySetString(g_gamemode_name, gameid, szName);
-	if(amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE", value)) ArraySetCell(g_gamemode_enable, gameid, value);
-	if(amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE ON ESCAPE MAP", value)) ArraySetCell(g_gamemode_enable_on_ze_map, gameid, value);
-	if(amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE CHANCE", value)) ArraySetCell(g_gamemode_chance, gameid, value);
-	if(amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE RESPAWN MODE", value)) ArraySetCell(g_gamemode_dm, gameid, value);
-	if(amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE RESPAWN LIMIT", value)) ArraySetCell(g_gamemode_respawn_limit, gameid, value);
+	if(amx_load_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE NAME", szName, charsmax(szName))) ArraySetString(g_gm_name, gameid, szName);
+	if(amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE", value)) ArraySetCell(g_gm_enable, gameid, value);
+	if(amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE ON ESCAPE MAP", value)) ArraySetCell(g_gm_enable_on_ze_map, gameid, value);
+	if(amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE CHANCE", value)) ArraySetCell(g_gm_chance, gameid, value);
+	if(amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE RESPAWN MODE", value)) ArraySetCell(g_gm_dm, gameid, value);
+	if(amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE RESPAWN LIMIT", value)) ArraySetCell(g_gm_respawn_limit, gameid, value);
 
-	if(amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE NAME BY LANG", value)) ArraySetCell(g_gamemode_name_by_lang, gameid, value);
-	if(amx_load_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE LANG KEY", szName, charsmax(szName))) ArraySetString(g_gamemode_lang_key, gameid, szName);
+	if(amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE NAME BY LANG", value)) ArraySetCell(g_gm_name_by_lang, gameid, value);
+	if(amx_load_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE LANG KEY", szName, charsmax(szName))) ArraySetString(g_gm_lang_key, gameid, szName);
 
 	g_gamemodes_i++ // Increase registered game modes counter
 	return (g_gamemodes_i-1); // Return id under which we registered the game mode
@@ -10043,9 +10145,9 @@ public native_register_zombie_class(const name[], const info[], const model[], c
 		return -1;
 	}
 
-	static index, zombieclass_name[32]
-	for(index = 0; index < g_zclass_i; index++) {
-		ArrayGetString(g_zclass_real_name, index, zombieclass_name, charsmax(zombieclass_name))
+	static i, zombieclass_name[32];
+	for(i = 0; i < g_zclass_i; i++) {
+		ArrayGetString(g_zclass_real_name, i, zombieclass_name, charsmax(zombieclass_name))
 		if(equali(name, zombieclass_name)) {
 			log_error(AMX_ERR_NATIVE, "[ZP] Zombie class already registered (%s)", name)
 			return -1;
@@ -10068,7 +10170,7 @@ public native_register_zombie_class(const name[], const info[], const model[], c
 
 	ArrayPushCell(g_zclass_new, 1) // Set temporary new class flag
 	
-	new section[64], buffer[64], prec_mdl[64], value, Float:value_f, i
+	static section[64], buffer[64], prec_mdl[64], value, Float:value_f
 	ArrayGetString(g_zclass_real_name, g_zclass_i, section, charsmax(section))
 	
 	// Replace Name
@@ -10082,18 +10184,36 @@ public native_register_zombie_class(const name[], const info[], const model[], c
 	}
 	else {
 		temp_array[0] = ArrayCreate(32, 1) // Create Temporary Array
+		temp_array[1] = ArrayCreate(1, 1)
+		temp_array[2] = ArrayCreate(1, 1)
 		ArrayPushCell(g_zclass_modelsstart, ArraySize(g_zclass_playermodel))
 		amx_load_setting_string_arr(ZP_ZOMBIECLASSES_FILE, section, "MODELS", temp_array[0])
+		amx_load_setting_int_arr(ZP_ZOMBIECLASSES_FILE, section, "BODY", temp_array[1])
+		amx_load_setting_int_arr(ZP_ZOMBIECLASSES_FILE, section, "SKIN", temp_array[2])
 		if(ArraySize(temp_array[0]) > 0) {
 			for(i = 0; i < ArraySize(temp_array[0]); i++) {
 				ArrayGetString(temp_array[0], i, buffer, charsmax(buffer))
 				ArrayPushString(g_zclass_playermodel, buffer)
+
+				if(ArraySize(temp_array[1]) >= i)
+					ArrayPushCell(g_zclass_body, ArrayGetCell(temp_array[1], i))
+				else 
+					ArrayPushCell(g_zclass_body, 0)
+				
+				if(ArraySize(temp_array[2]) >= i)
+					ArrayPushCell(g_zclass_skin, ArrayGetCell(temp_array[2], i))
+				else
+					ArrayPushCell(g_zclass_skin, 0)
 			}
 		}
-		else ArrayPushString(g_zclass_playermodel, model)
+		else {
+			ArrayPushString(g_zclass_playermodel, model)
+			ArrayPushCell(g_zclass_body, 0)
+			ArrayPushCell(g_zclass_skin, 0)
+		}
 
 		ArrayPushCell(g_zclass_modelsend, ArraySize(g_zclass_playermodel))
-		ArrayDestroy(temp_array[0])
+		for(i = 0; i < 3; i++) ArrayDestroy(temp_array[i])
 	}
 
 	if(amx_load_setting_string(ZP_ZOMBIECLASSES_FILE, section, "INFO", buffer, charsmax(buffer))) ArraySetString(g_zclass_info, g_zclass_i, buffer); // Replace info	
@@ -10111,7 +10231,7 @@ public native_register_zombie_class(const name[], const info[], const model[], c
 	if(!g_same_models_for_all) {
 		for(i = ArrayGetCell(g_zclass_modelsstart, g_zclass_i); i < ArrayGetCell(g_zclass_modelsend, g_zclass_i); i++) {
 			ArrayGetString(g_zclass_playermodel, i, buffer, charsmax(buffer))
-			ArrayPushCell(g_zclass_modelindex, precache_player_model(buffer))
+			precache_player_model(buffer)
 		}
 	}	
 
@@ -11261,25 +11381,6 @@ public fm_cs_set_user_team_msg(taskid) { // Send User Team Message
 
 	g_switchingteam = false // Done switching team
 }
-stock fm_cs_set_user_model_index(id, value) { // Set the precached model index (updates hitboxes server side)
-	if(pev_valid(id) != PDATA_SAFE) return; // Prevent server crash if entity's private data not initalized
-
-	set_pdata_int(id, OFFSET_MODELINDEX, value, OFFSET_LINUX)
-}
-public fm_cs_set_user_model(taskid) set_user_info(ID_MODEL, "model", g_playermodel[ID_MODEL]); // Set User Model;
-stock fm_cs_get_user_model(player, model[], len) get_user_info(player, "model", model, len); // Get User Model -model passed byref-
-
-public fm_user_model_update(taskid) { // Update Player's Model on all clients (adding needed delays)
-	static Float:current_time; current_time = get_gametime()
-	if(current_time - g_models_targettime >= g_modelchange_delay) {
-		fm_cs_set_user_model(taskid)
-		g_models_targettime = current_time
-	}
-	else {
-		set_task((g_models_targettime + g_modelchange_delay) - current_time, "fm_cs_set_user_model", taskid)
-		g_models_targettime = g_models_targettime + g_modelchange_delay
-	}
-}
 
 public turn_invisible(id) { // Predator/Spy Invisible Powers
 	if(g_zm_special[id] == PREDATOR) {
@@ -11660,158 +11761,147 @@ public reset_user_rendering(id) {
 	ExecuteForward(g_forwards[RESET_RENDERING_POST], g_fwDummyResult, id)
 }
 public reset_player_models(id) {
-	static currentmodel[32], newmodel[32], already_has_model, i, iRand, size, model_index
-	already_has_model = false
+	if(!is_user_valid_alive(id))
+		return 0;
 
+	static already_has_model, UserFlags;
+	already_has_model = false
+	UserFlags = get_user_flags(id)
+
+	static Array:Arr_Model, Array:Arr_Body, Array:Arr_Skin, l_Start, l_End, l_Sub, iRand, currentmodel[32], newmodel[32], i
+	cs_get_user_model(id, currentmodel, charsmax(currentmodel)) // Get current model for comparing it with the current one
 	if(g_zombie[id]) {
-		fm_cs_get_user_model(id, currentmodel, charsmax(currentmodel)) // Get current model for comparing it with the current one
 		if(g_zm_special[id] >= MAX_SPECIALS_ZOMBIES) {
-			for(i = ArrayGetCell(g_zm_special_modelstart, g_zm_special[id]-MAX_SPECIALS_ZOMBIES); i < ArrayGetCell(g_zm_special_modelsend, g_zm_special[id]-MAX_SPECIALS_ZOMBIES) - 1; i++) {
-				ArrayGetString(g_zm_special_model, i, newmodel, charsmax(newmodel))
-				if(equal(currentmodel, newmodel)) already_has_model = true
-			}
-			if(!already_has_model) {
-				iRand = random_num(ArrayGetCell(g_zm_special_modelstart, g_zm_special[id]-MAX_SPECIALS_ZOMBIES), ArrayGetCell(g_zm_special_modelsend, g_zm_special[id]-MAX_SPECIALS_ZOMBIES) - 1)
-				ArrayGetString(g_zm_special_model, iRand, newmodel, charsmax(newmodel))
-				if(g_set_modelindex_offset) model_index = ArrayGetCell(g_zm_special_modelindex, iRand)
-			}
+			Arr_Model = g_zm_special_model;
+			Arr_Body = g_zm_special_body;
+			Arr_Skin = g_zm_special_skin;
+			l_Start = ArrayGetCell(g_zm_special_modelstart, g_zm_special[id]-MAX_SPECIALS_ZOMBIES);
+			l_End = ArrayGetCell(g_zm_special_modelsend, g_zm_special[id]-MAX_SPECIALS_ZOMBIES) - 1;
+			l_Sub = 0;
 		}
 		else if(g_zm_special[id] > 0 && g_zm_special[id] < MAX_SPECIALS_ZOMBIES) {
-			if(g_zm_special[id] > 0 && zm_special_enable[g_zm_special[id]]) {
-				size = ArraySize(model_zm_special[g_zm_special[id]]) // Set the right model, after checking that we don't already have it
-				for(i = 0; i < size; i++) {
-					ArrayGetString(model_zm_special[g_zm_special[id]], i, newmodel, charsmax(newmodel))
-					if(equal(currentmodel, newmodel)) already_has_model = true
-				}
-				if(!already_has_model) {
-					iRand = random_num(0, size - 1)
-					ArrayGetString(model_zm_special[g_zm_special[id]], iRand, newmodel, charsmax(newmodel))
-					if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_zm_sp[g_zm_special[id]], iRand)
-				}
+			if(zm_special_enable[g_zm_special[id]]) {
+				Arr_Model = model_zm_special[g_zm_special[id]];
+				Arr_Body = model_zm_special_body[g_zm_special[id]];
+				Arr_Skin = model_zm_special_skin[g_zm_special[id]];
+				l_Start = 0;
+				l_End = ArraySize(Arr_Model);
+				l_Sub = 1;
 			}
 		}
 		else {
-			if(get_pcvar_num(cvar_adminmodelszombie) && (get_user_flags(id) & g_access_flag[ACCESS_ADMIN_MODELS])) {
-				size = ArraySize(model_admin_zombie)
-				for(i = 0; i < size; i++) {
-					ArrayGetString(model_admin_zombie, i, newmodel, charsmax(newmodel))
-					if(equal(currentmodel, newmodel)) already_has_model = true
-				}
-				if(!already_has_model) {
-					iRand = random_num(0, size - 1)
-					ArrayGetString(model_admin_zombie, iRand, newmodel, charsmax(newmodel))
-					if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_admin_zombie, iRand)
-				}
+			if(get_pcvar_num(cvar_adminmodelszombie) && (UserFlags & g_access_flag[ACCESS_ADMIN_MODELS])) {
+				Arr_Model = model_adm_zm;
+				Arr_Body = model_adm_zm_body;
+				Arr_Skin = model_adm_zm_skin;
+				l_Start = 0;
+				l_End = ArraySize(Arr_Model);
+				l_Sub = 1;
 			}
-			else if(get_pcvar_num(cvar_vipmodelszombie) && (get_user_flags(id) & g_access_flag[ACCESS_VIP_MODELS])) {
-				size = ArraySize(model_vip_zombie)
-				for(i = 0; i < size; i++) {
-					ArrayGetString(model_vip_zombie, i, newmodel, charsmax(newmodel))
-					if(equal(currentmodel, newmodel)) already_has_model = true
-				}
-				if(!already_has_model) {
-					iRand = random_num(0, size - 1)
-					ArrayGetString(model_vip_zombie, iRand, newmodel, charsmax(newmodel))
-					if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_vip_zombie, iRand)
-				}
+			else if(get_pcvar_num(cvar_vipmodelszombie) && (UserFlags & g_access_flag[ACCESS_VIP_MODELS])) {
+				Arr_Model = model_vip_zm;
+				Arr_Body = model_vip_zm_body;
+				Arr_Skin = model_vip_zm_skin;
+				l_Start = 0;
+				l_End = ArraySize(Arr_Model);
+				l_Sub = 1;
 			} 
 			else {
-				for(i = ArrayGetCell(g_zclass_modelsstart, g_zombieclass[id]); i < ArrayGetCell(g_zclass_modelsend, g_zombieclass[id]); i++) {
-					ArrayGetString(g_zclass_playermodel, i, newmodel, charsmax(newmodel))
-					if(equal(currentmodel, newmodel)) already_has_model = true
-				}
-				if(!already_has_model) {
-					iRand = random_num(ArrayGetCell(g_zclass_modelsstart, g_zombieclass[id]), ArrayGetCell(g_zclass_modelsend, g_zombieclass[id]) - 1)
-					ArrayGetString(g_zclass_playermodel, iRand, newmodel, charsmax(newmodel))
-					if(g_set_modelindex_offset) model_index = ArrayGetCell(g_zclass_modelindex, iRand)
-				}
+				Arr_Model = g_zclass_playermodel;
+				Arr_Body = g_zclass_body;
+				Arr_Skin = g_zclass_skin;
+				l_Start = ArrayGetCell(g_zclass_modelsstart, g_zombieclass[id]);
+				l_End = ArrayGetCell(g_zclass_modelsend, g_zombieclass[id]);
+				l_Sub = 1;
 			}
 		}
 	}
 	else {
-		fm_cs_get_user_model(id, currentmodel, charsmax(currentmodel)) // Get current model for comparing it with the current one
 		if(g_hm_special[id] >= MAX_SPECIALS_HUMANS) { // Set the right model, after checking that we don't already have it
-			for(i = ArrayGetCell(g_hm_special_modelstart, g_hm_special[id]-MAX_SPECIALS_HUMANS); i < ArrayGetCell(g_hm_special_modelsend, g_hm_special[id]-MAX_SPECIALS_HUMANS) - 1; i++) {
-				ArrayGetString(g_hm_special_model, i, newmodel, charsmax(newmodel))
-				if(equal(currentmodel, newmodel)) already_has_model = true
-			}
-			if(!already_has_model) {
-				iRand = random_num(ArrayGetCell(g_hm_special_modelstart, g_hm_special[id]-MAX_SPECIALS_HUMANS), ArrayGetCell(g_hm_special_modelsend, g_hm_special[id]-MAX_SPECIALS_HUMANS) - 1)
-				ArrayGetString(g_hm_special_model, iRand, newmodel, charsmax(newmodel))
-				if(g_set_modelindex_offset) model_index = ArrayGetCell(g_hm_special_modelindex, iRand)
-			}
+			Arr_Model = g_hm_special_model;
+			Arr_Body = g_hm_special_body;
+			Arr_Skin = g_hm_special_skin;
+			l_Start = ArrayGetCell(g_hm_special_modelstart, g_hm_special[id]-MAX_SPECIALS_HUMANS);
+			l_End = ArrayGetCell(g_hm_special_modelsend, g_hm_special[id]-MAX_SPECIALS_HUMANS) - 1;
+			l_Sub = 0;
 		}			
 		else if(g_hm_special[id] > 0 && g_hm_special[id] < MAX_SPECIALS_HUMANS) {
-			if(g_hm_special[id] > 0 && hm_special_enable[g_hm_special[id]]) {
-				size = ArraySize(model_human[g_hm_special[id]])
-				for(i = 0; i < size; i++) {
-					ArrayGetString(model_human[g_hm_special[id]], i, newmodel, charsmax(newmodel))
-					if(equal(currentmodel, newmodel)) already_has_model = true
-				}
-				if(!already_has_model) {
-					iRand = random_num(0, size - 1)
-					ArrayGetString(model_human[g_hm_special[id]], iRand, newmodel, charsmax(newmodel))
-					if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_human[g_hm_special[id]], iRand)
-				}
+			if(hm_special_enable[g_hm_special[id]]) {
+				Arr_Model = model_human[g_hm_special[id]];
+				Arr_Body = model_human_body[g_hm_special[id]];
+				Arr_Skin = model_human_skin[g_hm_special[id]];
+				l_Start = 0;
+				l_End = ArraySize(Arr_Model);
+				l_Sub = 1;
 			}
 		}
 		else {
-			if(get_pcvar_num(cvar_adminmodelshuman) && (get_user_flags(id) & g_access_flag[ACCESS_ADMIN_MODELS])) {
-				size = ArraySize(model_admin_human)
-				for(i = 0; i < size; i++) {
-					ArrayGetString(model_admin_human, i, newmodel, charsmax(newmodel))
-					if(equal(currentmodel, newmodel)) already_has_model = true
-				}
-				if(!already_has_model) {
-					iRand = random_num(0, size - 1)
-					ArrayGetString(model_admin_human, iRand, newmodel, charsmax(newmodel))
-					if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_admin_human, iRand)
-				}
+			if(get_pcvar_num(cvar_adminmodelshuman) && (UserFlags & g_access_flag[ACCESS_ADMIN_MODELS])) {
+				Arr_Model = model_adm_hm;
+				Arr_Body = model_adm_hm_body;
+				Arr_Skin = model_adm_hm_skin;
 			}
-			else if(get_pcvar_num(cvar_vipmodelshuman) && (get_user_flags(id) & g_access_flag[ACCESS_VIP_MODELS])) {
-				size = ArraySize(model_vip_human)
-				for(i = 0; i < size; i++) {
-					ArrayGetString(model_vip_human, i, newmodel, charsmax(newmodel))
-					if(equal(currentmodel, newmodel)) already_has_model = true
-				}
-				if(!already_has_model) {
-					iRand = random_num(0, size - 1)
-					ArrayGetString(model_vip_human, iRand, newmodel, charsmax(newmodel))
-					if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_vip_human, iRand)
-				}
+			else if(get_pcvar_num(cvar_vipmodelshuman) && (UserFlags & g_access_flag[ACCESS_VIP_MODELS])) {
+				Arr_Model = model_vip_hm;
+				Arr_Body = model_vip_hm_body;
+				Arr_Skin = model_vip_hm_skin;
 			}
 			else {
-				size = ArraySize(model_human[0])
-				for(i = 0; i < size; i++) {
-					ArrayGetString(model_human[0], i, newmodel, charsmax(newmodel))
-					if(equal(currentmodel, newmodel)) already_has_model = true
-				}
-				if(!already_has_model) {
-					iRand = random_num(0, size - 1)
-					ArrayGetString(model_human[0], iRand, newmodel, charsmax(newmodel))
-					if(g_set_modelindex_offset) model_index = ArrayGetCell(g_modelindex_human[0], iRand)
-				}
+				Arr_Model = model_human[0];
+				Arr_Body = model_human_body[0];
+				Arr_Skin = model_human_skin[0];
 			}
+			l_Start = 0;
+			l_End = ArraySize(Arr_Model);
+			l_Sub = 1;
 		}
 	}
-	if(!already_has_model) { // Need to change the model?
-		g_ForwardParameter[0] = 0
-		ExecuteForward(g_forwards[MODEL_CHANGE_PRE], g_fwDummyResult, id, newmodel)
 
-		if(g_fwDummyResult >= ZP_PLUGIN_SUPERCEDE) return // The game mode didnt accept some conditions
-
-		if(g_ForwardParameter[0]) formatex(newmodel, charsmax(newmodel), g_ForwardParameter) // Check if forward not changed the param
-
-		formatex(g_playermodel[id], charsmax(g_playermodel[]), newmodel)
-		if(g_set_modelindex_offset) fm_cs_set_user_model_index(id, model_index)
-		
-		if(g_newround) set_task(5.0 * g_modelchange_delay, "fm_user_model_update", id+TASK_MODEL)
-		else fm_user_model_update(id+TASK_MODEL)
-		ExecuteForward(g_forwards[MODEL_CHANGE_POST], g_fwDummyResult, id, newmodel)
+	for(i = l_Start; i < l_End; i++) {
+		ArrayGetString(Arr_Model, i, newmodel, charsmax(newmodel))
+		if(equal(currentmodel, newmodel) && (g_playerbody[id] == ArrayGetCell(Arr_Body, i)) && (g_playerskin[id] == ArrayGetCell(Arr_Skin, i))) {
+			already_has_model = true
+			break;
+		}
+	}
+	 // Need to change the model?
+	if(already_has_model) {
+		set_pev(id, pev_body, g_playerbody[id]);
+		set_pev(id, pev_skin, g_playerskin[id]);
+		return 1;
 	}
 
-}
+	static NewBody, NewSkin
+	iRand = random_num(l_Start, l_End - l_Sub)
+	NewBody = ArrayGetCell(Arr_Body, iRand)
+	NewSkin = ArrayGetCell(Arr_Skin, iRand)
+	ArrayGetString(Arr_Model, iRand, newmodel, charsmax(newmodel))
+	// log_amx("Array body: %d | Array skin: %d", ArrayGetCell(Arr_Body, iRand), ArrayGetCell(Arr_Skin, iRand))
 
+	g_ForwardParameter[0] = 0
+	ExecuteForward(g_forwards[MODEL_CHANGE_PRE], g_fwDummyResult, id, newmodel, NewBody, NewSkin)
+
+	if(g_fwDummyResult >= ZP_PLUGIN_SUPERCEDE) 
+		return 0; // The game mode didnt accept some conditions
+
+	if(g_ForwardParameter[0]) 
+		formatex(newmodel, charsmax(newmodel), g_ForwardParameter) // Check if forward not changed the param
+
+	formatex(g_playermodel[id], charsmax(g_playermodel[]), newmodel)
+	cs_set_user_model(id, newmodel, g_set_modelindex_offset ? true : false)
+
+	g_playerbody[id] = NewBody
+	g_playerskin[id] = NewSkin
+	set_pev(id, pev_body, g_playerbody[id]);
+	set_pev(id, pev_skin, g_playerskin[id]);
+
+	// log_amx("Jogador: %s | Model %s | Body %d | Skin %d | pev_body: %d | pev_skin: %d", g_playername[id], g_playermodel[id], g_playerbody[id], g_playerskin[id], pev(id, pev_body), pev(id, pev_skin))
+	// client_print_color(0, print_team_grey, "^3Jogador: %s | Model %s | Body %d | Skin %d | pev_body: %d | pev_skin: %d", g_playername[id], g_playermodel[id], g_playerbody[id], g_playerskin[id], pev(id, pev_body), pev(id, pev_skin))
+	// log_amx("Arr_Model: %d | Arr_Body: %d | Arr_Skin: %d | l_Start: %d | l_End: %d | l_Sub: %d | iRand: %d", Arr_Model, Arr_Body, Arr_Skin, l_Start, l_End, l_Sub, iRand)
+
+	ExecuteForward(g_forwards[MODEL_CHANGE_POST], g_fwDummyResult, id, newmodel, NewBody, NewSkin)
+	return 1;
+}
 
 stock add_point(number) { 
 	new count, i, str[29], str2[35], len
@@ -11967,11 +12057,11 @@ public is_gamemode_enable(modeid) {
 			return 0
 	}
 	else { // Custom/External game modes
-		if((modeid-MAX_GAME_MODES) >= ArraySize(g_gamemode_enable))
+		if((modeid-MAX_GAME_MODES) >= ArraySize(g_gm_enable))
 			return 0
 
-		if(ArrayGetCell(g_gamemode_enable, (modeid - MAX_GAME_MODES)) > 0 && !g_escape_map
-		|| ArrayGetCell(g_gamemode_enable_on_ze_map, (modeid - MAX_GAME_MODES)) > 0 && g_escape_map)
+		if(ArrayGetCell(g_gm_enable, (modeid - MAX_GAME_MODES)) > 0 && !g_escape_map
+		|| ArrayGetCell(g_gm_enable_on_ze_map, (modeid - MAX_GAME_MODES)) > 0 && g_escape_map)
 			return 1
 	}
 

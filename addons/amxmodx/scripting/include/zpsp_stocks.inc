@@ -3,18 +3,81 @@
 #endif
 #define _zpsp_stocks_included
 
+#define zp_get_user_burning(%1) zp_get_user_burn(%1);
+
+/**
+ * Give user infection bomb
+ *
+ * @param id	Player Index
+ * @return		True if sucess, false otherwise.
+ */
+stock zp_give_user_infbomb(id) 
+	return zp_set_user_infectnade(id, 1);
+
+/**
+ * Remove user infection bomb
+ *
+ * @param id	Player Index
+ * @return		True if sucess, false otherwise.
+ */
+stock zp_remove_user_infbomb(id) 
+	return zp_set_user_infectnade(id, 0);
+
+/**
+ * Give user Zombie Madness
+ *
+ * @param id	Player Index
+ * @return		True if sucess, false otherwise.
+ */
+stock zp_give_user_madness(id) 
+	return zp_set_user_madness(id, 1);
+
+/**
+ * Remove user Zombie Madness
+ *
+ * @param id	Player Index
+ * @return		True if sucess, false otherwise.
+ */
+stock zp_remove_user_madness(id) 
+	return zp_set_user_madness(id, 0);
+
+/**
+ * Returns whether the current round is a infection mode.
+ *
+ * @return		True if it is, false otherwise.
+ */
 stock zp_is_infection_round()
 	return (zp_get_current_mode() == MODE_INFECTION);
 
+/**
+ * Returns whether the current round is a multi infection mode.
+ *
+ * @return		True if it is, false otherwise.
+ */
 stock zp_is_multi_infection_round()
 	return (zp_get_current_mode() == MODE_MULTI);
 
+/**
+ * Returns whether the current round is a Custom Round.
+ *
+ * @return		True if it is, false otherwise.
+ */
 stock zp_is_custom_round()
 	return (zp_get_current_mode() > MODE_LNJ);
 
+/**
+ * Returns whether the current round is a Armageddon (Lnj).
+ *
+ * @return		True if it is, false otherwise.
+ */
 stock zp_is_armageddon_round()
 	return zp_is_lnj_round();
 
+/**
+ * Returns Num of alive players
+ *
+ * @return	Num of Alive Players
+ */
 stock zp_get_alive_players() {
 	static i_alive, id
 	i_alive = 0
@@ -26,11 +89,15 @@ stock zp_get_alive_players() {
 	return i_alive;
 }
 
-// Plays a sound on clients
-stock zp_play_sound(id, const sound[])
-{
+/**
+ * Plays a sound on clients
+ *
+ * @param id		Player index to play sound (Use 0 for everyone)
+ * @param sound		Sound to play
+ * @return		True on success, false otherwise.
+ */
+stock zp_play_sound(id, const sound[]) {
 	static buffer[150]
-
 	if(equal(sound[strlen(sound)-4], ".mp3")) {
 		if(!equal(sound, "sound/", 6) && !file_exists(sound) && !equal(sound, "media/", 6))
 			format(buffer, charsmax(buffer), "sound/%s", sound)
@@ -38,6 +105,7 @@ stock zp_play_sound(id, const sound[])
 			format(buffer, charsmax(buffer), "%s", sound)
 	
 		client_cmd(id > 0 ? id : 0, "mp3 play ^"%s^"", buffer)
+		return 1;
 
 	}
 	else {
@@ -47,10 +115,21 @@ stock zp_play_sound(id, const sound[])
 			format(buffer, charsmax(buffer), "%s", sound)
 			
 		client_cmd(id > 0 ? id : 0, "spk ^"%s^"", buffer)
+		return 1;
 	}
+	return 0;
 }
 
 // Prints a colored message to target (use 0 for everyone)
+/**
+ * Prints a colored message
+ *
+ * @param id		Player index to print a colored message to target (use 0 for everyone)
+ * @param with_tag	With [ZPSp] tag on print (0 - No | 1 - Yes)
+ * @param message	Message to print
+ * @param any		Any...
+ * @return			True on success, false otherwise.
+ */
 #if AMXX_VERSION_NUM < 183
 stock zp_colored_print(target, with_tag, const message[], any:...) {
 	static buffer[512], i, argscount
@@ -99,8 +178,10 @@ stock zp_colored_print(target, with_tag, const message[], any:...) {
 		write_string(buffer)
 		message_end()
 	}
+	return 1;
 }
 #else
+#pragma deprecated Use Default Amx client_print_color
 stock zp_colored_print(target, with_tag, const message[], any:...) {
 	static szMsg[512];
 	vformat(szMsg, charsmax(szMsg), message, 4);
