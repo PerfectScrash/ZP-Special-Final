@@ -4,6 +4,8 @@
 #define _zpsp_stocks_included
 
 #define zp_get_user_burning(%1) zp_get_user_burn(%1);
+#define zp_add_user_ammopacks(%1,%2) zp_set_user_ammo_packs(%1,zp_get_user_ammo_packs(%1)+(%2))
+#define zp_remove_user_ammopacks(%1,%2) zp_set_user_ammo_packs(%1,zp_get_user_ammo_packs(%1)-(%2))
 
 /**
  * Give user infection bomb
@@ -29,8 +31,8 @@ stock zp_remove_user_infbomb(id)
  * @param id	Player Index
  * @return		True if sucess, false otherwise.
  */
-stock zp_give_user_madness(id) 
-	return zp_set_user_madness(id, 1);
+stock zp_give_user_madness(id, Float:Duration = -1.0) 
+	return zpsp_set_user_madness(id, 1, Duration);
 
 /**
  * Remove user Zombie Madness
@@ -39,7 +41,7 @@ stock zp_give_user_madness(id)
  * @return		True if sucess, false otherwise.
  */
 stock zp_remove_user_madness(id) 
-	return zp_set_user_madness(id, 0);
+	return zpsp_set_user_madness(id, 0);
 
 /**
  * Returns whether the current round is a infection mode.
@@ -120,7 +122,6 @@ stock zp_play_sound(id, const sound[]) {
 	return 0;
 }
 
-// Prints a colored message to target (use 0 for everyone)
 /**
  * Prints a colored message
  *

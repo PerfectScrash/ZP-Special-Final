@@ -187,7 +187,7 @@ AIM_INFO = %s^n[ %s | Health: %d | Armor: %d | Ammo Packs: %d ]
 WAIT_ROUND_BEGINS = Wait Round Begins...
 MENU_PERSONAL_OPTIONS = User Configs
 
-ANTIDOTE_NOT_AVALIABLE1 = Antidote is available when have !t%d!y zombies on minimum
+ANTIDOTE_NOT_AVALIABLE1 = Antidote is available when have ^3%d^1 zombies on minimum
 
 MENU_PERSONAL_TITLE = \r[\dZP\r] \wUser Configs:
 MENU_PERSONAL_ITEM1 = \wHud Configs
@@ -227,7 +227,7 @@ MENU_PERSONAL_COLOR5 = \wCyan
 MENU_PERSONAL_COLOR6 = \wPink
 MENU_PERSONAL_COLOR7 = \wYellow
 
-DRAGON_INFO = Press !g[E]!y to Use Hability!, Hold !g[Jump]!y to fly!
+DRAGON_INFO = Press ^4[E]^1 to Use Hability!, Hold ^4[Jump]^1 to fly!
 
 [bp]
 ZP_CHAT_TAG = ^4[ZPSp]^1
@@ -419,7 +419,7 @@ AMMO_PACKS2 = ammo packs
 SPECTATING = Telando:
 AIM_INFO = %s^n[ %s | Vida: %d | Colete: %d | Ammo Packs: %d ]
 
-ANTIDOTE_NOT_AVALIABLE1 = Tem que ter no minimo !t%d!y Zombies Para usar Antidoto
+ANTIDOTE_NOT_AVALIABLE1 = Tem que ter no minimo ^3%d^1 Zombies Para usar Antidoto
 
 MENU_PERSONAL_TITLE = \r[\dZP\r] \wConfiguracoes do Jogador:
 MENU_PERSONAL_ITEM1 = \wConfiguracoes da Hud
@@ -459,7 +459,7 @@ MENU_PERSONAL_COLOR5 = \wCiano
 MENU_PERSONAL_COLOR6 = \wRosa
 MENU_PERSONAL_COLOR7 = \wAmarelo
 
-DRAGON_INFO = Pressione !g[E]!y Para usar o poder!, Segure !g[Espaco]!y pra voar!
+DRAGON_INFO = Pressione ^4[E]^1 Para usar o poder!, Segure ^4[Espaco]^1 pra voar!
 
 [es]
 ZP_CHAT_TAG = ^4[ZPSp]^1
@@ -650,7 +650,7 @@ AIM_INFO = %s^n[ %s | Vida: %d | Armadura: %d | Ammo Packs: %d ]
 WAIT_ROUND_BEGINS = Espera que comience la ronda...
 MENU_PERSONAL_OPTIONS = Configuracion de usuario
 
-ANTIDOTE_NOT_AVALIABLE1 = El Antidoto esta disponible cuando haya !t%d!y minimo de zombies
+ANTIDOTE_NOT_AVALIABLE1 = El Antidoto esta disponible cuando haya ^3%d^1 minimo de zombies
 
 MENU_PERSONAL_TITLE = \r[\dZP\r] \wConfiguracion de Usuario:
 MENU_PERSONAL_ITEM1 = \wConfiguracion de HUD
@@ -690,7 +690,7 @@ MENU_PERSONAL_COLOR5 = \wCian
 MENU_PERSONAL_COLOR6 = \wRosa
 MENU_PERSONAL_COLOR7 = \wAmarillo
 
-DRAGON_INFO = Presiona !g[E]!y para usar Habilidad!, Manten Presionado !g[Salto]!y para volar!
+DRAGON_INFO = Presiona ^4[E]^1 para usar Habilidad!, Manten Presionado ^4[Salto]^1 para volar!
 
 [hu]
 ZP_CHAT_TAG = ^4[ZPSp]^1
@@ -881,7 +881,7 @@ AIM_INFO = %s^n[ %s | Élet: %d | Páncél: %d | Lőszercsomag: %d ]
 WAIT_ROUND_BEGINS = Várakozás a körkezdésre...
 MENU_PERSONAL_OPTIONS = Játékos beállítások
 
-ANTIDOTE_NOT_AVALIABLE1 = Ellenszer csak !t%d!y zombi felett használható
+ANTIDOTE_NOT_AVALIABLE1 = Ellenszer csak ^3%d^1 zombi felett használható
 
 MENU_PERSONAL_TITLE = \r[\dZP\r] \wJátékos beállítások:
 MENU_PERSONAL_ITEM1 = \wHud Beállítások
@@ -921,4 +921,4 @@ MENU_PERSONAL_COLOR5 = \wCián
 MENU_PERSONAL_COLOR6 = \wRózsaszín
 MENU_PERSONAL_COLOR7 = \wSárga
 
-DRAGON_INFO = Nyomd meg az !g[E]!y gombot a képességed használatához!, !g[Ugrás]!y gombbal repülsz!
+DRAGON_INFO = Nyomd meg az ^4[E]^1 gombot a képességed használatához!, ^4[Ugrás]^1 gombbal repülsz!

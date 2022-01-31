@@ -8,7 +8,7 @@
 /**
  * Returns whether a player is a zombie.
  *
- * @param id		Player index.
+ * @param id	Player index.
  * @return		True if it is, false otherwise.
  */
 native zp_get_user_zombie(id);
@@ -16,7 +16,7 @@ native zp_get_user_zombie(id);
 /**
  * Returns whether a player is a nemesis.
  *
- * @param id		Player index.
+ * @param id	Player index.
  * @return		True if it is, false otherwise.
  */
 native zp_get_user_nemesis(id);
@@ -24,7 +24,7 @@ native zp_get_user_nemesis(id);
 /**
  * Returns whether a player is a survivor.
  *
- * @param id		Player index.
+ * @param id	Player index.
  * @return		True if it is, false otherwise.
  */
 native zp_get_user_survivor(id);
@@ -32,7 +32,7 @@ native zp_get_user_survivor(id);
 /**
  * Returns whether a player is the first zombie.
  *
- * @param id		Player index.
+ * @param id	Player index.
  * @return		True if it is, false otherwise.
  */
 native zp_get_user_first_zombie(id);
@@ -40,7 +40,7 @@ native zp_get_user_first_zombie(id);
 /**
  * Returns whether a player is the last zombie.
  *
- * @param id		Player index.
+ * @param id	Player index.
  * @return		True if it is, false otherwise.
  */
 native zp_get_user_last_zombie(id);
@@ -48,7 +48,7 @@ native zp_get_user_last_zombie(id);
 /**
  * Returns whether a player is the last human.
  *
- * @param id		Player index.
+ * @param id	Player index.
  * @return		True if it is, false otherwise.
  */
 native zp_get_user_last_human(id);
@@ -64,7 +64,7 @@ native zp_get_user_zombie_class(id);
 /**
  * Returns a player's next zombie class ID (for the next infection).
  *
- * @param id		Player index.
+ * @param id	Player index.
  * @return		Internal zombie class ID, or -1 if not yet chosen.
  */
 native zp_get_user_next_class(id);
@@ -74,14 +74,14 @@ native zp_get_user_next_class(id);
  *
  * @param id		Player index.
  * @param classid	A valid zombie class ID.
- * @return		True on success, false otherwise.
+ * @return			True on success, false otherwise.
  */
 native zp_set_user_zombie_class(id, classid);
 
 /**
  * Returns a player's ammo pack count.
  *
- * @param id		Player index.
+ * @param id	Player index.
  * @return		Number of ammo packs owned.
  */
 native zp_get_user_ammo_packs(id);
@@ -97,9 +97,9 @@ native zp_set_user_ammo_packs(id, amount);
 /**
  * Returns the default maximum health of a zombie.
  *
- * Note: Takes into account first zombie's HP multiplier.
+ * @note Takes into account first zombie's HP multiplier.
  *
- * @param id		Player index.
+ * @param id	Player index.
  * @return		Maximum amount of health points, or -1 if not a normal zombie.
  */
 native zp_get_zombie_maxhealth(id);
@@ -107,7 +107,7 @@ native zp_get_zombie_maxhealth(id);
 /**
  * Returns a player's custom flashlight batteries charge.
  *
- * @param id		Player index.
+ * @param id	Player index.
  * @return		Charge percent (0 to 100).
  */
 native zp_get_user_batteries(id);
@@ -139,33 +139,33 @@ native zp_set_user_nightvision(id, set);
 /**
  * Forces a player to become a zombie.
  *
- * Note: Unavailable for last human/survivor/sniper/berserker.
+ * @note Unavailable for last default/special human.
  *
  * @param id		Player index to be infected.
  * @param infector	Player index who infected him (optional).
  * @param silent	If set, there will be no HUD messages or infection sounds.
  * @param rewards	Whether to show DeathMsg and reward frags, hp, and ammo packs to infector.
- * @return		True on success, false otherwise.
+ * @return			True on success, false otherwise.
  */
 native zp_infect_user(id, infector = 0, silent = 0, rewards = 0);
 
 /**
  * Forces a player to become a human.
  *
- * Note: Unavailable for last zombie/nemesis.
+ * @note Unavailable for last default/special zombie
  *
  * @param id		Player index to be cured.
  * @param silent	If set, there will be no HUD messages or antidote sounds.
- * @return		True on success, false otherwise.
+ * @return			True on success, false otherwise.
  */
 native zp_disinfect_user(id, silent = 0);
 
 /**
  * Forces a player to become a nemesis.
  *
- * Note: Unavailable for last human/survivor/sniper/berserker.
+ * @note Unavailable for last default/special human
  *
- * @param id		Player index to turn into nemesis.
+ * @param id	Player index to turn into nemesis.
  * @return		True on success, false otherwise.
  */
 native zp_make_user_nemesis(id);
@@ -173,7 +173,7 @@ native zp_make_user_nemesis(id);
 /**
  * Forces a player to become a survivor.
  *
- * Note: Unavailable for last zombie/nemesis.
+ * @note Unavailable for last zombie/nemesis.
  *
  * @param id		Player index to turn into survivor.
  * @return		True on success, false otherwise.
@@ -192,10 +192,11 @@ native zp_respawn_user(id, team);
 /**
  * Forces a player to buy an extra item.
  *
- * @param id		Player index.
- * @param itemid	A valid extra item ID.
+ * @param id			Player index.
+ * @param itemid		A valid extra item ID.
  * @param ignorecost	If set, item's cost won't be deduced from player.
- * @return		True on success, false otherwise.
+ * @return				True on success, false otherwise.
+ * @error				If Extra Item index are invalid
  */
 native zp_force_buy_extra_item(id, itemid, ignorecost = 0);
 
@@ -210,7 +211,7 @@ native zp_get_user_sniper(id);
 /**
  * Forces a player to become a sniper.
  *
- * Note: Unavailable for last zombie/special zombie.
+ * @note Unavailable for last zombie/special zombie.
  *
  * @param id		Player index to turn into sniper.
  * @return		True on success, false otherwise.
@@ -253,7 +254,7 @@ native zp_get_user_dragon(id);
 /**
  * Forces a player to become a assassin.
  *
- * Note: Unavailable for last human/survivor/sniper.
+ * @note Unavailable for last human/survivor/sniper.
  *
  * @param id		Player index to turn into assassin.
  * @return		True on success, false otherwise.
@@ -263,7 +264,7 @@ native zp_make_user_assassin(id);
 /**
  * Forces a player to become a predator.
  *
- * Note: Unavailable for last human/survivor/sniper.
+ * @note Unavailable for last human/survivor/sniper.
  *
  * @param id		Player index to turn into predator.
  * @return		True on success, false otherwise.
@@ -273,7 +274,7 @@ native zp_make_user_predator(id);
 /**
  * Forces a player to become a bombardier.
  *
- * Note: Unavailable for last human/survivor/sniper.
+ * @note Unavailable for last human/survivor/sniper.
  *
  * @param id		Player index to turn into bombardier.
  * @return		True on success, false otherwise.
@@ -283,7 +284,7 @@ native zp_make_user_bombardier(id);
 /**
  * Forces a player to become a dragon.
  *
- * Note: Unavailable for last human/survivor/sniper.
+ * @note Unavailable for last human/survivor/sniper.
  *
  * @param id		Player index to turn into dragon.
  * @return		True on success, false otherwise.
@@ -301,7 +302,7 @@ native zp_get_user_berserker(id);
 /**
  * Forces a player to become a berserker.
  *
- * Note: Unavailable for last zombie/special zombie.
+ * @note Unavailable for last zombie/special zombie.
  *
  * @param id		Player index to turn into berserker.
  * @return		True on success, false otherwise.
@@ -319,7 +320,7 @@ native zp_get_user_wesker(id);
 /**
  * Forces a player to become a wesker.
  *
- * Note: Unavailable for last zombie/special zombie.
+ * @note Unavailable for last zombie/special zombie.
  *
  * @param id		Player index to turn into wesker.
  * @return		True on success, false otherwise.
@@ -337,7 +338,7 @@ native zp_get_user_spy(id);
 /**
  * Forces a player to become a spy.
  *
- * Note: Unavailable for last zombie/special zombie.
+ * @note Unavailable for last zombie/special zombie.
  *
  * @param id		Player index to turn into spy.
  * @return		True on success, false otherwise.
@@ -508,7 +509,6 @@ native zp_get_bombardier_count();
  */
 native zp_get_dragon_count();
 
-
 /**
  * Returns number of alive berserkers.
  *
@@ -530,14 +530,13 @@ native zp_get_wesker_count();
  */
 native zp_get_spy_count();
 
-
 /**
  * Returns the current game mode ID
  * 
- * Note: For default game modes you can use, for eg. MODE_SWARM,
+ * @note For default game modes you can use, for eg. MODE_SWARM,
  * to check if the current round is swarm mode.
  * 
- * Note: For custom game modes you must have the custom game
+ * @note For custom game modes you must have the custom game
  * mode ID to detect it
  * 
  * @return		Current game mode ID
@@ -547,10 +546,10 @@ native zp_get_current_mode();
 /**
  * Returns the last game mode ID
  * 
- * Note: For default game modes you can use, for eg. MODE_SWARM,
+ * @note For default game modes you can use, for eg. MODE_SWARM,
  * to check if the last round is swarm mode.
  * 
- * Note: For custom game modes you must have the custom game
+ * @note For custom game modes you must have the custom game
  * mode ID to detect it
  * 
  * @return		Current game mode ID
@@ -576,7 +575,7 @@ native zp_get_zombie_class_id(const name[]);
 /**
  * Registers a custom game mode which will be added to the admin menu of ZP
  * 
- * Note: The returned game mode ID can later be used to detect the game mode
+ * @note The returned game mode ID can later be used to detect the game mode
  * which is called in zp_round_started_pre. There you can start the game mode
  * externally by using this game mode ID.
  * 
@@ -587,7 +586,8 @@ native zp_get_zombie_class_id(const name[]);
  * @param dm_mode		Death match mode during this game. Use ZP_DM_NONE to disable respawning during this game mode
  * @param resp_limit	Respawn Limit (Use 0 for unlimited respawn)
  * @param enable_in_ze	Enable Game mode in zombie escape maps (0 - Disable | 1 - Enable)
- * @return		An internal game mode ID or -1 on failure
+ * @return				An internal game mode ID or -1 on failure
+ * @error				If Game mode name alterady exists
  */
  native zpsp_register_gamemode(const name[], flags, chance, allow, dm_mode, resp_limit=0, enable_in_ze=0);
 
@@ -605,10 +605,10 @@ native zp_register_game_mode(const name[], flags, chance, allow, dm_mode);
 /**
  * Registers a custom item which will be added to the extra items menu of ZP.
  *
- * Note: The returned extra item ID can be later used to catch item
+ * @note The returned extra item ID can be later used to catch item
  * purchase events for the zp_extra_item_selected() forward.
  *
- * Note: ZP_TEAM_NEMESIS, ZP_TEAM_SURVIVOR, ZP_TEAM_ASSASSIN, ZP_TEAM_SNIPER and ZP_TEAM_BERSERKER
+ * @note ZP_TEAM_NEMESIS, ZP_TEAM_SURVIVOR, ZP_TEAM_ASSASSIN, ZP_TEAM_SNIPER and ZP_TEAM_BERSERKER
  * can be used to make an item available to Nemesis,
  * Survivors, Assassins, Snipers and Berserkers.
  *
@@ -616,13 +616,14 @@ native zp_register_game_mode(const name[], flags, chance, allow, dm_mode);
  * @param cost		Ammo packs to be deducted on purchase.
  * @param teams		Bitsum of teams it should be available for.
  * @return		An internal extra item ID, or -1 on failure.
+ * @error			If Extra Item name alterady exists
  */
 native zp_register_extra_item(const name[], cost, teams);
 
 /**
  * Add Text On Extra Item (Like ZP 5.0)
  *
- * Note: Use in 'zp_extra_item_selected_pre' forward
+ * @note Use in 'zp_extra_item_selected_pre' forward
  *
  * @param text		Text to display on the item name.
  * @return			True if sucess, false if not sucess.
@@ -632,7 +633,7 @@ native zp_extra_item_textadd(const text[]);
 /**
  * Add Text On Zombie Class menu (Like ZP 5.0)
  *
- * Note: Use in 'zp_zombie_class_choosed_pre' forward
+ * @note Use in 'zp_zombie_class_choosed_pre' forward
  *
  * @param text		Text to display on the zombie class name.
  * @return			True if sucess, false if not sucess.
@@ -679,15 +680,6 @@ native zp_get_user_burn(id);
  * @return			True if have zombie madness, false if not.
  */
 native zp_get_user_madness(id);
-
-/**
- * Set User Zombie Madness
- *
- * @param id		Player Index
- * @param set		1 - Give user a Zombie Madness | 0 - Remove user Zombie Madness
- * @return			True if sucess, false if not.
- */
-native zp_set_user_madness(id, set);
 
 /**
  * Get User Current Human Special Class
@@ -781,6 +773,7 @@ native zp_reset_player_model(id);
  *
  * @param itemid	Extra item index
  * @return			Item Price
+ * @error			If Extra Item index are invalid
  */
 native zp_get_extra_item_cost(itemid);
 
@@ -791,6 +784,7 @@ native zp_get_extra_item_cost(itemid);
  * @param itemname	Buffer to copy item name to
  * @param len		Maximum length of buffer
  * @return			True if sucess, false otherwise
+ * @error			If Extra Item index are invalid
  */
 native zp_get_extra_item_name(itemid, itemname[], len);
 
@@ -800,6 +794,7 @@ native zp_get_extra_item_name(itemid, itemname[], len);
  * @param itemid	Extra item index
  * @param cost		New Price for Extra item
  * @return			True if sucess, false otherwise
+ * @error			If Extra Item index are invalid
  */
 native zp_set_extra_item_cost(itemid, cost);
 
@@ -809,6 +804,7 @@ native zp_set_extra_item_cost(itemid, cost);
  * @param itemid	Extra item index
  * @param newname	New Name for Extra item
  * @return			True if sucess, false otherwise
+ * @error			If Extra Item index are invalid
  */
 native zp_set_extra_item_name(itemid, const newname[]);	// Change Extra Item Name
 
@@ -818,6 +814,7 @@ native zp_set_extra_item_name(itemid, const newname[]);	// Change Extra Item Nam
  * @param itemid	Extra item index
  * @param team		New Team for Extra item
  * @return			True if sucess, false otherwise
+ * @error			If Extra Item index are invalid
  */
 native zp_set_extra_item_team(itemid, team); // Change Extra Item Team
 
@@ -828,6 +825,7 @@ native zp_set_extra_item_team(itemid, team); // Change Extra Item Team
  * @param itemname	Buffer to copy real item name to
  * @param len		Maximum length of buffer
  * @return			True if sucess, false otherwise
+ * @error			If Extra Item index are invalid
  */
 native zp_get_extra_item_realname(itemid, realname[], len);
 
@@ -838,6 +836,7 @@ native zp_get_extra_item_realname(itemid, realname[], len);
  * @param name		Buffer to copy zclass name to
  * @param len		Maximum length of buffer
  * @return			True if sucess, false otherwise
+ * @error			If Zombie Class index are invalid
  */
 native zp_get_zombie_class_name(class, name[], len);
 
@@ -848,8 +847,9 @@ native zp_get_zombie_class_name(class, name[], len);
  * @param name		Buffer to copy zclass real name to
  * @param len		Maximum length of buffer
  * @return			True if sucess, false otherwise
+ * @error			If Zombie Class index are invalid
  */
-native zp_get_zombie_class_realname(id, realname[], len);
+native zp_get_zombie_class_realname(class, realname[], len);
 
 /**
  * Get Zombie Class Description
@@ -858,6 +858,7 @@ native zp_get_zombie_class_realname(id, realname[], len);
  * @param info		Buffer to copy zclass name to
  * @param len		Maximum length of buffer
  * @return			True if sucess, false otherwise
+ * @error			If Zombie Class index are invalid
  */
 native zp_get_zombie_class_info(class, info[], len);
 
@@ -869,7 +870,6 @@ native zp_get_zombie_class_info(class, info[], len);
  * @return			True if sucess, false otherwise
  */
 native zp_get_current_mode_name(name[], len);
-
 
 /**
  * Returns whether the ZP round has ended
@@ -883,6 +883,7 @@ native zp_set_extra_damage(victim, attacker, damage, weaponDescription[]); // Se
 native zp_set_user_frozen(id, set); // Set User Frozen
 native zp_set_user_burn(id, set); // Set User Burning
 native zp_override_user_model(id, const newmodel[], modelindex = 0);
+native zp_set_user_madness(id, set);
 #else
 /**
  * @deprecated This function are update your functions
@@ -890,12 +891,27 @@ native zp_override_user_model(id, const newmodel[], modelindex = 0);
 #pragma deprecated Use zp_set_user_extra_damage(victim, attacker, damage, weaponDescription[], dmg_dealth = 0) instead.
 native zp_set_extra_damage(victim, attacker, damage, weaponDescription[]); // Set User Extra Damage (Like Superhero Mod);
 
+/**
+ * @deprecated This function are update your functions
+ */ 
 #pragma deprecated Use zpsp_set_user_frozen(id, set, Float:Duration = -1.0) instead.
 native zp_set_user_frozen(id, set); // Set User Frozen
 
+/**
+ * @deprecated This function are update your functions
+ */ 
+#pragma deprecated Use zpsp_set_user_madness(id, set, Float:Duration = -1.0) instead.
+native zp_set_user_madness(id, set);
+
+/**
+ * @deprecated This function are update your functions
+ */ 
 #pragma deprecated Use zpsp_set_user_burn(id, set, Float:Duration = -1.0) instead.
 native zp_set_user_burn(id, set); // Set User Burning
 
+/**
+ * @deprecated This function are update your functions
+ */ 
 #pragma deprecated Use zpsp_override_user_model(id, const model, body=0, skin=0, modelindex=0)
 native zp_override_user_model(id, const newmodel[], modelindex = 0);
 
@@ -904,7 +920,7 @@ native zp_override_user_model(id, const newmodel[], modelindex = 0);
 /**
  * Registers a custom zombie special class which will be added to the admin menu of ZP.
  *
- * Note: The returned special class ID can be later used to identify
+ * @note The returned special class ID can be later used to identify
  * the class when calling the zp_get_zombie_special_class() natives.
  *
  * @param name			Caption to display on the menu/hud.
@@ -922,6 +938,7 @@ native zp_override_user_model(id, const newmodel[], modelindex = 0);
  * @param g				Special Class Aura/Nvision/Glow RGB Color
  * @param b				
  * @return				An internal special class ID, or -1 on failure.
+ * @error				If Special Class name alterady exists
  */
 native zp_register_zombie_special(const name[], const model[], const knifemodel[], const pain_sound[], hp, speed, Float:gravity, flags, Float:knockback, aura_radius, glow, r, g, b);
 
@@ -929,7 +946,7 @@ native zp_register_zombie_special(const name[], const model[], const knifemodel[
 /**
  * Registers a custom human special class which will be added to the admin menu of ZP.
  *
- * Note: The returned special class ID can be later used to identify
+ * @note The returned special class ID can be later used to identify
  * the class when calling the zp_get_human_special_class() natives.
  *
  * @param name			Caption to display on the menu/hud.
@@ -945,29 +962,32 @@ native zp_register_zombie_special(const name[], const model[], const knifemodel[
  * @param g				Special Class Aura/Nvision/Glow RGB Color
  * @param b				
  * @return				An internal special class ID, or -1 on failure.
+ * @error				If Special Class name alterady exists
  */
 native zp_register_human_special(const name[], const model[], hp, speed, Float:gravity, flags, clip_type, aura_radius, glow, r, g, b);
 
 /**
  * Make player an X special class
  * 
- * Note: Recomended to make custom specials classes in external plugins
+ * @note Recomended to make custom specials classes in external plugins
  *
  * @param id		Player index
  * @param spid		Special Class Index
  * @param zombie	Is Zombie Special Class or Human Special Class (0 - Human | 1 - Zombie)
  * @return			True if sucess, false otherwise
+ * @error				If Special Class index are invalid
  */
 native zp_make_user_special(id, spid, zombie); 
 
 /**
  * Get players an X special class
  * 
- * Note: Recomended to get alive custom specials classes in external plugins
+ * @note Recomended to get alive custom specials classes in external plugins
  *
  * @param zombie		Is Zombie Special Class or Human Special Class (0 - Human | 1 - Zombie)
  * @param specialid		Special Class Index
  * @return				Count of all Players in current special class
+ * @error				If Special Class index are invalid
  */
 native zp_get_special_count(zombie, specialid);
 
@@ -983,7 +1003,7 @@ native zp_get_special_class_id(is_zombie, name[]);
 /**
  * Forces Start Custom Mod without checks
  * 
- * Note: This command are available only for custom modes in external plugins
+ * @note This command are available only for custom modes in external plugins
  * 
  * @param gameid		Custom game mode index
  * @return				True if sucess, false otherwise
@@ -997,7 +1017,6 @@ native zp_set_custom_game_mod(gameid);
  * @return				Game mode index
  */
 native zp_get_gamemode_id(name[]); // Get Game mode index by name
-
 
 /**
  * Get total of instaled custom special classes 
@@ -1028,52 +1047,219 @@ native zp_get_zclass_count();
  */
 native zp_get_extra_item_count(); // Get Registred Extra Item Count
 
-native zp_is_escape_map(); // Get Current Map is Escape Map
-native zp_do_random_spawn(id); // Teleport User to Spawn
+/**
+ * Get Current map is a Zombie Escape's Map
+ * 
+ * @return				True if yes / false if not
+ */
+native zp_is_escape_map();
 
-native zp_reload_csdm_respawn(); // Reload repawn files/entitys
-native zp_set_lighting(const light[]); // Set Current map Lighting
-native zp_reset_lighting(); // Reset to default lighting
-native zp_is_user_stuck(id); // Get user Stucks
-native zp_register_weapon(const name[], wpn_type); // Register Custom Weapon in Weapon Choose Menu
-native zp_weapon_menu_textadd(const text[]); // Add menu text in weapon menu
-native zp_get_weapon_name(wpn_type, weaponid, name[], len); // Get Weapon name
-native zp_set_weapon_name(wpn_type, weaponid, name[]); // Set weapon name
-native zp_get_weapon_realname(wpn_type, weaponid, name[], len); // Get weapon new name
-native zp_weapon_is_custom(wpn_type, weaponid); // Weapon choosed is custom?
-native zp_weapon_count(wpn_type, skip_def_custom); // Get Weapon (of type); Count (0 - All Weapons (of Type); | 1 - Only Custom | 2 - Only Default);
-native zp_get_random_player(const team = 0); // Get Random player Index (0 Both Teams | 1 - Humans Only | 2 - Zombies Only);
-native zp_set_model_param(const string[]); // Set Model forward param string (Can't change param when the plugin use native zp_override_user_model);
+/**
+ * Get user Stucks
+ * 
+ * @param id	Player Index
+ * @return		True if yes / false if not
+ */
+native zp_is_user_stuck(id);
 
-native zp_start_game_mod(gameid, force_start = 0); // Start a Game mode (Use force start for Start Game mode after started);
+/**
+ * Teleport user to Spawn
+ * 
+ * @param id	Player Index
+ * @return				True if sucess / false otherwise
+ */
+native zp_do_random_spawn(id);
+
+/**
+ * Reload repawn files/entitys
+ * 
+ * @return				True if sucess / false otherwise
+ */
+native zp_reload_csdm_respawn();
+
+/**
+ * Set Current map Lighting
+ * 
+ * @param light		Light Flag (Example: "a" - Full Darkness, "z" - Full lighting)
+ * @return			True if sucess / false otherwise
+ */
+native zp_set_lighting(const light[]);
+
+/**
+ * Reset to default lighting
+ * 
+ * @return				True if sucess / false otherwise
+ */
+native zp_reset_lighting();
+
+/**
+ * Register Custom Weapon in Weapon Choose Menu
+ * 
+ * @param name		Weapon Name
+ * @param wpn_type	Primary or Secondary
+ * @return			True if sucess / false otherwise
+ */
+native zp_register_weapon(const name[], wpn_type);
+
+/**
+ * Add menu text in weapon menu
+ * 
+ * @param text		Text
+ * @return			True if sucess / false otherwise
+ */
+native zp_weapon_menu_textadd(const text[]);
+
+/**
+ * Get Weapon name
+ * 
+ * @param wpn_type 		Type of Weapon (Primary/Secondary)
+ * @param weaponid 		Weapon Index
+ * @param name 			Buffer to copy wpn name to
+ * @param len	 		Maximum length of buffer
+ * @return 				True if sucess / false otherwise
+ * @error				If Weapon index are invalid
+*/
+native zp_get_weapon_name(wpn_type, weaponid, name[], len);
+
+/**
+ * Get Weapon real name
+ * 
+ * @param wpn_type 		Type of Weapon (Primary/Secondary)
+ * @param weaponid 		Weapon Index
+ * @param name 			Buffer to copy wpn real name to
+ * @param len	 		Maximum length of buffer
+ * @return 				True if sucess / false otherwise
+ * @error				If Weapon index are invalid
+*/
+native zp_get_weapon_realname(wpn_type, weaponid, name[], len);
+
+/**
+ * Change Weapon name
+ * 
+ * @param wpn_type 		Type of Weapon (Primary/Secondary)
+ * @param weaponid 		Weapon Index
+ * @param name 			New Name
+ * @return 				True if sucess / false otherwise
+ * @error				If Weapon index are invalid
+*/
+native zp_set_weapon_name(wpn_type, weaponid, name[]);
+
+/**
+ * Weapon from Weapons menu are internal (from main plugin) or external plugin
+ * 
+ * @param wpn_type 		Type of Weapon (Primary/Secondary)
+ * @param weaponid 		Weapon Index
+ * @return 				True if yes / false otherwise
+ * @error				If Weapon index are invalid
+*/
+native zp_weapon_is_custom(wpn_type, weaponid);
+
+/**
+ * Get Weapon Count (of type)
+ * 
+ * @param wpn_type 			Type of Weapon (Primary/Secondary)
+ * @param skip_def_custom 	Count what (0 - All Weapons (of Type); | 1 - Only Custom | 2 - Only Default)
+ * @return 					Num of weapons from X category
+*/
+native zp_weapon_count(wpn_type, skip_def_custom);
+
+/**
+ * Get Random alive player Index
+ * 
+ * @param team 		Use (0 - for Both Teams | 1 - for Humans Only | 2 - for Zombies Only);
+ * @return 			Random player index
+*/
+native zp_get_random_player(const team = 0);
+
+/**
+ * Set Model forward param string.
+ *
+ * @note Can't change param when the some plugin use native 'zp_override_user_model'.
+ * @note You can use only in 'zp_user_model_change_pre' forward only.
+ * 
+ * @param string 			New Model
+ * @param skip_def_custom 	Count what (0 - All Weapons (of Type); | 1 - Only Custom | 2 - Only Default)
+ * @return 					True
+*/
+native zp_set_model_param(const string[]);
+
+/**
+ * Start a Game mode
+ *
+ * @note Works with any game mode
+ * 
+ * @param gameid 		Game mode index
+ * @param force_start 	Start after Round Started (1-Yes | 0-No)
+ * @return 				True if sucess / false otherwise
+ * @error				If Gamemode index are invalid
+*/
+native zp_start_game_mod(gameid, force_start = 0);
+
+/**
+ * Set Gamemode for start on next round
+ *
+ * @param gameid 	Game mode index
+ * @return 			True if sucess / false otherwise
+ * @error			If Gamemode index are invalid
+*/
 native zp_set_next_game_mode(gameid); // Start Game mode in a next round
-native zp_is_special_class_enable(is_zm, classid); // Special Class are enable
-native zp_is_gamemode_enable(modeid); // Gamemode are enable
+
+/**
+ * Gamemode are enable?
+ *
+ * @param gameid 	Game mode index
+ * @return 			True if yes / false otherwise
+ * @error			If Gamemode index are invalid
+*/
+native zp_is_gamemode_enable(modeid);
+
+/**
+ * Special class are enable?
+ *
+ * @param is_zm 	Is a Zombie Special Class Index? (1 - Yes | 0 - Not)
+ * @param classid 	Special Class index
+ * @return 			True if yes / false otherwise
+ * @error			If Special Class index are invalid
+*/
+native zp_is_special_class_enable(is_zm, classid);
+
+/**
+ * Get Custom Extra Item Start ID
+ *
+ * @return	Start of Custom Extra item index
+*/
+native zp_get_custom_extra_start(); // Get Custom Extra Item Start ID
+
+/**
+ * Get user Special Class Real Name
+ *
+ * @param id	Player Index
+ * @param name	Buffer to copy real class name to
+ * @param len	Maximum length of buffer
+ * @return		True if sucess, false otherwise
+ */
+native zp_get_special_class_name(id, name[], len);
 
 /**
  * Registers a custom item which will be added to the extra items menu of ZP.
  *
- * Note: The returned extra item ID can be later used to catch item
+ * @note The returned extra item ID can be later used to catch item
  * purchase events for the zp_extra_item_selected() forward.
  *
- * Note: zpsp_register_extra_item("Custom Item", 10, "SPY, WESKER, MORPHEUS", 1, "LANG_ITEM_1")
+ * @note zpsp_register_extra_item("Custom Item", 10, "SPY, WESKER, MORPHEUS", 1, "LANG_ITEM_1")
  * can be used to make an item available to Spy, Wesker, Morpheus.
  *
  * @param name		Caption to display on the menu.
  * @param cost		Ammo packs to be deducted on purchase.
  * @param teams		Bitsum of teams it should be available for. (in string
  * @return		An internal extra item ID, or -1 on failure.
-
  */
 native zpsp_register_extra_item(const name[], cost, const teams[], lang_by_key, const szLangKey[]);
-
-native zp_get_custom_extra_start(); // Get Custom Extra Item Start ID
-native zp_get_special_class_name(id, name[], len); // Get user Special Class Real Name
 
 /**
  * Like a zp_set_extra_damage native but with damage dealth in function
  *
- * Note: zp_set_user_extra_damage(victim, attacker, dmg, "Bazzoka", 1)
+ * @note zp_set_user_extra_damage(victim, attacker, dmg, "Bazzoka", 1)
  * can be used to damage victim and with damage dealth rewards
  * 
  * @param victim 				Player Index that receive damage
@@ -1089,7 +1275,7 @@ native zp_set_user_extra_damage(victim, attacker, damage, weaponDescription[], d
 /**
  * Registers a custom class which will be added to the zombie classes menu of ZP.
  *
- * Note: The returned zombie class ID can be later used to identify
+ * @note The returned zombie class ID can be later used to identify
  * the class when calling the zp_get_user_zombie_class() natives.
  *
  * @param name		Caption to display on the menu.
@@ -1100,21 +1286,24 @@ native zp_set_user_extra_damage(victim, attacker, damage, weaponDescription[], d
  * @param speed		Maximum speed.
  * @param gravity	Gravity multiplier.
  * @param knockback	Knockback multiplier.
- * @return		An internal zombie class ID, or -1 on failure.
+ * @return			An internal zombie class ID, or -1 on failure.
+ * @error			If Zombie Class real Name Alterady Exists
  */
 native zp_register_zombie_class(const name[], const info[], const model[], const clawmodel[], hp, speed, Float:gravity, Float:knockback);
 
 /**
 * Force user Special Class without checks
 *
-* Note: Special/Normal Rounds will not to be started auto, just setting class only
-* Note 2: Can only force in the base class or special class, cant change for other basic zombie class
+* @note Special/Normal Rounds will not to be started auto, just setting class only
+* @note Can only force in the base class or special class, cant change for other basic zombie class
+*
 * @param id				Player Index
 * @param specialid		Special Class Index
 * @param zombie			Is Zombie or Human?
 * @param attacker		Attacker Index
 * @param sillentmode 	Hide Hud Messages
 * @return				True if sucess, false otherwise.
+* @error				If Special Class index are invalid
 */
 native zp_force_user_class(id, spid, zombie, attacker = 0, sillentmode = 1);
 
@@ -1146,9 +1335,66 @@ native zpsp_set_user_burn(id, set, Float:Duration = -1.0);
 * @param body			Model Body
 * @param skin			Model Skin
 * @param modelindex		Model Index
-* @return	Return true if burn or unburn with sucess
+* @return				True if sucess / false otherwise
 */
-native zpsp_override_user_model(id, const model, body=0, skin=0, modelindex=0);
+native zpsp_override_user_model(id, const model[], body=0, skin=0, modelindex=0);
+
+/**
+* Set Int Parameter on some forwards
+* 
+* @param int_id		Int Param Index
+* @param value		New Value
+* @return				1
+*/
+native zp_set_fw_param_int(int_id, value);
+
+/**
+* Set Player Zombie Madness
+* 
+* @param id			Player Index
+* @param set		Use UNSET for remove madness, SET for give zombie madness
+* @param Duration	Madness duration, Use -1.0 for default duration
+* @return			Return true if frost or unfrost with sucess
+*/
+native zpsp_set_user_madness(id, set, Float:Duration = -1.0);
+
+/**
+* Drop user weapon from X category
+* 
+* @param id			Player Index
+* @param dropwhat	Primary (WPN_PRIMARY) / Secondary (WPN_SECONDARY)
+* @noreturn
+*/
+native zp_drop_weapons(id, dropwhat = WPN_PRIMARY);
+
+/**
+* Give item
+* 
+* @param id		Player Index
+* @param item	Item name (Not Extra Item)
+* @return		true if sucess / false otherwise
+*/
+native zp_give_item(id, const item[]);
+
+/**
+* Strip all user weapons
+* 
+* @param id		Player Index
+* @return		true if sucess / false otherwise
+*/
+native zp_strip_user_weapons(id);
+
+/**
+ * Forces a player to become a human (can give attacker rewards).
+ *
+ * @note Unavailable for last default/special zombie
+ *
+ * @param id		Player index to be cured.
+ * @param silent	If set, there will be no HUD messages or antidote sounds.
+ * @param attacker	Player Attacker index
+ * @return			True on success, false otherwise.
+ */
+native zpsp_disinfect_user(id, silent = 0, attacker = 0);
 
 /***************************************************
 -------------------- Forwards ----------------------
@@ -1161,29 +1407,29 @@ native zpsp_override_user_model(id, const model, body=0, skin=0, modelindex=0);
  * @param gamemode	Mode which has started.
  * @param id		Affected player's index (if applicable).
  */
-forward zp_round_started(gamemode, id)
+forward zp_round_started(gamemode, id);
 
 /**
  * Called before the ZP round starts. This is only 
  * called for custom game modes.
  * 
- * Note: The custom game mode id can be used to start
+ * @note The custom game mode id can be used to start
  * the game mode externally
  * 
- * Note: returning ZP_PLUGIN_HANDLED will cause the
+ * @note returning ZP_PLUGIN_HANDLED will cause the
  * game mode to be blocked and other game modes will
  * be given a chance.
  * 
  * @param gameid	Custom mode id which is called
  */
-forward zp_round_started_pre(gameid)
+forward zp_round_started_pre(gameid);
 
 /**
  * Called when the round ends.
  *
  * @param winteam	Team which has won the round.
  */
-forward zp_round_ended(winteam)
+forward zp_round_ended(winteam);
 
 /**
  * Called when a player gets infected.
@@ -1192,8 +1438,8 @@ forward zp_round_ended(winteam)
  * @param infector	Player index who infected him (if applicable).
  * @param classid	Special class index
  */
-forward zp_user_infected_pre(id, infector, classid)
-forward zp_user_infected_post(id, infector, classid)
+forward zp_user_infected_pre(id, infector, classid);
+forward zp_user_infected_post(id, infector, classid);
 
 /**
  * Called when a player turns back to human.
@@ -1202,37 +1448,48 @@ forward zp_user_infected_post(id, infector, classid)
  * @param classid	Special Class index.
  * @param attacker 	Attacker index
  */
-forward zp_user_humanized_pre(id, classid, attacker)
-forward zp_user_humanized_post(id, classid, attacker)
+forward zp_user_humanized_pre(id, classid, attacker);
+forward zp_user_humanized_post(id, classid, attacker);
 
 /**
  * Called on a player infect/cure attempt. You can use this to block
  * an infection/humanization by returning ZP_PLUGIN_HANDLED in your plugin.
  *
- * Note: Right now this is only available after the ZP round starts, since some
+ * @note Right now this is only available after the ZP round starts, since some
  * situations (like blocking a first zombie's infection) are not yet handled.
  */
-forward zp_user_infect_attempt(id, infector, classid)
-forward zp_user_humanize_attempt(id, classid, attacker)
+forward zp_user_infect_attempt(id, infector, classid);
+forward zp_user_humanize_attempt(id, classid, attacker);
 
 /**
  * Called when an admin selects a custom game mode from the ZP admin menu.
  *
- * Note: You should trigger the custom game mode here with out any checks
+ * @note You should trigger the custom game mode here with out any checks
+ * @note Use ZP_PLUGIN_HANDLED for block it (in selected pre)
  *
  * @param gameid	Internal custom game mode ID
  * @param id		Player index who selected the game mode
  */
-forward zp_game_mode_selected(gameid, id)
+forward zp_game_mode_selected(gameid, id);
+
+/**
+ * Called when an admin selects a custom game mode from the ZP admin menu.
+ *
+ * @note Use ZP_PLUGIN_HANDLED for block it (in selected pre)
+ *
+ * @param id		Player index who selected the game mode
+ * @param gamemode	Internal custom game mode ID
+ */
+forward zp_game_mode_selected_pre(id, gamemode);
 
 /**
  * Called when a player spawns. This is also called for CZ bots 
  * which are spawning
  *
- * Note: You should use this, instead of other spawn forwards,
+ * @note You should use this, instead of other spawn forwards,
  * when you want to change some one's class after spawning.
  * 
- * Note: If you have used this forward then you must return 
+ * @note If you have used this forward then you must return 
  * ZP_PLUGIN_HANDLED to inform the main plugin that you have used
  * this forward
  *
@@ -1241,138 +1498,160 @@ forward zp_game_mode_selected(gameid, id)
  * 			the player needs to be spawned as a zombie
  * 			otherwise it is passed as zero
  */
-forward zp_player_spawn_post(id, resp_zombie)
+forward zp_player_spawn_post(id, resp_zombie);
 
 /**
  * Called when a player buys an extra item from the ZP menu.
  *
- * Note: You can now return ZP_PLUGIN_HANDLED in your plugin to block
+ * @note You can now return ZP_PLUGIN_HANDLED in your plugin to block
  * the purchase and the player will be automatically refunded.
  *
  * @param id		Player index of purchaser.
  * @param itemid	Internal extra item ID.
  */
-forward zp_extra_item_selected(id, itemid)
+forward zp_extra_item_selected(id, itemid);
 
-// New Forwards
-// Exec When Open the Extra Itens menu
-// Use the ZP_PLUGIN_HANDLED for block option (Like ZP 5.0)
-// Use the ZP_PLUGIN_SUPERCEDE for block showing item in menu
-forward zp_extra_item_selected_pre(id, itemid)
+/**
+ * Called while player are choosing item
+ *
+ * @note Use the ZP_PLUGIN_HANDLED for block option (Like ZP 5.0)
+ * @note Use the ZP_PLUGIN_SUPERCEDE for block showing item in menu
+ * @note Use 'zp_extra_item_textadd' for add a small text description
+ *
+ * @param id		Player index
+ * @param classid	Extra item index
+ */
+forward zp_extra_item_selected_pre(id, itemid);
 
-// Use the ZP_PLUGIN_HANDLED for block user frozing
-forward zp_user_frozen_pre(id) 
+/**
+ * Called when player gets frozen
+ *
+ * @note Use the ZP_PLUGIN_HANDLED for block user frozen
+ *
+ * @param id		Player index
+ */
+forward zp_user_frozen_pre(id);
+forward zp_user_frozen_post(id);
 
-forward zp_user_frozen_post(id)
-
-// Use the ZP_PLUGIN_HANDLED for block user burning
-forward zp_user_burn_pre(id)
-
-forward zp_user_burn_post(id)
+/**
+ * Called when player gets burning
+ *
+ * @note Use the ZP_PLUGIN_HANDLED for block user burn
+ *
+ * @param id		Player index
+ */
+forward zp_user_burn_pre(id);
+forward zp_user_burn_post(id);
 
 /**
  * Called when a player gets unfrozen (frostnades).
  *
  * @param id		Player index.
  */
-forward zp_user_unfrozen(id)
+forward zp_user_unfrozen(id);
 
 /**
  * Called when a player becomes the last zombie.
  *
- * Note: This is called for the first zombie too.
+ * @note This is called for the first zombie too.
  *
  * @param id		Player index.
  */
-forward zp_user_last_zombie(id)
+forward zp_user_last_zombie(id);
 
 /**
  * Called when a player becomes the last human.
  *
  * @param id		Player index.
  */
-forward zp_user_last_human(id)
+forward zp_user_last_human(id);
 
-// Exec when open Zombie Classes Choose menu
-// Use the ZP_PLUGIN_HANDLED for block option (Like ZP 5.0)
-// Use the ZP_PLUGIN_SUPERCEDE for block showing class in menu
-forward zp_zombie_class_choosed_pre(id, classid)
- 
-// Exec when the user choose the class
-forward zp_zombie_class_choosed_post(id, classid)
+/**
+ * Called when open Zombie Classes menu
+ *
+ * @note Use the ZP_PLUGIN_HANDLED for block option (Like ZP 5.0)
+ * @note Use the ZP_PLUGIN_SUPERCEDE for block showing class in menu
+ *
+ * @param id		Player index.
+ * @param classid	Zombie Class index.
+ */
+forward zp_zombie_class_choosed_pre(id, classid);
+forward zp_zombie_class_choosed_post(id, classid);
 
-// New Forwards (4.0 or Higher)
-/*
-	Execute when player reset render
-	Use ZP_PLUGIN_SUPERCEDE for block it
+/**
+ * Called when player reset render
+ *
+ * @note Use the ZP_PLUGIN_SUPERCEDE for block it
+ *
+ * @param id		Player index.
+ */
+forward zp_user_rendering_reset_pre(id);
+forward zp_user_rendering_reset_post(id);
+
+/**
+ * Execute when player change the model
+ *
+ * @note Use the ZP_PLUGIN_SUPERCEDE for block it
+ * @note You can use 'zp_set_model_param' for change model on this forward
+ *
+ * @param id		Player index.
+ */
+forward zp_user_model_change_pre(id, model[], body, skin);
+forward zp_user_model_change_post(id, model[], body, skin);
+
+/**
+ * Called when admin make a player to special class from admin menu
+ *
+ * @note Use the ZP_PLUGIN_HANDLED for block it
+ *
+ * @param id		Player index.
+ */
+forward zp_human_special_choosed_pre(id, specialid);
+forward zp_human_special_choosed_post(id, specialid);
+
+/**
+ * Called when admin make a player to special class from admin menu
+ *
+ * @note Use the ZP_PLUGIN_HANDLED for block it
+ *
+ * @param id		Player index.
+ */
+forward zp_zombie_special_choosed_pre(id, specialid);
+forward zp_zombie_special_choosed_post(id, specialid);
+
+/** 
+ * Called when user get infected by bomb function
+ * 
+ * @note Use ZP_PLUGIN_HANDLED for block it
+ * 
+ * @param id			Player Index
+ * 
 */
-forward zp_user_rendering_reset_pre(id)
+forward zp_infected_by_bomb_pre(victim, attacker);
+forward zp_infected_by_bomb_post(victim, attacker);
 
-// Execute after player reset glow
-forward zp_user_rendering_reset_post(id) 
-
-/*
-	Execute when player change the model
-	Use ZP_PLUGIN_SUPERCEDE for block it
+/** 
+ * Called when user use Unstuck function (In menu)
+ * 
+ * @note Use ZP_PLUGIN_HANDLED for block it
+ * 
+ * @param id			Player Index
+ * 
 */
-forward zp_user_model_change_pre(id, model[], body, skin)
+forward zp_user_unstuck_pre(id);
+forward zp_user_unstuck_post(id);
 
-// Execute after player change model
-forward zp_user_model_change_post(id, model[], body, skin) 
-
-/*
-	Execute before admin make a player to special class
-	Use ZP_PLUGIN_HANDLED for block it
+/** 
+ * Called when user choose weapon in weapons menu
+ * 
+ * @note Use ZP_PLUGIN_HANDLED for blocking buy this weapon
+ * 
+ * @param id			Player Index
+ * @param wpn_type		Type of Weapon (Primary/Secondary)
+ * @param weaponid		Index of Registred Weapon
+ * 
 */
-forward zp_human_special_choosed_pre(id, specialid)
-forward zp_zombie_special_choosed_pre(id, specialid)
-
-// Execute after admin make a player to special class
-forward zp_human_special_choosed_post(id, specialid)
-forward zp_zombie_special_choosed_post(id, specialid)
-
-/*
-	Execute before admin start a mode
-	Use ZP_PLUGIN_HANDLED for block it
-*/
-forward zp_game_mode_selected_pre(id, gamemode)
-
-/*
-	Execute before user infected by bomb function
-	Use ZP_PLUGIN_SUPERCEDE for block infection/kill by bomb
-*/
-forward zp_infected_by_bomb_pre(victim, attacker)
-
-// Execute after user infected by bomb function
-forward zp_infected_by_bomb_post(victim, attacker)
-
-/*
-	Execute before user use Unstuck function (In menu)
-	Use ZP_PLUGIN_HANDLED for block it
-*/
-forward zp_user_unstuck_pre(id)
-
-// Execute after Unstuck function / zp_do_random_spawn native function
-forward zp_user_unstuck_post(id)
-
-/*
-	Execute before user choosing weapon in menu
-	
-	@param id		Player Index
-	@param wpn_type		Type of Weapon (Primary/Secondary)
-	@param weaponid		Index of Registred Weapon
-	
-	Use ZP_PLUGIN_HANDLED for blocking buy this weapon
-*/
-forward zp_weapon_selected_pre(id, wpn_type, weaponid)
-
-/*
-	Execute after user choosing weapon in menu
-	
-	@param id		Player Index
-	@param wpn_type		Type of Weapon (Primary/Secondary)
-	@param weaponid		Index of Registred Weapon
-*/
+forward zp_weapon_selected_pre(id, wpn_type, weaponid);
 forward zp_weapon_selected_post(id, wpn_type, weaponid)
 
 // ZP Specials Stocks
