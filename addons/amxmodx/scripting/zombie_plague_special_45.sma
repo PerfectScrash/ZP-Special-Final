@@ -10464,7 +10464,7 @@ public native_is_gamemode_enable(modeid) return is_gamemode_enable(modeid); // N
 public native_drop_weapons(id, dropwhat) drop_weapons(id, dropwhat+1);
 
 public native_give_item(id, item[]) {
-	param_convert(1)
+	param_convert(2)
 	return fm_give_item(id, item);
 }
 
