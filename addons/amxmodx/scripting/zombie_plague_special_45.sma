@@ -284,6 +284,7 @@ new const ZP_EXTRAITEMS_FILE[] = "zpsp_extraitems.ini";
 new const ZP_CUSTOM_GM_FILE[] = "zpsp_gamemodes.ini";
 new const ZP_SPECIAL_CLASSES_FILE[] = "zpsp_special_classes.ini";
 new const ZP_WEAPONS_FILE[] = "zpsp_custom_weapons.ini";
+new const ZP_HUMANCLASSES_FILE[] = "zpsp_humanclasses.ini"
 
 // Limiters for stuff not worth making dynamic arrays out of (increase if needed)
 const MAX_CSDM_SPAWNS = 128;
@@ -413,6 +414,7 @@ enum (+= 100) { // Task offsets
 #define MENU_PAGE_CUSTOM_SP_Z g_menu_data[id][10]
 #define MENU_PAGE_CUSTOM_SP_H g_menu_data[id][11]
 #define MENU_PAGE_START_MODES g_menu_data[id][13]
+#define MENU_PAGE_HCLASS g_menu_data[id][14]
 
 #define PL_ACTION g_menu_data[id][0] // For player list menu handlers
 #define fixAmxMenu(%1) if(pev_valid(%1) == PDATA_SAFE) set_pdata_int(%1, OFFSET_CSMENUCODE, 0, OFFSET_LINUX)
@@ -470,11 +472,10 @@ enum {
 	MAX_TEAMS
 };
 #define GetTeamIndex(%1) (1<<ArrayGetCell(ZP_TEAM_INDEX, %1))
-#define IsTeam(%1) (team & (1<<ArrayGetCell(ZP_TEAM_INDEX, %1)))
+#define IsTeam(%1,%2) (%1 & (1<<ArrayGetCell(ZP_TEAM_INDEX, %2)))
 new Array:ZP_TEAM_NAMES, Array:ZP_TEAM_INDEX, Array:iTeamIndexHm, Array:iTeamIndexZm;
-new Array:temp_array[3]; // Create an temporary Array
 
-const ZCLASS_NONE = -1; // Zombie classes
+const NULL_CLASS = -1; // Zombie classes
 
 // Deathmatch
 enum { ZP_DM_NONE = 0, ZP_DM_HUMAN, ZP_DM_ZOMBIE, ZP_DM_RANDOM, ZP_DM_BALANCE }
@@ -631,21 +632,21 @@ enum { NEMESIS = 1, ASSASSIN, PREDATOR, BOMBARDIER, DRAGON, MAX_SPECIALS_ZOMBIES
 enum { SURVIVOR = 1, SNIPER, BERSERKER, WESKER, SPY, MAX_SPECIALS_HUMANS };
 
 // Special Class Vars
-new Array:g_hm_sp_realname, Array:g_hm_sp_name, Array:g_hm_sp_model, Array:g_hm_sp_health, Array:g_hm_sp_speed, Array:g_hm_sp_uclip,
+new Array:g_hm_sp_realname, Array:g_hm_sp_name, Array:g_hm_sp_health, Array:g_hm_sp_speed, Array:g_hm_sp_uclip,
 Array:g_hm_sp_gravity, Array:g_hm_sp_leap, Array:g_hm_sp_leap_f, Array:g_hm_sp_ignorefrag, Array:g_hm_sp_ignoreammo, Array:g_hm_sp_flags,
-Array:g_hm_sp_leap_h, Array:g_hm_sp_leap_c, Array:g_hm_specials, Array:g_hm_sp_respawn, Array:g_hm_sp_painfree, Array:g_hm_sp_modelstart, Array:g_hm_sp_modelsend,
+Array:g_hm_sp_leap_h, Array:g_hm_sp_leap_c, Array:g_hm_sp_respawn, Array:g_hm_sp_painfree,
 Array:g_hm_sp_aurarad, Array:g_hm_sp_glow, Array:g_hm_sp_r, Array:g_hm_sp_g, Array:g_hm_sp_b, Array:g_hm_sp_enable, Array:g_hm_sp_nvision,
-Array:g_hm_sp_body, Array:g_hm_sp_skin, Array:g_hm_sp_name_by_lang, Array:g_hm_sp_lang_key;
+Array:g_hm_sp_mdl_handle, Array:g_hm_sp_body_handle, Array:g_hm_sp_skin_handle, Array:g_hm_sp_name_by_lang, Array:g_hm_sp_lang_key;
 new g_hm_specials_i = MAX_SPECIALS_HUMANS, g_hm_special[33];
 #define isCustomSpecialHuman(%1) (!g_zombie[%1] && g_hm_special[%1] >= MAX_SPECIALS_HUMANS)
 #define isDefaultSpecialHuman(%1) (!g_zombie[%1] && g_hm_special[%1] > 0 && g_hm_special[%1] < MAX_SPECIALS_HUMANS)
 #define isDefaultHuman(%1) (!g_zombie[%1] && g_hm_special[%1] <= 0)
 
-new Array:g_zm_sp_realname, Array:g_zm_sp_name, Array:g_zm_sp_model, Array:g_zm_sp_painsound, Array:g_zm_sp_knifemodel, Array:g_zm_sp_health, Array:g_zm_sp_speed, Array:g_zm_sp_knockback,
-Array:g_zm_sp_gravity, Array:g_zm_sp_leap, Array:g_zm_sp_leap_f, Array:g_zm_sp_ignorefrag, Array:g_zm_sp_ignoreammo, Array:g_zm_sp_flags, Array:g_zm_sp_painsndstart, Array:g_zm_sp_painsndsend,
-Array:g_zm_sp_leap_h, Array:g_zm_sp_leap_c, Array:g_zm_specials, Array:g_zm_sp_respawn, Array:g_zm_sp_painfree, Array:g_zm_sp_modelstart, Array:g_zm_sp_modelsend,
+new Array:g_zm_sp_realname, Array:g_zm_sp_name, Array:g_zm_sp_knifemodel, Array:g_zm_sp_health, Array:g_zm_sp_speed, Array:g_zm_sp_knockback,
+Array:g_zm_sp_gravity, Array:g_zm_sp_leap, Array:g_zm_sp_leap_f, Array:g_zm_sp_ignorefrag, Array:g_zm_sp_ignoreammo, Array:g_zm_sp_flags, Array:g_zm_sp_painsnd_handle,
+Array:g_zm_sp_leap_h, Array:g_zm_sp_leap_c, Array:g_zm_sp_respawn, Array:g_zm_sp_painfree,
 Array:g_zm_sp_aurarad, Array:g_zm_sp_glow, Array:g_zm_sp_r, Array:g_zm_sp_g, Array:g_zm_sp_b, Array:g_zm_sp_allow_burn, Array:g_zm_sp_allow_frost, Array:g_zm_sp_enable, Array:g_zm_sp_nvision,
-Array:g_zm_sp_body, Array:g_zm_sp_skin, Array:g_zm_sp_deathsnd, Array:g_zm_sp_deathsnd_start, Array:g_zm_sp_deathsnd_end, Array:g_zm_sp_name_by_lang, Array:g_zm_sp_lang_key
+Array:g_zm_sp_mdl_handle, Array:g_zm_sp_body_handle, Array:g_zm_sp_skin_handle, Array:g_zm_sp_deathsnd_handle, Array:g_zm_sp_use_deathsnd, Array:g_zm_sp_name_by_lang, Array:g_zm_sp_lang_key
 new g_zm_specials_i = MAX_SPECIALS_ZOMBIES, g_zm_special[33];
 #define isCustomSpecialZombie(%1) (g_zombie[%1] && g_zm_special[%1] >= MAX_SPECIALS_ZOMBIES)
 #define isDefaultSpecialZombie(%1) (g_zombie[%1] && g_zm_special[%1] > 0 && g_zm_special[%1] < MAX_SPECIALS_ZOMBIES)
@@ -656,7 +657,7 @@ new g_hud_type[33], g_hud_color[2][33], g_flashlight_color[33], g_flashlight_rgb
 new g_zombie[33], g_firstzombie[33], g_lastzombie[33], g_lasthuman[33], g_frozen[33], g_nodamage[33], g_respawn_as_zombie[33], Float:g_frozen_gravity[33], Float:g_buytime[33];
 new g_nvision[33], g_nvisionenabled[33], g_nvg_enabled_mode[33], g_zombieclass[33], g_zombieclassnext[33], g_flashlight[33], g_flashbattery[33] = { 100, ... };
 new g_canbuy[33], g_ammopacks[33], g_damagedealt[33], how_many_rewards, Float:g_lastleaptime[33], Float:g_lastflashtime[33], g_playermodel[33][32], g_playerbody[33], g_playerskin[33], g_bot_extra_count[33];
-new g_menu_data[33][14], g_burning_dur[33], Float:g_current_maxspeed[33], g_user_custom_speed[33];
+new g_menu_data[33][15], g_burning_dur[33], Float:g_current_maxspeed[33], g_user_custom_speed[33];
 
 // Game vars;
 new g_pluginenabled, g_newround, g_endround, g_modestarted, g_allowinfection, g_deathmatchmode, g_currentmode, g_lastmode, g_nextmode;
@@ -709,6 +710,8 @@ enum { // Forward Enum
 	UNSTUCK_POST,
 	WEAPON_SELECTED_PRE,
 	WEAPON_SELECTED_POST,
+	H_CLASS_CHOOSED_PRE,
+	H_CLASS_CHOOSED_POST,
 	MAX_FORWARDS_NUM
 };
 new g_forwards[MAX_FORWARDS_NUM], g_fwDummyResult;
@@ -718,21 +721,28 @@ enum { VIEW_MODEL = 0, PLAYER_MODEL, WORLD_MODEL, MAX_WPN_MDL }; // Weapon Model
 #define entity_set_model(%1,%2) engfunc(EngFunc_SetModel, %1, %2)
 
 // Temporary Database vars (used to restore players stats in case they get disconnected)
-new db_name[MAX_STATS_SAVED][32], db_ammopacks[MAX_STATS_SAVED], db_zombieclass[MAX_STATS_SAVED], db_slot_i;
+new db_name[MAX_STATS_SAVED][32], db_ammopacks[MAX_STATS_SAVED], db_zombieclass[MAX_STATS_SAVED], db_humanclass[MAX_STATS_SAVED], db_slot_i;
 
 // Custom Game Modes vars
-new Array:g_gm_realname, Array:g_gm_name, Array:g_gm_enable, Array:g_gm_enable_on_ze_map, Array:g_gm_flag, Array:g_gm_chance, Array:g_gm_allow, Array:g_gm_dm, Array:g_gamemodes_new, Array:g_gm_respawn_limit, Array:g_gm_name_by_lang, Array:g_gm_lang_key, g_gamemodes_i = MAX_GAME_MODES;
+new Array:g_gm_realname, Array:g_gm_name, Array:g_gm_enable, Array:g_gm_enable_on_ze_map, Array:g_gm_flag, Array:g_gm_chance, Array:g_gm_allow, Array:g_gm_dm, Array:g_gm_respawn_limit, Array:g_gm_name_by_lang, Array:g_gm_lang_key, g_gamemodes_i = MAX_GAME_MODES;
 #define isCustomMode() (g_currentmode >= MAX_GAME_MODES)
 
 // Extra Items vars
-new Array:g_extraitem_realname, Array:g_extraitem_name, Array:g_extraitem_cost, Array:g_extraitem_team, g_extraitem_i, g_AdditionalMenuText[32], Array:g_extraitem_new, Array:g_extraitem_name_by_lang, Array:g_extraitem_lang_key;
+new Array:g_extraitem_realname, Array:g_extraitem_name, Array:g_extraitem_cost, Array:g_extraitem_team, g_extraitem_i, g_AdditionalMenuText[32], Array:g_extraitem_name_by_lang, Array:g_extraitem_lang_key;
 
-// Zombie Classes vars;
-new Array:g_zclass_real_name, Array:g_zclass_name, Array:g_zclass_info, Array:g_zclass_modelsstart, Array:g_zclass_modelsend, Array:g_zclass_playermodel;
-new Array:g_zclass_clawmodel, Array:g_zclass_hp, Array:g_zclass_spd, Array:g_zclass_grav, Array:g_zclass_kb, g_zclass_i, Array:g_zclass_new;
-new Array:g_zclass_deathsnd, Array:g_zclass_deathsnd_start, Array:g_zclass_deathsnd_end, Array:g_zclass_painsnd, Array:g_zclass_painsnd_start, Array:g_zclass_painsnd_end;
+// Zombie Classes vars
+new Array:g_zclass_real_name, Array:g_zclass_name, Array:g_zclass_info, Array:g_zclass_playermodel
+new Array:g_zclass_clawmodel, Array:g_zclass_hp, Array:g_zclass_spd, Array:g_zclass_grav, Array:g_zclass_kb, g_zclass_i;
+new Array:g_zclass_deathsnd_handle, Array:g_zclass_use_deathsnd, Array:g_zclass_painsnd_handle, Array:g_zclass_use_painsnd;
 new Array:g_zclass_lang_enable, Array:g_zclass_name_lang_key, Array:g_zclass_info_lang_key, Array:g_zclass_body, Array:g_zclass_skin;
+new Array:g_zclass_mdl_handle, Array:g_zclass_body_handle, Array:g_zclass_skin_handle
 
+// Human Classes Vars
+new Array:g_hclass_real_name, Array:g_hclass_name, Array:g_hclass_info, Array:g_hclass_hp, Array:g_hclass_armor, Array:g_hclass_speed, Array:g_hclass_gravity;
+new Array:g_hclass_lang_enable, Array:g_hclass_name_lang_key, Array:g_hclass_info_lang_key, g_hclass_i;
+new Array:g_hclass_mdl_file, Array:g_hclass_mdl_handle, Array:g_hclass_body_handle, Array:g_hclass_skin_handle
+new g_user_hclass[33], g_hclass_next[33]
+// new Array:g_hclass_modelsstart, Array:g_hclass_modelsend, Array:g_hclass_playermodel, Array:g_hclass_body, Array:g_hclass_skin;
 #define MAX_ARRAY_SOUNDS 20 // Max Array Sounds
 
 // Customization vars
@@ -743,7 +753,7 @@ model_knife_admin_human[MAX_WPN_MDL][64], model_knife_vip_human[MAX_WPN_MDL][64]
 Array:sound_win_zombies, Array:sound_win_humans, Array:sound_win_no_one, Array:ar_sound[MAX_ARRAY_SOUNDS],  Array:zombie_pain[MAX_SPECIALS_ZOMBIES], g_ambience_rain,
 Array:g_additional_items, Array:g_wpn_is_custom[2], Array:g_wpn_realname[2], Array:g_wpn_name[2], Array:g_wpn_name_by_lang[2], Array:g_wpn_lang_key[2], g_def_wpn_use_lang, g_wpn_i[2], Array:g_wpn_ids[2],
 Array:g_extraweapon_names, Array:g_extraweapon_items, Array:g_extraweapon_costs, g_extraweapon_name_by_lang, Array:g_extraweapon_lang_key, g_extra_costs2[EXTRA_WEAPONS_STARTID], g_ambience_snow, g_ambience_fog, g_fog_density[10], g_fog_color[12], g_sky_enable,
-Array:g_sky_names, Array:lights_thunder, Array:zombie_decals, Array:g_objective_ents, Array:g_escape_maps, g_set_modelindex_offset, Float:kb_weapon_power[31] = { -1.0, ... }, g_force_consistency, g_choosed_zclass[33], g_enable_end_round_sounds,
+Array:g_sky_names, Array:lights_thunder, Array:zombie_decals, Array:g_objective_ents, Array:g_escape_maps, g_set_modelindex_offset, Float:kb_weapon_power[31] = { -1.0, ... }, g_force_consistency, g_choosed_zclass[33], g_choosed_hclass[33], g_enable_end_round_sounds,
 g_ambience_sounds[MAX_AMBIENCE_SOUNDS], Array:sound_mod[MAX_GAME_MODES], Array:sound_ambience[MAX_AMBIENCE_SOUNDS], Array:sound_ambience_duration[MAX_AMBIENCE_SOUNDS],
 enable_trail[MAX_GRENADES], enable_explode[MAX_GRENADES], enable_gib[MAX_GRENADES], sprite_grenade_trail[MAX_GRENADES][64], sprite_grenade_explode[MAX_GRENADES][64], sprite_grenade_gib[MAX_GRENADES][64], 
 sprite_grenade_ring[64], sprite_grenade_fire[64], sprite_grenade_smoke[64], sprite_grenade_glass[64], grenade_rgb[MAX_GRENADES][3], Float:weapon_spd_multi[31] = { 1.0, ... };
@@ -776,7 +786,7 @@ new cvar_flashcolor[3], cvar_flashcolor2[3], cvar_hm_red[MAX_SPECIALS_HUMANS], c
 cvar_zm_red[MAX_SPECIALS_ZOMBIES], cvar_zm_green[MAX_SPECIALS_ZOMBIES], cvar_zm_blue[MAX_SPECIALS_ZOMBIES], cvar_flashlight_menu, cvar_nvision_menu[2], cvar_zombie_nvsion_rgb[3];
 
 // Cached stuff for players
-new g_isconnected[33], g_isalive[33], g_isbot[33], g_currentweapon[33], g_playername[33][32], Float:g_spd[33], Float:g_custom_leap_cooldown[33], Float:g_zombie_knockback[33], g_zombie_classname[33][64], g_zombie_classname_lang[33];
+new g_isconnected[33], g_isalive[33], g_isbot[33], g_currentweapon[33], g_playername[33][32], Float:g_spd[33], Float:g_custom_leap_cooldown[33], Float:g_zombie_knockback[33], g_pl_classname[33][64], g_pl_classname_lang[33];
 #define is_user_valid_connected(%1) (1 <= %1 <= MaxPlayers && g_isconnected[%1])
 #define is_user_valid_alive(%1) (1 <= %1 <= MaxPlayers && g_isalive[%1])
 #define is_user_valid(%1) (1 <= %1 <= MaxPlayers)
@@ -791,21 +801,21 @@ g_zm_cached_leap[MAX_SPECIALS_ZOMBIES], Float:g_zm_cached_cooldown[MAX_SPECIALS_
 =================================================================================*/
 public plugin_natives() {
 	// Player specific natives;
-	register_native("zp_get_user_zombie", "native_get_user_zombie", 1);
-	register_native("zp_get_user_nemesis", "native_get_user_nemesis", 1);
-	register_native("zp_get_user_survivor", "native_get_user_survivor", 1);
-	register_native("zp_get_user_first_zombie", "native_get_user_first_zombie", 1);
-	register_native("zp_get_user_last_zombie", "native_get_user_last_zombie", 1);
-	register_native("zp_get_user_last_human", "native_get_user_last_human", 1);
-	register_native("zp_get_user_zombie_class", "native_get_user_zombie_class", 1);
-	register_native("zp_get_user_next_class", "native_get_user_next_class", 1);
+	register_native("zp_get_user_zombie", "native_get_user_zombie");
+	register_native("zp_get_user_nemesis", "native_get_user_nemesis");
+	register_native("zp_get_user_survivor", "native_get_user_survivor");
+	register_native("zp_get_user_first_zombie", "native_get_user_first_zombie");
+	register_native("zp_get_user_last_zombie", "native_get_user_last_zombie");
+	register_native("zp_get_user_last_human", "native_get_user_last_human");
+	register_native("zp_get_user_zombie_class", "native_get_user_zombie_class");
+	register_native("zp_get_user_next_class", "native_get_user_next_class");
 	register_native("zp_set_user_zombie_class", "native_set_user_zombie_class", 1);
-	register_native("zp_get_user_ammo_packs", "native_get_user_ammo_packs", 1);
+	register_native("zp_get_user_ammo_packs", "native_get_user_ammo_packs");
 	register_native("zp_set_user_ammo_packs", "native_set_user_ammo_packs", 1);
 	register_native("zp_get_zombie_maxhealth", "native_get_zombie_maxhealth", 1);
-	register_native("zp_get_user_batteries", "native_get_user_batteries", 1);
+	register_native("zp_get_user_batteries", "native_get_user_batteries");
 	register_native("zp_set_user_batteries", "native_set_user_batteries", 1);
-	register_native("zp_get_user_nightvision", "native_get_user_nightvision", 1);
+	register_native("zp_get_user_nightvision", "native_get_user_nightvision");
 	register_native("zp_set_user_nightvision", "native_set_user_nightvision", 1);
 	register_native("zp_infect_user", "native_infect_user", 1);
 	register_native("zp_disinfect_user", "native_disinfect_user", 1);
@@ -813,23 +823,23 @@ public plugin_natives() {
 	register_native("zp_make_user_survivor", "native_make_user_survivor", 1);
 	register_native("zp_respawn_user", "native_respawn_user", 1);
 	register_native("zp_force_buy_extra_item", "native_force_buy_extra_item", 1);
-	register_native("zp_get_user_sniper", "native_get_user_sniper", 1);
+	register_native("zp_get_user_sniper", "native_get_user_sniper");
 	register_native("zp_make_user_sniper", "native_make_user_sniper", 1);
-	register_native("zp_get_user_assassin", "native_get_user_assassin", 1);
+	register_native("zp_get_user_assassin", "native_get_user_assassin");
 	register_native("zp_make_user_assassin", "native_make_user_assassin", 1);
-	register_native("zp_get_user_predator", "native_get_user_predator", 1);
+	register_native("zp_get_user_predator", "native_get_user_predator");
 	register_native("zp_make_user_predator", "native_make_user_predator", 1);
-	register_native("zp_get_user_bombardier", "native_get_user_bombardier", 1);
+	register_native("zp_get_user_bombardier", "native_get_user_bombardier");
 	register_native("zp_make_user_bombardier", "native_make_user_bombardier", 1);
-	register_native("zp_get_user_dragon", "native_get_user_dragon", 1);
+	register_native("zp_get_user_dragon", "native_get_user_dragon");
 	register_native("zp_make_user_dragon", "native_make_user_dragon", 1);
-	register_native("zp_get_user_berserker", "native_get_user_berserker", 1);
+	register_native("zp_get_user_berserker", "native_get_user_berserker");
 	register_native("zp_make_user_berserker", "native_make_user_berserker", 1);
-	register_native("zp_get_user_wesker", "native_get_user_wesker", 1);
+	register_native("zp_get_user_wesker", "native_get_user_wesker");
 	register_native("zp_make_user_wesker", "native_make_user_wesker", 1);
-	register_native("zp_get_user_spy", "native_get_user_spy", 1);
+	register_native("zp_get_user_spy", "native_get_user_spy");
 	register_native("zp_make_user_spy", "native_make_user_spy", 1);
-	register_native("zp_get_user_model", "native_get_user_model", 0);
+	register_native("zp_get_user_model", "native_get_user_model");
 	register_native("zp_override_user_model", "native_override_user_model", 1);
 	register_native("zp_set_user_model", "native_override_user_model", 1);
 	
@@ -864,25 +874,25 @@ public plugin_natives() {
 	register_native("zp_get_last_mode", "native_get_last_mode", 1);
 	
 	// External additions natives;
-	register_native("zp_register_game_mode", "native_register_game_mode", 1);
-	register_native("zp_register_extra_item", "native_register_extra_item", 1);
-	register_native("zp_register_zombie_class", "native_register_zombie_class", 1);
+	register_native("zp_register_game_mode", "native_register_gamemode");
+	register_native("zp_register_extra_item", "native_register_extra_item");
+	register_native("zp_register_zombie_class", "native_register_zombie_class");
 	register_native("zp_get_extra_item_id", "native_get_extra_item_id", 1);
 	register_native("zp_get_zombie_class_id", "native_get_zombie_class_id", 1);
 	
 	// New Natives;
-	register_native("zp_get_user_madness", "native_get_user_madness", 1);
+	register_native("zp_get_user_madness", "native_get_user_madness");
 	register_native("zp_set_user_madness", "native_set_user_madness", 1);
-	register_native("zp_get_user_burn", "native_get_user_burn", 1);
+	register_native("zp_get_user_burn", "native_get_user_burn");
 	register_native("zp_set_user_burn", "native_set_user_burn", 1);
-	register_native("zp_get_user_frozen", "native_get_user_frozen", 1);
+	register_native("zp_get_user_frozen", "native_get_user_frozen");
 	register_native("zp_set_user_frozen", "native_set_user_frozen", 1);
-	register_native("zp_get_user_infectnade", "native_get_user_infectnade", 1);
+	register_native("zp_get_user_infectnade", "native_get_user_infectnade");
 	register_native("zp_set_user_infectnade", "native_set_user_infectnade", 1);
-	register_native("zp_extra_item_textadd", "native_menu_textadd", 1);
-	register_native("zp_zombie_class_textadd", "native_menu_textadd", 1);
-	register_native("zp_get_human_special_class", "native_get_human_special_class", 1);
-	register_native("zp_get_zombie_special_class", "native_get_zombie_special_class", 1);
+	register_native("zp_extra_item_textadd", "native_menu_textadd");
+	register_native("zp_zombie_class_textadd", "native_menu_textadd");
+	register_native("zp_get_human_special_class", "native_get_human_special_class");
+	register_native("zp_get_zombie_special_class", "native_get_zombie_special_class");
 	
 	// New Natives (2.3 or High Available);
 	register_native("zp_set_user_rendering", "native_set_rendering", 1);
@@ -890,7 +900,7 @@ public plugin_natives() {
 	register_native("zp_get_extra_item_cost", "native_get_extra_item_cost", 1);
 	register_native("zp_get_extra_item_name", "native_get_extra_item_name");
 	register_native("zp_set_user_maxspeed", "native_set_user_maxspeed", 1);
-	register_native("zp_get_user_maxspeed", "native_get_user_maxspeed", 1);
+	register_native("zp_get_user_maxspeed", "native_get_user_maxspeed");
 	register_native("zp_reset_user_maxspeed", "native_reset_user_maxspeed", 1);
 	
 	// New Natives (2.4 or High Available);
@@ -907,10 +917,10 @@ public plugin_natives() {
 	register_native("zp_get_current_mode_name", "native_get_current_mode_name");
 	
 	// New Natives (3.0 or High Available);
-	register_native("zp_register_human_special", "native_register_human_special", 1);
-	register_native("zp_register_zombie_special", "native_register_zombie_special", 1);
+	register_native("zp_register_human_special", "native_register_human_special");
+	register_native("zp_register_zombie_special", "native_register_zombie_special");
 	register_native("zp_make_user_special", "native_make_user_special", 1);
-	register_native("zp_set_custom_game_mod", "native_set_custom_game_mod", 1);
+	register_native("zp_set_custom_game_mod", "native_set_custom_game_mod");
 	register_native("zp_get_special_count", "native_get_special_count", 1);
 	register_native("zp_reset_player_model", "native_reset_player_model", 1);
 	
@@ -918,7 +928,7 @@ public plugin_natives() {
 	register_native("zp_get_special_class_name", "native_special_class_name");
 	
 	// New Natives (3.2 or High Available);
-	register_native("zp_get_special_class_id", "native_get_special_class_id", 1);
+	register_native("zp_get_special_class_id", "native_get_special_class_id");
 	register_native("zp_get_zombie_class_realname", "native_get_zclass_realname");
 	
 	// New Natives (3.4 or High Available);
@@ -937,26 +947,26 @@ public plugin_natives() {
 	register_native("zp_set_lighting", "native_set_lighting", 1);
 	register_native("zp_reset_lighting", "native_reset_lighting", 1);
 	register_native("zp_is_user_stuck", "native_is_user_stuck", 1);
-	register_native("zp_register_weapon", "native_register_weapon", 1);
-	register_native("zp_weapon_menu_textadd", "native_menu_textadd", 1);
+	register_native("zp_register_weapon", "native_register_weapon");
+	register_native("zp_weapon_menu_textadd", "native_menu_textadd");
 	register_native("zp_get_weapon_realname", "native_get_weapon_realname");
 	register_native("zp_get_weapon_name", "native_get_weapon_name");
 	register_native("zp_set_weapon_name", "native_set_weapon_name", 1);
 	register_native("zp_weapon_is_custom", "native_weapon_is_custom", 1);
-	register_native("zp_weapon_count", "native_weapon_count", 1);
-	register_native("zp_get_random_player", "native_get_random_player", 1);
-	register_native("zp_set_model_param", "native_set_fw_param_string", 1);
+	register_native("zp_weapon_count", "native_weapon_count");
+	register_native("zp_get_random_player", "native_get_random_player");
+	register_native("zp_set_model_param", "native_set_fw_param_string");
 
 	// New Natives (4.3 or High Available);
-	register_native("zp_start_game_mode", "native_start_game_mode", 1);
+	register_native("zp_start_game_mode", "native_start_game_mode");
 	register_native("zp_set_next_game_mode", "native_set_next_game_mode", 1);
-	register_native("zpsp_register_extra_item", "native_register_extra_item3", 1);
+	register_native("zpsp_register_extra_item", "native_register_extra_item_sp");
 	register_native("zp_is_special_class_enable", "native_is_special_class_enable", 1);
 	register_native("zp_is_gamemode_enable", "native_is_gamemode_enable", 1);
 
 	// New Natives (4.4 or High Available);
 	register_native("zp_set_user_extra_damage", "native_set_user_extra_damage", 1);
-	register_native("zpsp_register_gamemode", "native_register_gamemode", 1);
+	register_native("zpsp_register_gamemode", "native_register_gamemode");
 	register_native("zp_get_custom_extra_start", "native_get_custom_extra_start", 1);
 
 	// New Natives (4.5 or High Available)
@@ -970,6 +980,13 @@ public plugin_natives() {
 	register_native("zp_give_item", "native_give_item", 1);
 	register_native("zp_strip_user_weapons", "native_strip_user_weapons", 1);
 	register_native("zpsp_disinfect_user", "native_disinfect_user2", 1);
+	register_native("zp_register_human_class", "native_register_human_class");
+	register_native("zp_register_hclass_model", "native_register_hclass_model", 1);
+	register_native("zp_get_user_human_class", "native_get_user_human_class");
+	register_native("zp_get_next_human_class", "native_get_next_human_class", 1);
+	register_native("zp_set_user_human_class", "native_set_user_human_class", 1);
+	register_native("zp_menu_textadd", "native_menu_textadd");
+	register_native("zpsp_register_weapon", "native_register_weapon");
 }
 public plugin_precache() {
 	register_plugin(PLUGIN, VERSION, AUTHOR) // Register earlier to show up in plugins list properly after plugin disable/error at loading
@@ -1042,22 +1059,21 @@ public plugin_precache() {
 	g_gm_enable = ArrayCreate(1, 1);
 	g_gm_enable_on_ze_map = ArrayCreate(1, 1);
 	g_gm_respawn_limit = ArrayCreate(1, 1);
-	g_gamemodes_new = ArrayCreate(1, 1);
 	g_extraitem_name = ArrayCreate(32, 1);
 	g_extraitem_realname = ArrayCreate(32, 1);
 	g_extraitem_name_by_lang = ArrayCreate(1, 1);
 	g_extraitem_lang_key = ArrayCreate(64, 1);
 	g_extraitem_cost = ArrayCreate(1, 1);
 	g_extraitem_team = ArrayCreate(1, 1);
-	g_extraitem_new = ArrayCreate(1, 1);
 	g_zclass_real_name = ArrayCreate(32, 1);
 	g_zclass_name = ArrayCreate(32, 1);
 	g_zclass_info = ArrayCreate(32, 1);
 	g_zclass_lang_enable = ArrayCreate(1, 1);
 	g_zclass_name_lang_key = ArrayCreate(64, 1);
 	g_zclass_info_lang_key = ArrayCreate(64, 1);
-	g_zclass_modelsstart = ArrayCreate(1, 1);
-	g_zclass_modelsend = ArrayCreate(1, 1);
+	g_zclass_mdl_handle = ArrayCreate(1, 1);
+	g_zclass_body_handle = ArrayCreate(1, 1);
+	g_zclass_skin_handle = ArrayCreate(1, 1);
 	g_zclass_playermodel = ArrayCreate(32, 1);
 	g_zclass_body = ArrayCreate(1, 1);
 	g_zclass_skin = ArrayCreate(1, 1);
@@ -1066,18 +1082,15 @@ public plugin_precache() {
 	g_zclass_spd = ArrayCreate(1, 1);
 	g_zclass_grav = ArrayCreate(1, 1);
 	g_zclass_kb = ArrayCreate(1, 1);
-	g_zclass_new = ArrayCreate(1, 1);
-	g_zclass_deathsnd = ArrayCreate(64, 1);
-	g_zclass_deathsnd_start = ArrayCreate(1, 1);
-	g_zclass_deathsnd_end = ArrayCreate(1, 1);
-	g_zclass_painsnd_end = ArrayCreate(1, 1);
-	g_zclass_painsnd_start = ArrayCreate(1, 1);
-	g_zclass_painsnd = ArrayCreate(64, 1);
+	g_zclass_deathsnd_handle = ArrayCreate(1, 1);
+	g_zclass_use_deathsnd = ArrayCreate(1, 1);
+	g_zclass_use_painsnd = ArrayCreate(1, 1);
+	g_zclass_painsnd_handle = ArrayCreate(1, 1);
 	g_hm_sp_realname = ArrayCreate(32, 1);
 	g_hm_sp_name = ArrayCreate(32, 1);
-	g_hm_sp_model = ArrayCreate(32, 1);
-	g_hm_sp_body = ArrayCreate(1, 1);
-	g_hm_sp_skin = ArrayCreate(1, 1);
+	g_hm_sp_mdl_handle = ArrayCreate(32, 1);
+	g_hm_sp_body_handle = ArrayCreate(1, 1);
+	g_hm_sp_skin_handle = ArrayCreate(1, 1);
 	g_hm_sp_health = ArrayCreate(1, 1);
 	g_hm_sp_speed = ArrayCreate(1, 1);
 	g_hm_sp_gravity = ArrayCreate(1, 1);
@@ -1097,18 +1110,14 @@ public plugin_precache() {
 	g_hm_sp_g = ArrayCreate(1, 1);
 	g_hm_sp_b = ArrayCreate(1, 1);
 	g_hm_sp_enable = ArrayCreate(1, 1);
-	g_hm_sp_modelstart = ArrayCreate(1, 1);
-	g_hm_sp_modelsend = ArrayCreate(1, 1);
 	g_hm_sp_name_by_lang = ArrayCreate(1, 1);
 	g_hm_sp_lang_key = ArrayCreate(64, 1);
-	g_hm_specials = ArrayCreate(1, 1);
 	g_zm_sp_realname = ArrayCreate(32, 1);
 	g_zm_sp_name = ArrayCreate(32, 1);
-	g_zm_sp_model = ArrayCreate(32, 1);
-	g_zm_sp_body = ArrayCreate(1, 1);
-	g_zm_sp_skin = ArrayCreate(1, 1);
+	g_zm_sp_body_handle = ArrayCreate(1, 1);
+	g_zm_sp_mdl_handle = ArrayCreate(1, 1);
+	g_zm_sp_skin_handle = ArrayCreate(1, 1);
 	g_zm_sp_knifemodel = ArrayCreate(64, 1);
-	g_zm_sp_painsound = ArrayCreate(64, 1);
 	g_zm_sp_health = ArrayCreate(1, 1);
 	g_zm_sp_speed = ArrayCreate(1, 1);
 	g_zm_sp_gravity = ArrayCreate(1, 1);
@@ -1130,19 +1139,28 @@ public plugin_precache() {
 	g_zm_sp_allow_burn = ArrayCreate(1, 1);
 	g_zm_sp_allow_frost = ArrayCreate(1, 1);
 	g_zm_sp_enable = ArrayCreate(1, 1);
-	g_zm_sp_modelstart = ArrayCreate(1, 1);
-	g_zm_sp_modelsend = ArrayCreate(1, 1);
-	g_zm_sp_painsndstart = ArrayCreate(1, 1);
-	g_zm_sp_painsndsend = ArrayCreate(1, 1);
-	g_zm_sp_deathsnd = ArrayCreate(64, 1);
-	g_zm_sp_deathsnd_start = ArrayCreate(1, 1);
-	g_zm_sp_deathsnd_end = ArrayCreate(1, 1);
+	g_zm_sp_painsnd_handle = ArrayCreate(1, 1);
+	g_zm_sp_deathsnd_handle = ArrayCreate(1, 1);
+	g_zm_sp_use_deathsnd = ArrayCreate(1, 1);
 	g_zm_sp_name_by_lang = ArrayCreate(1, 1);
 	g_zm_sp_lang_key = ArrayCreate(32, 1);
-	g_zm_specials = ArrayCreate(1, 1);
 	g_hm_sp_nvision = ArrayCreate(1, 1);
 	g_zm_sp_nvision = ArrayCreate(1, 1);
-
+	g_hclass_real_name = ArrayCreate(32, 1);
+	g_hclass_name = ArrayCreate(32, 1);
+	g_hclass_info = ArrayCreate(64, 1);
+	g_hclass_hp = ArrayCreate(1, 1);
+	g_hclass_armor = ArrayCreate(1, 1);
+	g_hclass_speed = ArrayCreate(1, 1);
+	g_hclass_gravity = ArrayCreate(1, 1);
+	g_hclass_lang_enable = ArrayCreate(1, 1);
+	g_hclass_name_lang_key = ArrayCreate(32, 1);
+	g_hclass_info_lang_key = ArrayCreate(64, 1);
+	g_hclass_mdl_file = ArrayCreate(1, 1);
+	g_hclass_mdl_handle = ArrayCreate(1, 1);
+	g_hclass_body_handle = ArrayCreate(1, 1);
+	g_hclass_skin_handle = ArrayCreate(1, 1);
+ 
 	for(i = 0; i < 2; i++) {
 		g_wpn_is_custom[i] = ArrayCreate(1, 1);
 		g_wpn_realname[i] = ArrayCreate(32, 1);
@@ -1176,10 +1194,10 @@ public plugin_precache() {
 	ArrayPushCell(iTeamIndexZm, TEAM_DRAGON);
 	
 	// Load up the hard coded extra items
-	native_register_extra_item2("NightVision", g_extra_costs2[EXTRA_NVISION], GetTeamIndex(TEAM_HUMAN)|GetTeamIndex(TEAM_ZOMBIE), 0, "");
-	native_register_extra_item2("T-Virus Antidote", g_extra_costs2[EXTRA_ANTIDOTE], GetTeamIndex(TEAM_ZOMBIE), 0, "");
-	native_register_extra_item2("Zombie Madness", g_extra_costs2[EXTRA_MADNESS], GetTeamIndex(TEAM_ZOMBIE), 0, "");
-	native_register_extra_item2("Infection Bomb", g_extra_costs2[EXTRA_INFBOMB], GetTeamIndex(TEAM_ZOMBIE), 0, "");
+	internal_register_extra_item("NightVision", g_extra_costs2[EXTRA_NVISION], GetTeamIndex(TEAM_HUMAN)|GetTeamIndex(TEAM_ZOMBIE), 0, "");
+	internal_register_extra_item("T-Virus Antidote", g_extra_costs2[EXTRA_ANTIDOTE], GetTeamIndex(TEAM_ZOMBIE), 0, "");
+	internal_register_extra_item("Zombie Madness", g_extra_costs2[EXTRA_MADNESS], GetTeamIndex(TEAM_ZOMBIE), 0, "");
+	internal_register_extra_item("Infection Bomb", g_extra_costs2[EXTRA_INFBOMB], GetTeamIndex(TEAM_ZOMBIE), 0, "");
 	
 	// Extra weapons
 	for(i = 0; i < ArraySize(g_extraweapon_names); i++) {
@@ -1191,7 +1209,7 @@ public plugin_precache() {
 		}
 		else buffer2 = ""
 
-		native_register_extra_item2(buffer, ArrayGetCell(g_extraweapon_costs, i), GetTeamIndex(TEAM_HUMAN), g_extraweapon_name_by_lang, buffer2)
+		internal_register_extra_item(buffer, ArrayGetCell(g_extraweapon_costs, i), GetTeamIndex(TEAM_HUMAN), g_extraweapon_name_by_lang, buffer2)
 	}
 
 	// Custom player models
@@ -1272,8 +1290,8 @@ public plugin_precache() {
 			precache_ambience(buffer)
 		}
 	}
-	for(x = 1; x < MAX_SPECIALS_ZOMBIES; x++) {
-		if(zm_special_enable[x]) {
+	for(x = 0; x < MAX_SPECIALS_ZOMBIES; x++) {
+		if(zm_special_enable[x] || x == 0) {
 			for(i = 0; i < ArraySize(zombie_pain[x]); i++) {
 				ArrayGetString(zombie_pain[x], i, buffer, charsmax(buffer))
 				engfunc(EngFunc_PrecacheSound, buffer)
@@ -1339,6 +1357,7 @@ public plugin_init() {
 	if(g_hm_specials_i > MAX_SPECIALS_HUMANS) server_print("[ZP] Total Registered Custom Special Humans: %d", g_hm_specials_i - MAX_SPECIALS_HUMANS)
 	if(g_zm_specials_i > MAX_SPECIALS_ZOMBIES) server_print("[ZP] Total Registered Custom Special Zombies: %d", g_zm_specials_i - MAX_SPECIALS_ZOMBIES)
 	
+	if(g_hclass_i) server_print("[ZP] Total Registered Human Classes: %d", g_hclass_i) // Print the number of registered Human Classes
 	server_print("[ZP] Total Registered Zombie Classes: %d", g_zclass_i) // Print the number of registered Zombie Classes
 	server_print("[ZP] Total Registered Extra Items: %d", g_extraitem_i) // Print the number of registered Extra Items
 
@@ -2028,6 +2047,10 @@ public plugin_init() {
 	g_forwards[WEAPON_SELECTED_PRE] = CreateMultiForward("zp_weapon_selected_pre", ET_CONTINUE, FP_CELL, FP_CELL, FP_CELL)
 	g_forwards[WEAPON_SELECTED_POST] = CreateMultiForward("zp_weapon_selected_post", ET_IGNORE, FP_CELL, FP_CELL, FP_CELL)
 
+	// New forwards (4.5 or higher)
+	g_forwards[H_CLASS_CHOOSED_PRE] = CreateMultiForward("zp_human_class_choosed_pre", ET_CONTINUE, FP_CELL, FP_CELL)
+	g_forwards[H_CLASS_CHOOSED_POST] = CreateMultiForward("zp_human_class_choosed_post", ET_IGNORE, FP_CELL, FP_CELL)
+
 	load_spawns() // Collect random spawn points
 	
 	if(g_sky_enable) { // Set a random skybox?
@@ -2057,8 +2080,21 @@ public plugin_cfg() {
 	static cfgdir[32]; get_configsdir(cfgdir, charsmax(cfgdir)) // Get configs dir
 	server_cmd("exec %s/zombie_plague_special.cfg", cfgdir) // Execute config file (zombie_plague_special.cfg)
 
+	//  	if(!g_hclass_i) {
+	// 	ArrayPushString(g_hclass_real_name, "Default")
+	// 	ArrayPushString(g_hclass_name, "Default")
+	// 	ArrayPushString(g_hclass_info, "Default")
+	// 	ArrayPushCell(g_hclass_hp, get_pcvar_num(cvar_hm_health[0]))
+	// 	ArrayPushCell(g_hclass_armor, 0)
+	// 	ArrayPushCell(g_hclass_speed, get_pcvar_num(cvar_hm_spd[0]))
+	// 	ArrayPushCell(g_hclass_gravity, get_pcvar_float(cvar_hmgravity[0]))
+	// 	ArrayPushCell(g_hclass_lang_enable, 1)
+	// 	ArrayPushString(g_hclass_name_lang_key, "CLASS_HUMAN")
+	// 	ArrayPushString(g_hclass_info_lang_key, "CLASS_HUMAN")
+	// 	g_hclass_i++ // Increase registered classes counter
+	// }
+ 	
 	g_arrays_created = false // Prevent any more stuff from registering
-	save_customization() // Save customization data
 
 	set_task(5.0, "lighting_effects", _, _, _, "b") // Lighting task
 	set_task(0.5, "cache_cvars")
@@ -2104,17 +2140,19 @@ public logevent_round_start() {
 
 public logevent_round_end() { // Log Event Round End
 	// Prevent this from getting called twice when restarting (bugfix)
-	static Float:lastendtime, Float:current_time
+	static Float:lastendtime, Float:current_time, id
 	current_time = get_gametime()
 	if(current_time - lastendtime < 0.5) return;
 	lastendtime = current_time
 	
 	if(get_pcvar_num(cvar_chosse_instantanly)) {
-		for(new i = 1; i <= MaxPlayers; i++) 
-			g_choosed_zclass[i] = false
+		for(id = 1; id <= MaxPlayers; id++) {
+			g_choosed_zclass[id] = false
+			g_choosed_hclass[id] = false
+		}
 	}
 	if(get_pcvar_num(cvar_statssave)) { // Temporarily save player stats?
-		static id, team
+		static team
 		for(id = 1; id <= MaxPlayers; id++) {
 			if(!g_isconnected[id]) continue;
 
@@ -2288,11 +2326,16 @@ public fw_PlayerSpawn_Post(id) { // Ham Player Spawn Post Forward
 	reset_vars(id, 0) // Reset player vars
 	g_buytime[id] = get_gametime()
 	
-	if(get_pcvar_num(cvar_buycustom)) set_task(0.2, "menu_buy_show", id+TASK_SPAWN) // Show custom buy menu?
-	
-	// Set health and gravity
-	fm_set_user_health(id, get_pcvar_num(cvar_hm_health[g_hm_special[id]]))
-	set_pev(id, pev_gravity, get_pcvar_float(cvar_hmgravity[g_hm_special[id]]))
+	if(!g_hm_special[id] && g_hclass_i) {
+		set_hclass_attributes(id, 1)
+	}
+	else {
+		fm_set_user_health(id, get_pcvar_num(cvar_hm_health[g_hm_special[id]]))
+		set_pev(id, pev_gravity, get_pcvar_float(cvar_hmgravity[g_hm_special[id]]))
+
+		if(get_pcvar_num(cvar_buycustom) && !g_hm_special[id]) 
+			set_task(0.2, "menu_buy_show", id+TASK_SPAWN)
+	}
 
 	
 	if(!g_zombie[id]) { // Give nvision for humans ?
@@ -2406,9 +2449,13 @@ public fw_PlayerKilled(victim, attacker, shouldgib) { // Ham Player Killed Forwa
 		if(g_zm_special[victim] > 0 || g_zm_special[attacker] == ASSASSIN && get_pcvar_num(cvar_nemfraggore)) {
 			SetHamParamInteger(3, 2)
 			if(g_zm_special[victim] > 0) {
-				static iRand, sound[128]
-				iRand = random_num(ArrayGetCell(g_zm_sp_deathsnd_start, g_zm_special[victim]-1), ArrayGetCell(g_zm_sp_deathsnd_end, g_zm_special[victim]-1) -1)
-				ArrayGetString(g_zm_sp_deathsnd, iRand, sound, charsmax(sound))
+				static Array:DeathSnd, sound[64];
+				if(ArrayGetCell(g_zm_sp_use_deathsnd, g_zm_special[victim]-1))
+					DeathSnd = ArrayGetCell(g_zm_sp_deathsnd_handle, g_zm_special[victim]-1)
+				else
+					DeathSnd = ar_sound[1];
+
+				ArrayGetString(DeathSnd, random_num(0, ArraySize(DeathSnd)-1), sound, charsmax(sound))
 				emit_sound(victim, CHAN_STATIC, sound, 1.0, ATTN_NORM, 0, PITCH_NORM)
 			}
 		}
@@ -2819,7 +2866,8 @@ public client_putinserver(id) { // Client joins the game
 	if(!g_pluginenabled) return; // Plugin disabled?
 
 	g_isconnected[id] = true
-	g_zombieclassnext[id] = ZCLASS_NONE
+	g_zombieclassnext[id] = NULL_CLASS
+	g_hclass_next[id] = NULL_CLASS
 
 	get_user_name(id, g_playername[id], charsmax(g_playername[])) // Cache player's name
 
@@ -2877,25 +2925,27 @@ public fw_EmitSound(id, channel, const sample[], Float:volume, Float:attn, flags
 	
 	if(!is_user_valid_connected(id) || !g_zombie[id]) return FMRES_IGNORED; // Replace these next sounds for zombies only
 
-	static sound[64], iRand
+	static sound[64]
 
 	// Dragon Skill
 	if(equal(sample, "common/wpn_denyselect.wav") && (pev(id, pev_button) & IN_USE) && g_zm_special[id] == DRAGON) use_cmd(id)
 
 	if(sample[7] == 'b' && sample[8] == 'h' && sample[9] == 'i' && sample[10] == 't') { // Zombie being hit
+		static Array:PainSnd;
 		if(g_zm_special[id] <= 0) {
-			iRand = random_num(ArrayGetCell(g_zclass_painsnd_start, g_zombieclass[id]), ArrayGetCell(g_zclass_painsnd_end, g_zombieclass[id])-1)
-			ArrayGetString(g_zclass_painsnd, iRand, sound, charsmax(sound))
+			if(ArrayGetCell(g_zclass_use_painsnd, g_zombieclass[id]))
+				PainSnd = ArrayGetCell(g_zclass_painsnd_handle, g_zombieclass[id])
+			else 
+				PainSnd = zombie_pain[0]
 		}
 		else if(isDefaultSpecialZombie(id)) {
-			iRand = random_num(0, ArraySize(zombie_pain[g_zm_special[id]]) - 1)
-			ArrayGetString(zombie_pain[g_zm_special[id]], iRand, sound, charsmax(sound))
+			PainSnd = zombie_pain[g_zm_special[id]]
 		}
 		else {
-			iRand = random_num(ArrayGetCell(g_zm_sp_painsndstart, g_zm_special[id]-MAX_SPECIALS_ZOMBIES), ArrayGetCell(g_zm_sp_painsndsend, g_zm_special[id]-MAX_SPECIALS_ZOMBIES)-1)
-			ArrayGetString(g_zm_sp_painsound, iRand, sound, charsmax(sound))
+			PainSnd = ArrayGetCell(g_zm_sp_painsnd_handle, g_zm_special[id]-MAX_SPECIALS_ZOMBIES)
 		}		
 			
+		ArrayGetString(PainSnd, random_num(0, ArraySize(PainSnd) - 1), sound, charsmax(sound))
 		emit_sound(id, channel, sound, volume, attn, flags, pitch)
 		return FMRES_SUPERCEDE;
 	}
@@ -2916,9 +2966,15 @@ public fw_EmitSound(id, channel, const sample[], Float:volume, Float:attn, flags
 	}
 	
 	// Zombie dies
-	if(sample[7] == 'd' && ((sample[8] == 'i' && sample[9] == 'e') || (sample[8] == 'e' && sample[9] == 'a')) && g_zm_special[id] <= 0) {		
-		iRand = random_num(ArrayGetCell(g_zclass_deathsnd_start, g_zombieclass[id]), ArrayGetCell(g_zclass_deathsnd_end, g_zombieclass[id])-1)
-		ArrayGetString(g_zclass_deathsnd, iRand, sound, charsmax(sound))
+	if(sample[7] == 'd' && ((sample[8] == 'i' && sample[9] == 'e') || (sample[8] == 'e' && sample[9] == 'a')) && g_zm_special[id] <= 0) {
+
+		static Array:DeathSnd;
+		if(ArrayGetCell(g_zclass_use_deathsnd, g_zombieclass[id]))
+			DeathSnd = ArrayGetCell(g_zclass_deathsnd_handle, g_zombieclass[id])
+		else
+			DeathSnd = ar_sound[1];
+
+		ArrayGetString(DeathSnd, random_num(0, ArraySize(DeathSnd)-1), sound, charsmax(sound))
 		emit_sound(id, channel, sound, volume, attn, flags, pitch)
 		return FMRES_SUPERCEDE;
 	}
@@ -3160,13 +3216,26 @@ set_player_maxspeed(id) { // Set proper maxspeed for player
 	
 		else if(isDefaultSpecialZombie(id)) 
 			set_pev(id, pev_maxspeed, get_pcvar_float(cvar_zm_spd[g_zm_special[id]]))
-			
-		else if(get_pcvar_float(cvar_hm_spd[g_hm_special[id]]) > 0.0) {
-			if(!g_hm_special[id] && (get_pcvar_num(cvar_hm_allow_weight_spd) == 1 || get_pcvar_num(cvar_hm_allow_weight_spd) == 2 && !g_escape_map || get_pcvar_num(cvar_hm_allow_weight_spd) >= 3 && g_escape_map))
-				set_pev(id, pev_maxspeed, get_pcvar_float(cvar_hm_spd[g_hm_special[id]]) * weapon_spd_multi[g_currentweapon[id]])
-			else
-				set_pev(id, pev_maxspeed, get_pcvar_float(cvar_hm_spd[g_hm_special[id]]))
+
+		else if(isDefaultSpecialHuman(id)) {
+			static Float:cvarSpd;
+			cvarSpd = get_pcvar_float(cvar_hm_spd[g_hm_special[id]])
+			if(cvarSpd > 0.0) set_pev(id, pev_maxspeed, cvarSpd);
 		}
+		
+		else if(isDefaultHuman(id)) {
+			static cvarWeight 
+			cvarWeight = get_pcvar_num(cvar_hm_allow_weight_spd)
+			
+			if(!g_hclass_i) // No hclass instaled
+				g_spd[id] = get_pcvar_float(cvar_hm_spd[g_hm_special[id]])
+
+			if(cvarWeight == 1 || cvarWeight == 2 && !g_escape_map || cvarWeight >= 3 && g_escape_map)
+				set_pev(id, pev_maxspeed, g_spd[id] * weapon_spd_multi[g_currentweapon[id]])
+			else
+				set_pev(id, pev_maxspeed, g_spd[id])
+		}
+			
 	}
 }
 
@@ -3326,7 +3395,7 @@ public clcmd_changeteam(id) { // Block Team Change
  [Menus]
 =================================================================================*/
 public show_menu_game(id) { // Game Menu
-	static menu[250], len, userflags
+	static menu[500], len, userflags
 	len = 0
 	userflags = get_user_flags(id)
 	
@@ -3334,12 +3403,14 @@ public show_menu_game(id) { // Game Menu
 	len += formatex(menu[len], charsmax(menu) - len, "%s %L^n", get_pcvar_num(cvar_buycustom) ? "\r1.\w" : "\d1.", id, "MENU_BUY") /* 1. Buy weapons */ 
 	len += formatex(menu[len], charsmax(menu) - len, "%s %L^n", (get_pcvar_num(cvar_extraitems) && g_isalive[id]) ? "\r2.\w" : "\d2.", id, "MENU_EXTRABUY") /* 2. Extra items */ 
 	len += formatex(menu[len], charsmax(menu) - len, "%s %L^n", get_pcvar_num(cvar_zclasses) ? "\r3.\w" : "\d3.", id, "MENU_ZCLASS") /* 3. Zombie class */ 
-	/* 4. Unstuck */
-	ExecuteForward(g_forwards[UNSTUCK_PRE], g_fwDummyResult, id);
-	if(g_zombie[id] || !g_zombie[id] && get_pcvar_num(cvar_human_unstuck) || g_fwDummyResult < ZP_PLUGIN_HANDLED) len += formatex(menu[len], charsmax(menu) - len, "\r4.\w %L^n", id, "MENU_UNSTUCK")
-	else len += formatex(menu[len], charsmax(menu) - len, "\d4. %L^n", id, "MENU_UNSTUCK")
+	len += formatex(menu[len], charsmax(menu) - len, "%s %L^n", (g_hclass_i > 1) ? "\r4.\w" : "\d4.", id, "MENU_HCLASS") /* 4. Human class */ 
 	
-	len += formatex(menu[len], charsmax(menu) - len, "\r5.\w %L^n^n", id, "MENU_PERSONAL_OPTIONS") /* 5. Personal Options*/ 
+	/* 5. Unstuck */
+	ExecuteForward(g_forwards[UNSTUCK_PRE], g_fwDummyResult, id);
+	if(g_zombie[id] || !g_zombie[id] && get_pcvar_num(cvar_human_unstuck) || g_fwDummyResult < ZP_PLUGIN_HANDLED) len += formatex(menu[len], charsmax(menu) - len, "\r5.\w %L^n", id, "MENU_UNSTUCK")
+	else len += formatex(menu[len], charsmax(menu) - len, "\d5. %L^n", id, "MENU_UNSTUCK")
+	
+	len += formatex(menu[len], charsmax(menu) - len, "\r6.\w %L^n^n", id, "MENU_PERSONAL_OPTIONS") /* 6. Personal Options*/ 
 	
 	/* 7. Join spec */
 	if(!g_isalive[id] || !get_pcvar_num(cvar_blocksuicide) || (userflags & g_access_flag[ACCESS_ADMIN_MENU])) 
@@ -3348,7 +3419,7 @@ public show_menu_game(id) { // Game Menu
 		len += formatex(menu[len], charsmax(menu) - len, "\d7. %L^n^n", id, "MENU_SPECTATOR")
 
 	len += formatex(menu[len], charsmax(menu) - len, "%s %L^n", (userflags & g_access_flag[ACCESS_ADMIN_MENU3]) ? "\r9.\w" : "\d9.", id, "MENU3_ADMIN") /* 9. Admin menu */ 
-	len += formatex(menu[len], charsmax(menu) - len, "^n^n\r0.\w %L", id, "MENU_EXIT") /* 0. Exit */ 
+	len += formatex(menu[len], charsmax(menu) - len, "^n\r0.\w %L", id, "MENU_EXIT") /* 0. Exit */ 
 	
 	fixAmxMenu(id); // Fix for AMXX custom menus
 
@@ -3444,8 +3515,8 @@ show_menu_extras(id) { // Extra Items Menu
 		team = ArrayGetCell(g_extraitem_team, item) // Retrieve item's team
 		
 		// Item not available to player's team/class
-		if(g_zombie[id] && !IsTeam(ArrayGetCell(iTeamIndexZm, g_zm_special[id]))
-		|| !g_zombie[id] && !IsTeam(ArrayGetCell(iTeamIndexHm, g_hm_special[id]))) 
+		if(g_zombie[id] && !IsTeam(team, ArrayGetCell(iTeamIndexZm, g_zm_special[id]))
+		|| !g_zombie[id] && !IsTeam(team, ArrayGetCell(iTeamIndexHm, g_hm_special[id]))) 
 			continue;
 
 		switch (item) { // Check if it's one of the hardcoded items, check availability, set translated caption
@@ -3567,6 +3638,63 @@ public show_menu_zclass(id) { // Zombie Class Menu
 	fixAmxMenu(id); // Fix for AMXX custom menus
 	
 	menu_display(id, menuid, MENU_PAGE_ZCLASS)
+}
+
+
+public show_menu_human_class(taskid) { // Zombie Class Menu
+	static id // Get player's id
+	(taskid > MaxPlayers) ? (id = ID_SPAWN) : (id = taskid);
+
+	if(!is_user_valid_connected(id) || !g_hclass_i) return;
+
+	if(g_isbot[id]) { // Bots pick their zombie class randomly
+		g_hclass_next[id] = random_num(0, g_hclass_i - 1)
+		g_choosed_hclass[id] = true
+		return;
+	}
+	
+	static menuid, menu[256], class, buffer[64], buffer2[64]
+	
+	// Title
+	formatex(menu, charsmax(menu), "%L\r", id, "MENU_HCLASS_TITLE")
+	menuid = menu_create(menu, "menu_hclass")
+	
+	for(class = 0; class < g_hclass_i; class++) { // Class List
+		g_AdditionalMenuText[0] = 0
+
+		// Retrieve name and info
+		if(ArrayGetCell(g_hclass_lang_enable, class)) {
+			ArrayGetString(g_hclass_name_lang_key, class, buffer, charsmax(buffer))
+			formatex(buffer, charsmax(buffer), "%L", id, buffer)
+
+			ArrayGetString(g_hclass_info_lang_key, class, buffer2, charsmax(buffer2))
+			formatex(buffer2, charsmax(buffer), "%L", id, buffer2)
+		}
+		else {
+			ArrayGetString(g_hclass_name, class, buffer, charsmax(buffer))
+			ArrayGetString(g_hclass_info, class, buffer2, charsmax(buffer2))
+		}
+		
+
+		ExecuteForward(g_forwards[H_CLASS_CHOOSED_PRE], g_fwDummyResult, id, class); // Item selected Pre forward
+		if(g_fwDummyResult < ZP_PLUGIN_SUPERCEDE) { // Not Show the Zombie Class
+			formatex(menu, charsmax(menu), "%s%s \r[\d%s\r] \r%s %s", g_fwDummyResult >= ZP_PLUGIN_HANDLED ? "\d" : "\w", buffer, buffer2, (class == g_hclass_next[id]) ? "[\dX\r]" : "[]", g_AdditionalMenuText)
+			buffer[0] = class; buffer[1] = 0
+			if(g_fwDummyResult >= ZP_PLUGIN_HANDLED) menu_additem(menuid, menu, buffer, 0, (1<<30));
+			else menu_additem(menuid, menu, buffer)
+		}
+	}
+	
+	// Back - Next - Exit
+	menu_setprop(menuid, MPROP_BACKNAME, fmt("%L", id, "MENU_BACK"))
+	menu_setprop(menuid, MPROP_NEXTNAME, fmt("%L", id, "MENU_NEXT"))
+	menu_setprop(menuid, MPROP_EXITNAME, fmt("%L", id, "MENU_EXIT"))
+
+	MENU_PAGE_HCLASS = min(MENU_PAGE_HCLASS, menu_pages(menuid)-1) // If remembered page is greater than number of pages, clamp down the value
+	
+	fixAmxMenu(id); // Fix for AMXX custom menus
+	
+	menu_display(id, menuid, MENU_PAGE_HCLASS)
 }
 
 public show_menu_game_mode(id) { // Custom game mode menu
@@ -3853,7 +3981,7 @@ public show_menu_make_special(id, zombie) {
 		Sp_Flags = g_hm_sp_flags
 		Fwd_ID = HM_SP_CHOSSED_PRE
 		Max_Sp_Class = g_hm_specials_i;
-		Min_Sp_Class = MAX_SPECIALS_ZOMBIES;
+		Min_Sp_Class = MAX_SPECIALS_HUMANS;
 		Menu_Hand = "custom_hm_sp_handler"
 		Menu_Page = MENU_PAGE_CUSTOM_SP_H
 	}
@@ -4249,7 +4377,11 @@ public menu_game(id, key) { // Game Menu
 			if(get_pcvar_num(cvar_zclasses)) show_menu_zclass(id) // Zombie classes enabled?
 			else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ZCLASSES")
 		}
-		case 3: { // Unstuck
+		case 3: { // Human Classes
+			if(g_hclass_i > 1) show_menu_human_class(id)
+			else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
+		}
+		case 4: { // Unstuck
 			if(g_isalive[id]) { // Check if player is stuck
 				ExecuteForward(g_forwards[UNSTUCK_PRE], g_fwDummyResult, id);
 
@@ -4269,7 +4401,7 @@ public menu_game(id, key) { // Game Menu
 			}
 			else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
 		}
-		case 4: show_menu_personal(id); // Personal Options
+		case 5: show_menu_personal(id); // Personal Options
 		case 6: { // Player alive?
 			if(g_isalive[id]) {
 				// Prevent abuse by non-admins if block suicide setting is enabled
@@ -4407,7 +4539,7 @@ public menu_extras(id, menuid, item) { // Extra Items Menu
 buy_extra_item(id, itemid, ignorecost = 0) { // Buy Extra Item
 	static team; team = ArrayGetCell(g_extraitem_team, itemid)
 
-	if(g_zombie[id] && !IsTeam(ArrayGetCell(iTeamIndexZm, g_zm_special[id])) || !g_zombie[id] && !IsTeam(ArrayGetCell(iTeamIndexHm, g_hm_special[id]))) {
+	if(g_zombie[id] && !IsTeam(team, ArrayGetCell(iTeamIndexZm, g_zm_special[id])) || !g_zombie[id] && !IsTeam(team, ArrayGetCell(iTeamIndexHm, g_hm_special[id]))) {
 		client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
 		return;
 	}
@@ -4531,6 +4663,7 @@ buy_extra_item(id, itemid, ignorecost = 0) { // Buy Extra Item
 		}
 	}
 }
+
 public menu_zclass(id, menuid, item) { // Zombie Class Menu?
 	if(!is_user_valid_connected(id)) {
 		menu_destroy(menuid)
@@ -4582,6 +4715,59 @@ public menu_zclass(id, menuid, item) { // Zombie Class Menu?
 	menu_destroy(menuid)
 	return PLUGIN_HANDLED;
 }
+
+
+public menu_hclass(id, menuid, item) { // Human Class Menu?
+	if(!is_user_valid_connected(id) || !g_hclass_i) {
+		menu_destroy(menuid)
+		return PLUGIN_HANDLED;
+	}
+	
+	if(item == MENU_EXIT) { // Menu was closed
+		menu_destroy(menuid)
+		return PLUGIN_HANDLED;
+	}
+	static menudummy; player_menu_info(id, menudummy, menudummy, MENU_PAGE_HCLASS) // Remember player's menu page
+
+	static buffer[2], dummy, classid, name[64];
+	menu_item_getinfo(menuid, item, dummy, buffer, charsmax(buffer), _, _, dummy)
+	classid = buffer[0]
+
+	ExecuteForward(g_forwards[H_CLASS_CHOOSED_PRE], g_fwDummyResult, id, classid); // Class selected Pre forward
+
+	// Not Show the Human Class
+	if(g_fwDummyResult >= ZP_PLUGIN_HANDLED) {
+		show_menu_human_class(id)
+		menu_destroy(menuid)
+		return PLUGIN_HANDLED;
+	}
+
+	g_hclass_next[id] = classid
+
+	if(ArrayGetCell(g_hclass_lang_enable, g_hclass_next[id])) {
+		ArrayGetString(g_hclass_name_lang_key, g_hclass_next[id], name, charsmax(name))
+		formatex(name, charsmax(name), "%L", id, name)
+	}
+	else ArrayGetString(g_hclass_name, g_hclass_next[id], name, charsmax(name))
+
+	// Choose Human Class Instantanly
+	if(g_isalive[id] && isDefaultHuman(id) && !g_choosed_hclass[id] && get_pcvar_num(cvar_chosse_instantanly)) {
+		client_print_color(id, print_team_default, "%L %L^1:^4 %s", id, "ZP_CHAT_TAG", id, "HUMAN_SELECT_NOW", name)
+		humanme(id, 0, 2, 0)
+	}
+	else client_print_color(id, print_team_default, "%L %L^1:^4 %s", id, "ZP_CHAT_TAG", id, "HUMAN_SELECT", name)
+
+	// Show selected human class info and stats
+	client_print_color(id, print_team_default, "%L %L^1:^4 %d^1 |^1 %L^1:^4 %d^1 |^1 %L^1:^4 %d^1 |^1 %L^1:^4 %d", id, "ZP_CHAT_TAG", id, "ZOMBIE_ATTRIB1", ArrayGetCell(g_hclass_hp, g_hclass_next[id]), id, "ZOMBIE_ATTRIB5", ArrayGetCell(g_hclass_armor, g_hclass_next[id]), id, "ZOMBIE_ATTRIB2", ArrayGetCell(g_hclass_speed, g_hclass_next[id]),
+	id, "ZOMBIE_ATTRIB3", floatround(Float:ArrayGetCell(g_hclass_gravity, g_hclass_next[id]) * 800.0))
+
+	g_choosed_hclass[id] = true
+
+	ExecuteForward(g_forwards[H_CLASS_CHOOSED_POST], g_fwDummyResult, id, classid);
+	menu_destroy(menuid)
+	return PLUGIN_HANDLED;
+}
+
 public menu_mode(id, menuid, item) { // Custom game mode menu
 	if(!is_user_connected(id)) {
 		menu_destroy(menuid)
@@ -6111,19 +6297,19 @@ zombieme(id, infector, classid, silentmode, rewards) {
 	if(silentmode != 2) remove_task(id) // Nao buga a frozen
 	
 	// Show zombie class menu if they haven't chosen any (e.g. just connected)
-	if(g_zombieclassnext[id] == ZCLASS_NONE && get_pcvar_num(cvar_zclasses) && classid <= 0
+	if(g_zombieclassnext[id] == NULL_CLASS && get_pcvar_num(cvar_zclasses) && classid <= 0
 	|| !g_choosed_zclass[id] && get_pcvar_num(cvar_zclasses) && classid <= 0 && get_pcvar_num(cvar_chosse_instantanly))
 		set_task(0.2, "show_menu_zclass", id)
 	
 	g_zombieclass[id] = g_zombieclassnext[id]
-
-	if(g_zombieclass[id] == ZCLASS_NONE) g_zombieclass[id] = 0
+	if(g_zombieclass[id] == NULL_CLASS) g_zombieclass[id] = 0
 	
 	// Way to go...
 	g_zombie[id] = true
 	g_zm_special[id] = 0
 	g_hm_special[id] = 0
 	g_damagedealt[id] = 0
+	g_choosed_hclass[id] = false
 
 	if(silentmode != 2) g_firstzombie[id] = false
 	g_user_custom_speed[id] = false
@@ -6154,13 +6340,13 @@ zombieme(id, infector, classid, silentmode, rewards) {
 	g_zombie_knockback[id] = Float:ArrayGetCell(g_zclass_kb, g_zombieclass[id])
 
 	if(ArrayGetCell(g_zclass_lang_enable, g_zombieclass[id])) {
-		ArrayGetString(g_zclass_name_lang_key, g_zombieclass[id], g_zombie_classname[id], charsmax(g_zombie_classname[]))
-		//formatex(g_zombie_classname[id], charsmax(g_zombie_classname[]), "%L", id, g_zombie_classname[id])
-		g_zombie_classname_lang[id] = true
+		ArrayGetString(g_zclass_name_lang_key, g_zombieclass[id], g_pl_classname[id], charsmax(g_pl_classname[]))
+		//formatex(g_pl_classname[id], charsmax(g_pl_classname[]), "%L", id, g_pl_classname[id])
+		g_pl_classname_lang[id] = true
 	}
 	else {
-		ArrayGetString(g_zclass_name, g_zombieclass[id], g_zombie_classname[id], charsmax(g_zombie_classname[]))
-		g_zombie_classname_lang[id] = false
+		ArrayGetString(g_zclass_name, g_zombieclass[id], g_pl_classname[id], charsmax(g_pl_classname[]))
+		g_pl_classname_lang[id] = false
 	}
 	
 	static sound[64] // Set zombie attributes based on the mode
@@ -6476,7 +6662,7 @@ humanme(id, classid, silentmode, attacker) { // Function Human Me (player id, tu
 			set_task(1.0, "turn_invisible", id)
 		}
 	}
-	else { // Human taking an antidote
+	else if(!g_hclass_i) { // Default human if not have human classes
 		fm_set_user_health(id, get_pcvar_num(cvar_hm_health[0])) // Set health
 		
 		// Set gravity, unless frozen
@@ -6484,17 +6670,20 @@ humanme(id, classid, silentmode, attacker) { // Function Human Me (player id, tu
 		else g_frozen_gravity[id] = get_pcvar_float(cvar_hmgravity[0])
 
 		if(get_pcvar_num(cvar_buycustom)) set_task(0.2, "menu_buy_show", id+TASK_SPAWN) // Show custom buy menu?
+	}
+	else { // Human class attributes
+		set_hclass_attributes(id, (silentmode == 2) ? 0 : 1)
+	}
 
-		if(!silentmode) { // Silent mode = no HUD messages, no antidote sound
-			// Antidote sound
-			static sound[64]
-			ArrayGetString(ar_sound[18], random_num(0, ArraySize(ar_sound[18]) - 1), sound, charsmax(sound))
-			emit_sound(id, CHAN_ITEM, sound, 1.0, ATTN_NORM, 0, PITCH_NORM)
-			
-			// Show Antidote HUD notice
-			set_hudmessage(10, 255, 235, HUD_INFECT_X, HUD_INFECT_Y, 1, 0.0, 5.0, 1.0, 1.0, -1)
-			ShowSyncHudMsg(0, g_MsgSync[0], "%L", LANG_PLAYER, "NOTICE_ANTIDOTE", g_playername[id])
-		}
+	if(!silentmode && classid <= 0) { // Silent mode = no HUD messages, no antidote sound
+		// Antidote sound
+		static sound[64]
+		ArrayGetString(ar_sound[18], random_num(0, ArraySize(ar_sound[18]) - 1), sound, charsmax(sound))
+		emit_sound(id, CHAN_ITEM, sound, 1.0, ATTN_NORM, 0, PITCH_NORM)
+		
+		// Show Antidote HUD notice
+		set_hudmessage(10, 255, 235, HUD_INFECT_X, HUD_INFECT_Y, 1, 0.0, 5.0, 1.0, 1.0, -1)
+		ShowSyncHudMsg(0, g_MsgSync[0], "%L", LANG_PLAYER, "NOTICE_ANTIDOTE", g_playername[id])
 	}
 	
 	// Switch to CT
@@ -6538,6 +6727,49 @@ humanme(id, classid, silentmode, attacker) { // Function Human Me (player id, tu
 	ExecuteForward(g_forwards[HUMANIZED_POST], g_fwDummyResult, id, classid, attacker) // Post user humanize forward
 	fnCheckLastZombie() // Last Zombie Check
 }
+
+set_hclass_attributes(id, reset) 
+{
+	if(!is_user_valid_alive(id))
+		return;
+
+	g_user_hclass[id] = g_hclass_next[id]
+	if(g_user_hclass[id] == NULL_CLASS) g_user_hclass[id] = 0
+
+	static ClassArmor
+	ClassArmor = ArrayGetCell(g_hclass_armor, g_user_hclass[id])
+
+	if(reset) {
+		fm_set_user_health(id, ArrayGetCell(g_hclass_hp, g_user_hclass[id])) // Dont change HP when choose other hclass instantanly
+		if(ClassArmor > 0) 
+			set_pev(id, pev_armorvalue, float(ClassArmor))
+		else cs_set_user_armor(id, 0, CS_ARMOR_NONE)
+	}
+
+	g_spd[id] = float(ArrayGetCell(g_hclass_speed, g_user_hclass[id]))
+
+	// Set gravity, unless frozen
+	if(!g_frozen[id]) set_pev(id, pev_gravity, Float:ArrayGetCell(g_hclass_gravity, g_user_hclass[id]))
+	else g_frozen_gravity[id] = Float:ArrayGetCell(g_hclass_gravity, g_user_hclass[id])
+
+	if(g_hclass_next[id] == NULL_CLASS && g_hclass_i)
+		set_task(0.2, "show_menu_human_class", id+TASK_SPAWN)
+
+	else if(get_pcvar_num(cvar_buycustom)) 
+		set_task(0.2, "menu_buy_show", id+TASK_SPAWN) // Show custom buy menu?
+
+	if(ArrayGetCell(g_hclass_lang_enable, g_user_hclass[id])) {
+		ArrayGetString(g_hclass_name_lang_key, g_user_hclass[id], g_pl_classname[id], charsmax(g_pl_classname[]))
+		//formatex(g_pl_classname[id], charsmax(g_pl_classname[]), "%L", id, g_pl_classname[id])
+		g_pl_classname_lang[id] = true
+	}
+	else {
+		ArrayGetString(g_hclass_name, g_user_hclass[id], g_pl_classname[id], charsmax(g_pl_classname[]))
+		g_pl_classname_lang[id] = false
+	}
+} 
+
+
 /*================================================================================
  [Other Functions and Tasks]
 =================================================================================*/
@@ -6815,494 +7047,28 @@ load_customization_from_files() {
 	// SVC_BAD Prevention
 	amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "SVC_BAD Prevention", "SET MODELINDEX OFFSET", g_set_modelindex_offset)
 
-	// Load Zombie Special Class Death Sounds //
-	temp_array[0] = ArrayCreate(64, 1)
+
+	static Array:ArrDeathSnd, szSound[64]
+	ArrDeathSnd = ArrayCreate(64, 1)
 	for(x = 1; x < MAX_SPECIALS_ZOMBIES; x++) {
-		ArrayPushCell(g_zm_sp_deathsnd_start, ArraySize(g_zm_sp_deathsnd))
-		amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Sounds", fmt("%s DEATH", zombie_special_names[x]), temp_array[0])
-		
-		if(ArraySize(temp_array[0]) > 0) {
-			for(i = 0; i < ArraySize(temp_array[0]); i++) {
-				ArrayGetString(temp_array[0], i, szKey, charsmax(szKey))
-				ArrayPushString(g_zm_sp_deathsnd, szKey)
+		// Load Zombie Special Class Death Sounds //
+		ArrayPushCell(g_zm_sp_deathsnd_handle, ArrDeathSnd)
+		amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Sounds", fmt("%s DEATH", zombie_special_names[x]), ArrDeathSnd)
+		if(ArraySize(ArrDeathSnd) > 0) {
+			ArrayPushCell(g_zm_sp_use_deathsnd, true)
+			for(i = 0; i < ArraySize(ArrDeathSnd); i++) {
+				ArrayGetString(ArrDeathSnd, i, szSound, charsmax(szSound))
+				engfunc(EngFunc_PrecacheSound, szSound) // Precache Pain Sound
 			}
 		}
-		else { // Backwards Compatibility
-			for(i = 0; i < ArraySize(ar_sound[1]); i++) {
-				ArrayGetString(ar_sound[1], i, szKey, charsmax(szKey))
-				ArrayPushString(g_zm_sp_deathsnd, szKey)
-			}
+		else { 
+			amx_save_setting_string(ZP_CUSTOMIZATION_FILE, "Sounds", fmt("%s DEATH", zombie_special_names[x]), "")
+			ArrayPushCell(g_zm_sp_use_deathsnd, false)
 		}
-		ArrayPushCell(g_zm_sp_deathsnd_end, ArraySize(g_zm_sp_deathsnd))
 	}
-	ArrayDestroy(temp_array[0])
+	ArrayDestroy(ArrDeathSnd)
 }
-save_customization() { // Save customization from files
-	new i, buffer[512], section[64], Float:value_f, value, k, gameid, specialid, spRealName[64]
 
-	for(i = 0; i < ArraySize(g_zclass_name); i++) { // Add any new zombie classes data at the end if needed
-		if(!ArrayGetCell(g_zclass_new, i))
-			continue; 
-			
-		ArrayGetString(g_zclass_real_name, i, section, charsmax(section)) // Get real name
-
-		ArrayGetString(g_zclass_name, i, buffer, charsmax(buffer)) // Add name
-		if(!amx_load_setting_string(ZP_ZOMBIECLASSES_FILE, section, "NAME", buffer, charsmax(buffer)))	
-			amx_save_setting_string(ZP_ZOMBIECLASSES_FILE, section, "NAME", buffer)
-		
-		ArrayGetString(g_zclass_info, i, buffer, charsmax(buffer)) // Add info
-		if(!amx_load_setting_string(ZP_ZOMBIECLASSES_FILE, section, "INFO", buffer, charsmax(buffer)))
-			amx_save_setting_string(ZP_ZOMBIECLASSES_FILE, section, "INFO", buffer) 
-		
-		temp_array[0] = ArrayCreate(32, 1)
-		temp_array[1] = ArrayCreate(1, 1)	
-		temp_array[2] = ArrayCreate(1, 1)	
-		for(k = ArrayGetCell(g_zclass_modelsstart, i); k < ArrayGetCell(g_zclass_modelsend, i); k++) {
-			ArrayGetString(g_zclass_playermodel, k, buffer, charsmax(buffer))
-			ArrayPushString(temp_array[0], buffer)
-			ArrayPushCell(temp_array[1], ArrayGetCell(g_zclass_body, k))
-			ArrayPushCell(temp_array[2], ArrayGetCell(g_zclass_skin, k))
-		}
-		if(!amx_load_setting_string_arr(ZP_ZOMBIECLASSES_FILE, section, "MODELS", temp_array[0]))
-			amx_save_setting_string_arr(ZP_ZOMBIECLASSES_FILE, section, "MODELS", temp_array[0]) // Add models
-
-		if(!amx_load_setting_int_arr(ZP_ZOMBIECLASSES_FILE, section, "BODY", temp_array[1]))
-			amx_save_setting_int_arr(ZP_ZOMBIECLASSES_FILE, section, "BODY", temp_array[1]) // Add Body
-
-		if(!amx_load_setting_int_arr(ZP_ZOMBIECLASSES_FILE, section, "SKIN", temp_array[2]))
-			amx_save_setting_int_arr(ZP_ZOMBIECLASSES_FILE, section, "SKIN", temp_array[2]) // Add Skin
-
-		for(k = 0; k < 3; k++) ArrayDestroy(temp_array[k])
-
-
-		temp_array[1] = ArrayCreate(64, 1)
-		for(k = ArrayGetCell(g_zclass_deathsnd_start, i); k < ArrayGetCell(g_zclass_deathsnd_end, i); k++) {
-			ArrayGetString(g_zclass_deathsnd, k, buffer, charsmax(buffer))
-			ArrayPushString(temp_array[1], buffer)
-		}
-		if(!amx_load_setting_string_arr(ZP_ZOMBIECLASSES_FILE, section, "DEATH SOUND", temp_array[1]))
-			amx_save_setting_string_arr(ZP_ZOMBIECLASSES_FILE, section, "DEATH SOUND", temp_array[1])
-
-		ArrayDestroy(temp_array[1])
-
-
-		temp_array[2] = ArrayCreate(64, 1)
-		for(k = ArrayGetCell(g_zclass_painsnd_start, i); k < ArrayGetCell(g_zclass_painsnd_end, i); k++) {
-				ArrayGetString(g_zclass_painsnd, k, buffer, charsmax(buffer))
-				ArrayPushString(temp_array[2], buffer)
-		}
-		if(!amx_load_setting_string_arr(ZP_ZOMBIECLASSES_FILE, section, "PAIN SOUND", temp_array[2]))
-			amx_save_setting_string_arr(ZP_ZOMBIECLASSES_FILE, section, "PAIN SOUND", temp_array[2])
-
-		ArrayDestroy(temp_array[2])
-
-		ArrayGetString(g_zclass_clawmodel, i, buffer, charsmax(buffer))
-		if(!amx_load_setting_string(ZP_ZOMBIECLASSES_FILE, section, "CLAWMODEL", buffer, charsmax(buffer)))
-			amx_save_setting_string(ZP_ZOMBIECLASSES_FILE, section, "CLAWMODEL", buffer) // Add clawmodel
-		
-		value = ArrayGetCell(g_zclass_hp, i)
-		if(!amx_load_setting_int(ZP_ZOMBIECLASSES_FILE, section, "HEALTH", value))
-			amx_save_setting_int(ZP_ZOMBIECLASSES_FILE, section, "HEALTH", value) // Add health
-
-		value = ArrayGetCell(g_zclass_spd, i)
-		if(!amx_load_setting_int(ZP_ZOMBIECLASSES_FILE, section, "SPEED", value))
-			amx_save_setting_int(ZP_ZOMBIECLASSES_FILE, section, "SPEED", value) // Add speed
-
-		value_f = Float:ArrayGetCell(g_zclass_grav, i)
-		if(!amx_load_setting_float(ZP_ZOMBIECLASSES_FILE, section, "GRAVITY", value_f))
-			amx_save_setting_float(ZP_ZOMBIECLASSES_FILE, section, "GRAVITY", value_f) // Add gravity
-
-		value_f = Float:ArrayGetCell(g_zclass_kb, i)
-		if(!amx_load_setting_float(ZP_ZOMBIECLASSES_FILE, section, "KNOCKBACK", value_f))
-			amx_save_setting_float(ZP_ZOMBIECLASSES_FILE, section, "KNOCKBACK", value_f) // Add knockback	
-
-		value = ArrayGetCell(g_zclass_lang_enable, i)
-		if(!amx_load_setting_int(ZP_ZOMBIECLASSES_FILE, section, "ENABLE LANG", value))
-			amx_save_setting_int(ZP_ZOMBIECLASSES_FILE, section, "ENABLE LANG", value) // Add health
-
-		ArrayGetString(g_zclass_name_lang_key, i, buffer, charsmax(buffer))
-		if(!amx_load_setting_string(ZP_ZOMBIECLASSES_FILE, section, "CLASS NAME LANG KEY", buffer, charsmax(buffer)))
-			amx_save_setting_string(ZP_ZOMBIECLASSES_FILE, section, "CLASS NAME LANG KEY", buffer) // Add clawmodel
-
-		ArrayGetString(g_zclass_info_lang_key, i, buffer, charsmax(buffer))
-		if(!amx_load_setting_string(ZP_ZOMBIECLASSES_FILE, section, "CLASS INFO LANG KEY", buffer, charsmax(buffer)))
-			amx_save_setting_string(ZP_ZOMBIECLASSES_FILE, section, "CLASS INFO LANG KEY", buffer) // Add clawmodel		
-		
-	}
-
-	for(i = EXTRAS_CUSTOM_STARTID; i < ArraySize(g_extraitem_realname); i++) { // Add any new extra items data at the end if needed
-		if(!ArrayGetCell(g_extraitem_new, i))
-			continue;
-		
-		ArrayGetString(g_extraitem_realname, i, section, charsmax(section)) // Add real name
-		
-		ArrayGetString(g_extraitem_name, i, buffer, charsmax(buffer))
-		if(!amx_load_setting_string(ZP_EXTRAITEMS_FILE, section, "NAME", buffer, charsmax(buffer)))
-			amx_save_setting_string(ZP_EXTRAITEMS_FILE, section, "NAME", buffer) // Add Name
-
-		value = ArrayGetCell(g_extraitem_cost, i)
-		if(!amx_load_setting_int(ZP_EXTRAITEMS_FILE, section, "COST", value))
-			amx_save_setting_int(ZP_EXTRAITEMS_FILE, section, "COST", value) // Add Cost
-
-		static szTeam[32], team, t;
-		temp_array[0] = ArrayCreate(32, 1)
-		team = ArrayGetCell(g_extraitem_team, i)
-		for(t = 0; t < ArraySize(ZP_TEAM_NAMES); t++) {
-			if(IsTeam(t)) {
-				ArrayGetString(ZP_TEAM_NAMES, t, szTeam, charsmax(szTeam))
-				ArrayPushString(temp_array[0], szTeam)
-			}
-		}
-		if(!amx_load_setting_string_arr(ZP_EXTRAITEMS_FILE, section, "TEAMS", temp_array[0]))
-			amx_save_setting_string_arr(ZP_EXTRAITEMS_FILE, section, "TEAMS", temp_array[0]) // Add Team
-
-		ArrayDestroy(temp_array[0])
-
-		value = ArrayGetCell(g_extraitem_name_by_lang, i)
-		if(!amx_load_setting_int(ZP_EXTRAITEMS_FILE, section, "NAME BY LANG", value))
-			amx_save_setting_int(ZP_EXTRAITEMS_FILE, section, "NAME BY LANG", value) // Add Name by lang option
-
-		ArrayGetString(g_extraitem_lang_key, i, buffer, charsmax(buffer))
-		if(!amx_load_setting_string(ZP_EXTRAITEMS_FILE, section, "LANG KEY", buffer, charsmax(buffer)))
-			amx_save_setting_string(ZP_EXTRAITEMS_FILE, section, "LANG KEY", buffer) // Add Name
-	
-	}
-
-	for(i = MAX_GAME_MODES; i < g_gamemodes_i; i++) { // Add any new gamemodes data at the end if needed
-		gameid = i-MAX_GAME_MODES
-		if(!ArrayGetCell(g_gamemodes_new, gameid))
-			continue;
-
-		ArrayGetString(g_gm_realname, gameid, section, charsmax(section)) // Add real name
-		
-		ArrayGetString(g_gm_name, gameid, buffer, charsmax(buffer))
-		if(!amx_load_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE NAME", buffer, charsmax(buffer)))
-			amx_save_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE NAME", buffer) // Add Name
-
-		value = ArrayGetCell(g_gm_enable, gameid)
-		if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE", value))
-			amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE", value) // Add Value
-
-		value = ArrayGetCell(g_gm_enable_on_ze_map, gameid)
-		if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE ON ESCAPE MAP", value))
-			amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE ON ESCAPE MAP", value) // Add Value
-
-		value = ArrayGetCell(g_gm_chance, gameid)
-		if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE CHANCE", value))
-			amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE CHANCE", value) // Add Value
-			
-		value = ArrayGetCell(g_gm_dm, gameid)
-		if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE RESPAWN MODE", value))
-			amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE RESPAWN MODE", value) // Add Value
-
-		value = ArrayGetCell(g_gm_respawn_limit, gameid)
-		if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE RESPAWN LIMIT", value))
-			amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE RESPAWN LIMIT", value) // Add Value
-
-		value = ArrayGetCell(g_gm_name_by_lang, gameid)
-		if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE NAME BY LANG", value))
-			amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE NAME BY LANG", value) // Add Value	
-
-		ArrayGetString(g_gm_lang_key, gameid, buffer, charsmax(buffer))
-		if(!amx_load_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE LANG KEY", buffer, charsmax(buffer)))
-			amx_save_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE LANG KEY", buffer) // Add Name
-	}
-
-	for(i = MAX_SPECIALS_HUMANS; i < g_hm_specials_i; i++) { // Add any new special classes data at the end if needed
-		specialid = i-MAX_SPECIALS_HUMANS
-		if(!ArrayGetCell(g_hm_specials, specialid))
-			continue;
-
-		ArrayGetString(g_hm_sp_realname, specialid, spRealName, charsmax(spRealName)) // Add real name
-		formatex(section, charsmax(section), "H:%s", spRealName) // Fix bug if any human special have same name with zombie special
-
-		ArrayGetString(g_hm_sp_name, specialid, buffer, charsmax(buffer))
-		if(!amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "NAME", buffer, charsmax(buffer)))
-			amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "NAME", buffer)
-		
-		temp_array[0] = ArrayCreate(32, 1)
-		temp_array[1] = ArrayCreate(1, 1)	
-		temp_array[2] = ArrayCreate(1, 1)	
-		for(k = ArrayGetCell(g_hm_sp_modelstart, specialid); k < ArrayGetCell(g_hm_sp_modelsend, specialid); k++) {
-			ArrayGetString(g_hm_sp_model, k, buffer, charsmax(buffer))
-			ArrayPushString(temp_array[0], buffer)
-			ArrayPushCell(temp_array[1], ArrayGetCell(g_hm_sp_body, k))
-			ArrayPushCell(temp_array[2], ArrayGetCell(g_hm_sp_skin, k))
-		}
-		if(!amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", temp_array[0]))
-			amx_save_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", temp_array[0]) // Add models
-
-		if(!amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "BODY", temp_array[1]))
-			amx_save_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "BODY", temp_array[1]) // Add Body
-
-		if(!amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", temp_array[2]))
-			amx_save_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", temp_array[2]) // Add Skin
-			
-		for(k = 0; k < 3; k++) ArrayDestroy(temp_array[k])
-
-		value = ArrayGetCell(g_hm_sp_health, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "HEALTH", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "HEALTH", value) // Add Value
-			
-		value = ArrayGetCell(g_hm_sp_speed, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "SPEED", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "SPEED", value) // Add Value
-			
-		value_f = Float:ArrayGetCell(g_hm_sp_gravity, specialid)
-		if(!amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "GRAVITY", value_f))
-			amx_save_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "GRAVITY", value_f) // Add Value
-			
-		value = ArrayGetCell(g_hm_sp_aurarad, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "AURA SIZE", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "AURA SIZE", value) // Add Value
-			
-		value = ArrayGetCell(g_hm_sp_glow, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GLOW ENABLE", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GLOW ENABLE", value) // Add Value
-
-		value = ArrayGetCell(g_hm_sp_nvision, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NVISION ENABLE", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NVISION ENABLE", value) // Add Value
-			
-		value = ArrayGetCell(g_hm_sp_r, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "RED", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "RED", value) // Add Value
-			
-		value = ArrayGetCell(g_hm_sp_g, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GREEN", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GREEN", value) // Add Value
-			
-		value = ArrayGetCell(g_hm_sp_b, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "BLUE", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "BLUE", value) // Add Value
-			
-		value = ArrayGetCell(g_hm_sp_leap, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW LEAP", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW LEAP", value) // Add Value
-			
-		value = ArrayGetCell(g_hm_sp_leap_f, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "LEAP FORCE", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "LEAP FORCE", value) // Add Value
-			
-		value_f = Float:ArrayGetCell(g_hm_sp_leap_h, specialid)
-		if(!amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP HEIGHT", value_f))
-			amx_save_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP HEIGHT", value_f) // Add Value
-			
-		value_f = Float:ArrayGetCell(g_hm_sp_leap_c, specialid)
-		if(!amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP COOLDOWN", value_f))
-			amx_save_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP COOLDOWN", value_f) // Add Value
-			
-		value = ArrayGetCell(g_hm_sp_uclip, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "CLIP TYPE", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "CLIP TYPE", value) // Add Value
-			
-		value = ArrayGetCell(g_hm_sp_ignorefrag, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE FRAG", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE FRAG", value) // Add Value
-			
-		value = ArrayGetCell(g_hm_sp_ignoreammo, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE AMMO", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE AMMO", value) // Add Value
-			
-		value = ArrayGetCell(g_hm_sp_respawn, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW RESPAWN", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW RESPAWN", value) // Add Value
-			
-		value = ArrayGetCell(g_hm_sp_painfree, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "PAINFREE", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "PAINFREE", value) // Add Value
-			
-		value = ArrayGetCell(g_hm_sp_enable, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ENABLE", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ENABLE", value) // Add Value
-
-		value = ArrayGetCell(g_hm_sp_name_by_lang, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", value) // Add Value
-
-		ArrayGetString(g_hm_sp_lang_key, specialid, buffer, charsmax(buffer))
-		if(!amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "LANG KEY", buffer, charsmax(buffer)))
-			amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "LANG KEY", buffer)
-	}
-
-	for(i = MAX_SPECIALS_ZOMBIES; i < g_zm_specials_i; i++) {
-		specialid = i-MAX_SPECIALS_ZOMBIES
-		if(!ArrayGetCell(g_zm_specials, specialid))
-			continue;
-
-		ArrayGetString(g_zm_sp_realname, specialid, spRealName, charsmax(spRealName)) // Add real name
-		formatex(section, charsmax(section), "Z:%s", spRealName) // Fix bug if any human special have same name with zombie special
-
-		ArrayGetString(g_zm_sp_name, specialid, buffer, charsmax(buffer))
-		if(!amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "NAME", buffer, charsmax(buffer)))
-			amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "NAME", buffer)
-		
-		temp_array[0] = ArrayCreate(32, 1)
-		temp_array[1] = ArrayCreate(1, 1)	
-		temp_array[2] = ArrayCreate(1, 1)	
-		for(k = ArrayGetCell(g_zm_sp_modelstart, specialid); k < ArrayGetCell(g_zm_sp_modelsend, specialid); k++) {
-			ArrayGetString(g_zm_sp_model, k, buffer, charsmax(buffer))
-			ArrayPushString(temp_array[0], buffer)
-			ArrayPushCell(temp_array[1], ArrayGetCell(g_zm_sp_body, k))
-			ArrayPushCell(temp_array[2], ArrayGetCell(g_zm_sp_skin, k))
-		}
-		if(!amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", temp_array[0]))
-			amx_save_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", temp_array[0]) // Add models
-
-		if(!amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "BODY", temp_array[1]))
-			amx_save_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "BODY", temp_array[1]) // Add Body
-
-		if(!amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", temp_array[2]))
-			amx_save_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", temp_array[2]) // Add Skin
-
-		for(k = 0; k < 3; k++) ArrayDestroy(temp_array[k])
-
-		ArrayGetString(g_zm_sp_knifemodel, specialid, buffer, charsmax(buffer))
-		if(!amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "V_KNIFE MODEL", buffer, charsmax(buffer)))
-			amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "V_KNIFE MODEL", buffer)
-
-		
-		temp_array[1] = ArrayCreate(64, 1)
-		for(k = ArrayGetCell(g_zm_sp_painsndstart, specialid); k < ArrayGetCell(g_zm_sp_painsndsend, specialid); k++) {
-			ArrayGetString(g_zm_sp_painsound, k, buffer, charsmax(buffer))
-			ArrayPushString(temp_array[1], buffer)
-		}
-		if(!amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "PAIN SOUND", temp_array[1]))
-			amx_save_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "PAIN SOUND", temp_array[1])
-
-		ArrayDestroy(temp_array[1])
-			
-		value = ArrayGetCell(g_zm_sp_health, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "HEALTH", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "HEALTH", value) // Add Value
-			
-		value = ArrayGetCell(g_zm_sp_speed, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "SPEED", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "SPEED", value) // Add Value
-			
-		value_f = Float:ArrayGetCell(g_zm_sp_gravity, specialid)
-		if(!amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "GRAVITY", value_f))
-			amx_save_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "GRAVITY", value_f) // Add Value
-			
-		value = ArrayGetCell(g_zm_sp_aurarad, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "AURA SIZE", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "AURA SIZE", value) // Add Value
-			
-		value = ArrayGetCell(g_zm_sp_glow, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GLOW ENABLE", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GLOW ENABLE", value) // Add Value
-
-		value = ArrayGetCell(g_zm_sp_nvision, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NVISION ENABLE", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NVISION ENABLE", value) // Add Value
-			
-		value = ArrayGetCell(g_zm_sp_r, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "RED", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "RED", value) // Add Value
-			
-		value = ArrayGetCell(g_zm_sp_g, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GREEN", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GREEN", value) // Add Value
-			
-		value = ArrayGetCell(g_zm_sp_b, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "BLUE", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "BLUE", value) // Add Value
-			
-		value = ArrayGetCell(g_zm_sp_leap, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW LEAP", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW LEAP", value) // Add Value
-			
-		value = ArrayGetCell(g_zm_sp_leap_f, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "LEAP FORCE", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "LEAP FORCE", value) // Add Value
-			
-		value_f = Float:ArrayGetCell(g_zm_sp_leap_h, specialid)
-		if(!amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP HEIGHT", value_f))
-			amx_save_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP HEIGHT", value_f) // Add Value
-			
-		value_f = Float:ArrayGetCell(g_zm_sp_leap_c, specialid)
-		if(!amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP COOLDOWN", value_f))
-			amx_save_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP COOLDOWN", value_f) // Add Value
-			
-		value_f = ArrayGetCell(g_zm_sp_knockback, specialid)
-		if(!amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "KNOCKBACK", value_f))
-			amx_save_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "KNOCKBACK", value_f) // Add Value
-			
-		value = ArrayGetCell(g_zm_sp_ignorefrag, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE FRAG", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE FRAG", value) // Add Value
-			
-		value = ArrayGetCell(g_zm_sp_ignoreammo, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE AMMO", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE AMMO", value) // Add Value
-			
-		value = ArrayGetCell(g_zm_sp_respawn, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW RESPAWN", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW RESPAWN", value) // Add Value
-			
-		value = ArrayGetCell(g_zm_sp_painfree, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "PAINFREE", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "PAINFREE", value) // Add Value
-			
-		value = ArrayGetCell(g_zm_sp_allow_burn, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW BURN", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW BURN", value) // Add Value
-			
-		value = ArrayGetCell(g_zm_sp_allow_frost, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW FROST", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW FROST", value) // Add Value
-			
-		value = ArrayGetCell(g_zm_sp_enable, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ENABLE", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ENABLE", value) // Add Value
-
-		temp_array[1] = ArrayCreate(64, 1)
-		for(k = ArrayGetCell(g_zm_sp_deathsnd_start, i-1); k < ArrayGetCell(g_zm_sp_deathsnd_end, i-1); k++) {
-			ArrayGetString(g_zm_sp_deathsnd, k, buffer, charsmax(buffer))
-			ArrayPushString(temp_array[1], buffer)
-		}
-		if(!amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "DEATH SOUND", temp_array[1]))
-			amx_save_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "DEATH SOUND", temp_array[1])
-
-		ArrayDestroy(temp_array[1])
-
-		value = ArrayGetCell(g_zm_sp_name_by_lang, specialid)
-		if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", value))
-			amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", value) // Add Value
-
-		ArrayGetString(g_zm_sp_lang_key, specialid, buffer, charsmax(buffer))
-		if(!amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "LANG KEY", buffer, charsmax(buffer)))
-			amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "LANG KEY", buffer)
-	}
-
-	for(k = 0; k < 2; k++) {
-		for(i = 0; i < ArraySize(g_wpn_name[k]); i++) { // Add any new custom weapons data at the end if needed
-			if(!ArrayGetCell(g_wpn_is_custom[k], i)) 
-				continue
-
-			ArrayGetString(g_wpn_realname[k], i, section, charsmax(section)) // Add real name
-			
-			ArrayGetString(g_wpn_name[k], i, buffer, charsmax(buffer))
-			if(!amx_load_setting_string(ZP_WEAPONS_FILE, section, "NAME", buffer, charsmax(buffer)))
-				amx_save_setting_string(ZP_WEAPONS_FILE, section, "NAME", buffer) // Add Name
-
-			value = ArrayGetCell(g_wpn_name_by_lang[k], i)
-			if(!amx_load_setting_int(ZP_WEAPONS_FILE, section, "NAME BY LANG", value))
-				amx_save_setting_int(ZP_WEAPONS_FILE, section, "NAME BY LANG", value) // Add Value
-
-			ArrayGetString(g_wpn_lang_key[k], i, buffer, charsmax(buffer))
-			if(!amx_load_setting_string(ZP_WEAPONS_FILE, section, "LANG KEY", buffer, charsmax(buffer)))
-				amx_save_setting_string(ZP_WEAPONS_FILE, section, "LANG KEY", buffer) // Add Name
-		}
-	}
-
-	// Free arrays containing class/item overrides
-	ArrayDestroy(g_zclass_new)
-	ArrayDestroy(g_zm_specials)
-	ArrayDestroy(g_hm_specials)
-	ArrayDestroy(g_gamemodes_new)
-	ArrayDestroy(g_extraitem_new)
-}
 public register_ham_czbots(id) { // Register Ham Forwards for CZ bots
 	if(g_hamczbots || !g_isconnected[id] || !get_pcvar_num(cvar_botquota)) return; // Make sure it's a CZ bot and it's still connected
 	
@@ -7933,9 +7699,12 @@ reset_vars(id, resetall) { // Reset Player Vars
 
 	if(resetall) {
 		g_ammopacks[id] = get_pcvar_num(cvar_startammopacks)
-		g_zombieclass[id] = ZCLASS_NONE
-		g_zombieclassnext[id] = ZCLASS_NONE
+		g_zombieclass[id] = NULL_CLASS
+		g_zombieclassnext[id] = NULL_CLASS
+		g_user_hclass[id] = NULL_CLASS
+		g_hclass_next[id] = NULL_CLASS
 		g_choosed_zclass[id] = false
+		g_choosed_hclass[id] = false
 		g_damagedealt[id] = 0
 		WPN_AUTO_ON = 0
 		WPN_STARTID = 0
@@ -7998,10 +7767,10 @@ public ShowHUD(taskid) { // Show HUD Task
 		else if(isDefaultSpecialZombie(id)) 
 			formatex(class, charsmax(class), "%L", ID_SHOWHUD, zm_special_class_langs[g_zm_special[id]])
 		else {
-			if(g_zombie_classname_lang[id]) 
-				formatex(class, charsmax(class), "%L", ID_SHOWHUD, g_zombie_classname[id])
+			if(g_pl_classname_lang[id]) 
+				formatex(class, charsmax(class), "%L", ID_SHOWHUD, g_pl_classname[id])
 			else 
-				copy(class, charsmax(class), g_zombie_classname[id])
+				copy(class, charsmax(class), g_pl_classname[id])
 		}
 	}
 	else { // Humans
@@ -8013,7 +7782,14 @@ public ShowHUD(taskid) { // Show HUD Task
 			}
 			else ArrayGetString(g_hm_sp_name, sp_id, class, charsmax(class))
 		}
-		else formatex(class, charsmax(class), "%L", ID_SHOWHUD, hm_special_class_langs[g_hm_special[id]])
+		else if(isDefaultSpecialHuman(id) || !g_hclass_i) 
+			formatex(class, charsmax(class), "%L", ID_SHOWHUD, hm_special_class_langs[g_hm_special[id]])
+		else {
+			if(g_pl_classname_lang[id]) 
+				formatex(class, charsmax(class), "%L", ID_SHOWHUD, g_pl_classname[id])
+			else 
+				copy(class, charsmax(class), g_pl_classname[id])
+		}
 	}
 	
 	if(id != ID_SHOWHUD) { // Spectating someone else?
@@ -8256,6 +8032,7 @@ save_stats(id) { // Save player's stats to database
 		copy(db_name[db_slot_i], charsmax(db_name[]), db_name[id])
 		db_ammopacks[db_slot_i] = db_ammopacks[id]
 		db_zombieclass[db_slot_i] = db_zombieclass[id]
+		db_humanclass[db_slot_i] = db_humanclass[id]
 		db_slot_i++
 	}
 	
@@ -8263,6 +8040,7 @@ save_stats(id) { // Save player's stats to database
 	copy(db_name[id], charsmax(db_name[]), g_playername[id]) // name
 	db_ammopacks[id] = g_ammopacks[id] // ammo packs
 	db_zombieclass[id] = g_zombieclassnext[id] // zombie class
+	db_humanclass[id] =	g_hclass_next[id]
 
 	// Save Player Configuration -- (Not Works)
 	//client_cmd(id, "setinfo ^"zpspdata^" ^"%d-%d-%d-%d-%d-%d^"", g_hud_type[id], g_hud_color[0][id], g_hud_color[1][id], g_flashlight_color[id], g_nv_color[0][id], g_nv_color[1][id])
@@ -8275,6 +8053,7 @@ load_stats(id) { // Load player's stats from database (if a record is found)
 			g_ammopacks[id] = db_ammopacks[i]
 			g_zombieclass[id] = db_zombieclass[i]
 			g_zombieclassnext[id] = db_zombieclass[i]
+			g_hclass_next[id] = db_humanclass[i]
 			return;
 		}
 	}
@@ -8607,50 +8386,61 @@ stock zp_log_message(id, player, const lang[]) {
 /*================================================================================
  [Custom Natives]
 =================================================================================*/
-public native_get_user_zombie(id) { // Native: zp_get_user_zombie
+public native_get_user_zombie(plugin_id, param_nums) { // Native: zp_get_user_zombie
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_zombie[id];
 }
-public native_get_user_nemesis(id) { // Native: zp_get_user_nemesis
+public native_get_user_nemesis(plugin_id, param_nums) { // Native: zp_get_user_nemesis
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 
 	return g_zm_special[id] == NEMESIS;
 }
-public native_get_user_survivor(id) { // Native: zp_get_user_survivor
+public native_get_user_survivor(plugin_id, param_nums) { // Native: zp_get_user_survivor
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 
 	return g_hm_special[id] == SURVIVOR;
 }
-public native_get_user_first_zombie(id) { // Native: zp_get_user_first_zombie
+public native_get_user_first_zombie(plugin_id, param_nums) { // Native: zp_get_user_first_zombie
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_firstzombie[id];
 }
-public native_get_human_special_class(id) { // Native: zp_get_human_special_class
+public native_get_human_special_class(plugin_id, param_nums) { // Native: zp_get_human_special_class
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_zombie[id] ? 0 : g_hm_special[id];
 }
-public native_get_zombie_special_class(id) { // Native: zp_get_zombie_special_class
+public native_get_zombie_special_class(plugin_id, param_nums) { // Native: zp_get_zombie_special_class
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_zombie[id] ? g_zm_special[id] : 0
 }
-public native_get_user_last_zombie(id) { // Native: zp_get_user_last_zombie
+public native_get_user_last_zombie(plugin_id, param_nums) { // Native: zp_get_user_last_zombie
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_lastzombie[id];
 }
-public native_get_user_last_human(id) { // Native: zp_get_user_last_human
+public native_get_user_last_human(plugin_id, param_nums) { // Native: zp_get_user_last_human
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_lasthuman[id];
 }
-public native_get_user_madness(id) { // Native: zp_get_user_madness
+public native_get_user_madness(plugin_id, param_nums) { // Native: zp_get_user_madness
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_nodamage[id];
 }
-public native_get_user_zombie_class(id) { // Native: zp_get_user_zombie_class
+public native_get_user_zombie_class(plugin_id, param_nums) { // Native: zp_get_user_zombie_class
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	if(g_zm_special[id] > 0) return -1 // Fix Bug of Special Classes using Zombie Classes's Skills
 	return g_zombieclass[id];
 }
-public native_get_user_next_class(id) { // Native: zp_get_user_next_class
+public native_get_user_next_class(plugin_id, param_nums) { // Native: zp_get_user_next_class
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_zombieclassnext[id];
 }
@@ -8664,7 +8454,29 @@ public native_set_user_zombie_class(id, classid) { // Native: zp_set_user_zombie
 	g_zombieclassnext[id] = classid
 	return true;
 }
-public native_get_user_ammo_packs(id) { // Native: zp_get_user_ammo_packs
+public native_get_user_human_class(plugin_id, param_nums) { // Native: zp_get_user_human_class
+	static id; id = get_param(1)
+	if(!is_user_valid(id)) return -1;
+	if(g_hm_special[id] > 0) return -1
+	return g_user_hclass[id];
+}
+public native_get_next_human_class(id) { // Native: zp_get_next_human_class
+	if(!is_user_valid(id)) return -1;
+	return g_hclass_next[id];
+}
+public native_set_user_human_class(id, classid) { // Native: zp_set_user_human_class
+	if(!is_user_valid(id)) return false;
+	
+	if(classid < 0 || classid >= g_hclass_i) {
+		log_error(AMX_ERR_NATIVE, "[ZP] Invalid human class id (%d)", classid)
+		return false;
+	}
+	g_hclass_next[id] = classid
+	return true;
+}
+
+public native_get_user_ammo_packs(plugin_id, param_nums) { // Native: zp_get_user_ammo_packs
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_ammopacks[id];
 }
@@ -8673,15 +8485,18 @@ public native_set_user_ammo_packs(id, amount) { // Native: zp_set_user_ammo_pack
 	g_ammopacks[id] = amount;
 	return true;
 }
-public native_get_user_frozen(id) { // Native: zp_get_user_frozen
+public native_get_user_frozen(plugin_id, param_nums) { // Native: zp_get_user_frozen
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_frozen[id];
 }
-public native_get_user_burn(id) { // Native: zp_get_user_burn
+public native_get_user_burn(plugin_id, param_nums) { // Native: zp_get_user_burn
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_burning_dur[id] > 0
 }
-public native_get_user_infectnade(id) { // Native: zp_get_user_infectnade
+public native_get_user_infectnade(plugin_id, param_nums) { // Native: zp_get_user_infectnade
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return (g_zombie[id] && g_zm_special[id] <= 0 && user_has_weapon(id, CSW_HEGRENADE));
 }
@@ -8700,7 +8515,8 @@ public native_get_zombie_maxhealth(id) { // Native: zp_get_zombie_maxhealth
 	}
 	return -1;
 }
-public native_get_user_batteries(id) { // Native: zp_get_user_batteries
+public native_get_user_batteries(plugin_id, param_nums) { // Native: zp_get_user_batteries
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_flashbattery[id];
 }
@@ -8715,7 +8531,8 @@ public native_set_user_batteries(id, value) { // Native: zp_set_user_batteries
 	}
 	return true;
 }
-public native_get_user_nightvision(id) { // Native: zp_get_user_nightvision
+public native_get_user_nightvision(plugin_id, param_nums) { // Native: zp_get_user_nightvision
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 
 	if(g_nvisionenabled[id])
@@ -8798,7 +8615,10 @@ public native_weapon_is_custom(wpn_type, wpn_id) { // Native: zp_weapon_is_custo
 	}
 	return ArrayGetCell(g_wpn_is_custom[wpn_type], wpn_id);
 }
-public native_weapon_count(wpn_type, skip_def_custom) { // Native: zp_weapon_count
+public native_weapon_count(plugin_id, num_params) { // Native: zp_weapon_count
+	static wpn_type, skip_def_custom
+	wpn_type = get_param(1)
+	skip_def_custom = get_param(2)
 	if(!skip_def_custom) return g_wpn_i[wpn_type]
 
 	static count, i; count = 0
@@ -8868,9 +8688,6 @@ public native_get_gamemode_id(const name[]) { // Native: zp_get_gamemode_id(cons
 		static gameid, custom_gamemode_name[32]
 		for(i = MAX_GAME_MODES; i < g_gamemodes_i; i++) {
 			gameid = i-MAX_GAME_MODES
-			if(!ArrayGetCell(g_gamemodes_new, gameid)) 
-				continue;
-			
 			ArrayGetString(g_gm_realname, gameid, custom_gamemode_name, charsmax(custom_gamemode_name)) // Add real name
 			if(equal(name, custom_gamemode_name)) {
 				mode_id = i
@@ -9054,12 +8871,13 @@ public native_set_user_maxspeed(id, Float:Speed) { // Native: zp_set_user_maxspe
 
 	return true
 }
-public Float:native_get_user_maxspeed(id) { // Native: zp_get_user_maxspeed
+public Float:native_get_user_maxspeed(plugin_id, num_params) { // Native: zp_get_user_maxspeed
+	static id; id = get_param(id)
 	if(!is_user_valid(id)) return -1.0;
 	
 	if(g_user_custom_speed[id]) return g_current_maxspeed[id];
-	else if(isCustomSpecialHuman(id) || isCustomSpecialZombie(id)) return g_spd[id];
-	else if(g_zombie[id]) return get_pcvar_float(cvar_zm_spd[g_zm_special[id]]);
+	else if(isDefaultZombie(id)) return get_pcvar_float(cvar_zm_spd[g_zm_special[id]]);
+	else if(isCustomSpecialHuman(id) || isCustomSpecialZombie(id) || g_hclass_i && isDefaultHuman(id)) return g_spd[id];
 
 	return get_pcvar_float(cvar_hm_spd[g_hm_special[id]]);
 }
@@ -9384,35 +9202,43 @@ public native_force_buy_extra_item(id, itemid, ignorecost) { // Native: zp_force
 	buy_extra_item(id, itemid, ignorecost)
 	return true;
 }
-public native_get_user_sniper(id) { // Native: zp_get_user_sniper
+public native_get_user_sniper(plugin_id, param_nums) { // Native: zp_get_user_sniper
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return (g_hm_special[id] == SNIPER);
 }
-public native_get_user_assassin(id) { // Native: zp_get_user_assassin
+public native_get_user_assassin(plugin_id, param_nums) { // Native: zp_get_user_assassin
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return (g_zm_special[id] == ASSASSIN);
 }
-public native_get_user_predator(id) { // Native: zp_get_user_predator
+public native_get_user_predator(plugin_id, param_nums) { // Native: zp_get_user_predator
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return (g_zm_special[id] == PREDATOR);
 }
-public native_get_user_bombardier(id) { // Native: zp_get_user_bombardier
+public native_get_user_bombardier(plugin_id, param_nums) { // Native: zp_get_user_bombardier
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return (g_zm_special[id] == BOMBARDIER);
 }
-public native_get_user_dragon(id) { // Native: zp_get_user_dragon
+public native_get_user_dragon(plugin_id, param_nums) { // Native: zp_get_user_dragon
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return (g_zm_special[id] == DRAGON);
 }
-public native_get_user_berserker(id) { // Native: zp_get_user_berserker
+public native_get_user_berserker(plugin_id, param_nums) { // Native: zp_get_user_berserker
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return (g_hm_special[id] == BERSERKER);
 }
-public native_get_user_wesker(id) { // Native: zp_get_user_wesker
+public native_get_user_wesker(plugin_id, param_nums) { // Native: zp_get_user_wesker
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return (g_hm_special[id] == WESKER);
 }
-public native_get_user_spy(id) { // Native: zp_get_user_spy
+public native_get_user_spy(plugin_id, param_nums) { // Native: zp_get_user_spy
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return (g_hm_special[id] == SPY);
 }
@@ -9510,19 +9336,16 @@ public native_get_special_count(is_zombie, specialid) {
 }
 
 // Native: zp_register_human_special
-public native_register_human_special(const name[], const model[], hp, speed, Float:gravity, flags, clip_type, aura_radius, glow, r, g, b) {
+public native_register_human_special(plugin_id, param_nums) {
 	if(!g_pluginenabled) return -1; // ZP Special disabled
-
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
 	
-	param_convert(1); param_convert(2) // Strings passed byref
-			
+	static i, sp_name[32], name[32]
+	get_string(1, name, charsmax(name))
 	if(strlen(name) < 1) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Can't register Custom Special Class with an empty name")
 		return -1;
 	}
-
-	static i, sp_name[32]
 	for(i = MAX_SPECIALS_HUMANS; i < g_hm_specials_i; i++) {
 		ArrayGetString(g_hm_sp_realname, i-MAX_SPECIALS_HUMANS, sp_name, charsmax(sp_name))
 		if(equali(name, sp_name)) {
@@ -9530,132 +9353,200 @@ public native_register_human_special(const name[], const model[], hp, speed, Flo
 			return -1;
 		}
 	}
-	
+
+	static model[32], hp, speed, Float:gravity, flags, clip_type, aura_radius, glow, rgb[3]
+	get_string(2, model, charsmax(model));
+	hp = get_param(3);
+	speed = get_param(4);
+	gravity = get_param_f(5);
+	flags = get_param(6);
+	clip_type = get_param(7);
+	aura_radius = get_param(8);
+	glow = get_param(9);
+	rgb[0] = get_param(10);
+	rgb[1] = get_param(11);
+	rgb[2] = get_param(12);
+
+	static section[32], szPrecache[64]
+	formatex(section, charsmax(section), "H:%s", name)
 	ArrayPushString(g_hm_sp_realname, name)
+
+	// Replace Name
+	static value, Float:value_f, szValue[64];
+	if(!amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "NAME", name, charsmax(name))) 
+		amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "NAME", name)
 	ArrayPushString(g_hm_sp_name, name)
-	ArrayPushString(g_hm_sp_model, model)
-	ArrayPushCell(g_hm_sp_body, 0)
-	ArrayPushCell(g_hm_sp_skin, 0)
+
+	// Load Models/Body/Skin //
+	static Array:ArrModelTemp, Array:ArrBodyTemp, Array:ArrSkinTemp;
+	ArrModelTemp = ArrayCreate(32, 1)
+	ArrBodyTemp = ArrayCreate(1, 1)
+	ArrSkinTemp = ArrayCreate(1, 1)
+	amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", ArrModelTemp)
+	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "BODY", ArrBodyTemp)
+	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", ArrSkinTemp)
+	if (ArraySize(ArrModelTemp) > 0) {
+		// Precache player models
+		for (i = 0; i < ArraySize(ArrModelTemp); i++) {
+			ArrayGetString(ArrModelTemp, i, szPrecache, charsmax(szPrecache))
+			precache_player_model(szPrecache)
+		}
+	}
+	else {
+		ArrayPushString(ArrModelTemp, model)
+		ArrayPushCell(ArrBodyTemp, 0)
+		ArrayPushCell(ArrSkinTemp, 0)
+		amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", model)
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "BODY", 0)
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", 0)
+		precache_player_model(model)
+	}
+	ArrayPushCell(g_hm_sp_mdl_handle, ArrModelTemp)
+	ArrayPushCell(g_hm_sp_body_handle, ArrBodyTemp)
+	ArrayPushCell(g_hm_sp_skin_handle, ArrSkinTemp)
+	//----------------------------------------------------------------------------
+	
+	// Replace Health
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "HEALTH", hp)) 
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "HEALTH", hp)
 	ArrayPushCell(g_hm_sp_health, hp)
+
+	// Replace Speed
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "SPEED", speed)) 
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "SPEED", speed)
 	ArrayPushCell(g_hm_sp_speed, speed)
+
+	// Replace Gravity
+	if(!amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "GRAVITY", gravity)) 
+		amx_save_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "GRAVITY", gravity)
 	ArrayPushCell(g_hm_sp_gravity, gravity)
-	ArrayPushCell(g_hm_sp_flags, flags)
-	ArrayPushCell(g_hm_sp_aurarad, aura_radius)
+
+	// Replace Speed
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GLOW ENABLE", glow)) 
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GLOW ENABLE", glow)
 	ArrayPushCell(g_hm_sp_glow, glow)
-	ArrayPushCell(g_hm_sp_r, r)
-	ArrayPushCell(g_hm_sp_g, g)
-	ArrayPushCell(g_hm_sp_b, b)
-	ArrayPushCell(g_hm_sp_leap, 1)
-	ArrayPushCell(g_hm_sp_leap_f, 500)
-	ArrayPushCell(g_hm_sp_leap_h, 300.0)
-	ArrayPushCell(g_hm_sp_leap_c, 5.0)
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NVISION ENABLE", value)) {
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NVISION ENABLE", 1)
+		ArrayPushCell(g_hm_sp_nvision, 1)
+	}
+	else ArrayPushCell(g_hm_sp_nvision, value)
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "AURA SIZE", aura_radius)) 
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "AURA SIZE", aura_radius)
+	ArrayPushCell(g_hm_sp_aurarad, aura_radius)
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "RED", rgb[0])) 
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "RED", rgb[0])
+	ArrayPushCell(g_hm_sp_r, rgb[0])
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GREEN", rgb[1])) 
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GREEN", rgb[1])
+	ArrayPushCell(g_hm_sp_g, rgb[1])
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "BLUE", rgb[2])) 
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "BLUE", rgb[2])
+	ArrayPushCell(g_hm_sp_b, rgb[2])
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "CLIP TYPE", clip_type)) 
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "CLIP TYPE", clip_type)
 	ArrayPushCell(g_hm_sp_uclip, clip_type)
-	ArrayPushCell(g_hm_sp_ignorefrag, 0)
-	ArrayPushCell(g_hm_sp_ignoreammo, 0)
-	ArrayPushCell(g_hm_sp_respawn, 1)
-	ArrayPushCell(g_hm_sp_nvision, 1)
-	ArrayPushCell(g_hm_sp_painfree, 0)
-	ArrayPushCell(g_hm_sp_enable, 1)
-	ArrayPushCell(g_hm_specials, 1)
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW LEAP", value)) {
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW LEAP", 1)
+		ArrayPushCell(g_hm_sp_leap, 1)
+	}
+	else ArrayPushCell(g_hm_sp_leap, value)
+	
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "LEAP FORCE", value)) {
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "LEAP FORCE", 500)
+		ArrayPushCell(g_hm_sp_leap_f, 500)
+	}
+	else ArrayPushCell(g_hm_sp_leap_f, value)
+	
+	if(!amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP HEIGHT", value_f)) {
+		amx_save_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP HEIGHT", 300.0)
+		ArrayPushCell(g_hm_sp_leap_h, 300.0)
+	}
+	else ArrayPushCell(g_hm_sp_leap_h, value_f)
+	
+	if(!amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP COOLDOWN", value_f)) {
+		amx_save_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP COOLDOWN", 5.0)
+		ArrayPushCell(g_hm_sp_leap_c, 5.0)
+	}
+	else ArrayPushCell(g_hm_sp_leap_c, value_f)
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE FRAG", value)) {
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE FRAG", 0)
+		ArrayPushCell(g_hm_sp_ignorefrag, 0)
+	}
+	else ArrayPushCell(g_hm_sp_ignorefrag, value)
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE AMMO", value)) {
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE AMMO", 0)
+		ArrayPushCell(g_hm_sp_ignoreammo, 0)
+	}
+	else ArrayPushCell(g_hm_sp_ignoreammo, value)
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW RESPAWN", value)) {
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW RESPAWN", 1)
+		ArrayPushCell(g_hm_sp_respawn, 1)
+	}
+	else ArrayPushCell(g_hm_sp_respawn, value)
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "PAINFREE", value)) {
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "PAINFREE", 0)
+		ArrayPushCell(g_hm_sp_painfree, 0)
+	}
+	else ArrayPushCell(g_hm_sp_painfree, value)
+
+	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ENABLE", value)) {
+		if(value == 1 || value == 2 && !g_escape_map || value >= 3 && g_escape_map) ArrayPushCell(g_hm_sp_enable, 1)
+		else ArrayPushCell(g_hm_sp_enable, 0)
+	}
+	else {
+		ArrayPushCell(g_hm_sp_enable, 1)
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ENABLE", 1)
+	}
+	if(!amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "FLAGS", szValue, charsmax(szValue))) {
+		get_flags(flags, szValue, charsmax(szValue));
+		amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "FLAGS", szValue);
+		ArrayPushCell(g_hm_sp_flags, flags);
+	}
+	else ArrayPushCell(g_hm_sp_flags, read_flags(szValue))
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", value)) {
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", 0)
+		ArrayPushCell(g_hm_sp_name_by_lang, 0)
+	}
+	else ArrayPushCell(g_hm_sp_name_by_lang, value)
+
+	if(!amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "LANG KEY", szValue, charsmax(szValue))) {	
+		ArrayPushString(g_hm_sp_lang_key, "ITEM_LANG_DEFAULT_KEY")
+		amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "LANG KEY", "ITEM_LANG_DEFAULT_KEY")
+	}
+	else ArrayPushString(g_hm_sp_lang_key, szValue)
+
 	ArrayPushCell(ZP_TEAM_INDEX, ArraySize(ZP_TEAM_NAMES))
 	ArrayPushCell(iTeamIndexHm, ArraySize(ZP_TEAM_NAMES))
-
-	ArrayPushString(g_hm_sp_lang_key, "ITEM_LANG_DEFAULT_KEY")
-	ArrayPushCell(g_hm_sp_name_by_lang, 0)
-
 	formatex(sp_name, charsmax(sp_name), name)
 	strtoupper(sp_name)
 	ArrayPushString(ZP_TEAM_NAMES, sp_name)
 	
-	static section[64], buffer[64], value, Float:value_f, specialid, spRealName[64]
-	specialid = g_hm_specials_i-MAX_SPECIALS_HUMANS
-	ArrayGetString(g_hm_sp_realname, specialid, spRealName, charsmax(spRealName))
-	formatex(section, charsmax(section), "H:%s", spRealName) // Fix bug if any human special have same name with zombie special
-	
-	// Load Custom Special Classes
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ENABLE", value)) {
-		if(value == 1 || value == 2 && !g_escape_map || value >= 3 && g_escape_map) ArraySetCell(g_hm_sp_enable, specialid, 1)
-		else ArraySetCell(g_hm_sp_enable, specialid, 0)
-	}
-	
-	if(amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "NAME", buffer, charsmax(buffer))) ArraySetString(g_hm_sp_name, specialid, buffer)
-	
-	// Load Models/Body/Skin //
-	temp_array[0] = ArrayCreate(32, 1) // Create a Temporary Array
-	temp_array[1] = ArrayCreate(1, 1)
-	temp_array[2] = ArrayCreate(1, 1)
-	ArrayPushCell(g_hm_sp_modelstart, ArraySize(g_hm_sp_model))
-	amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", temp_array[0])
-	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "BODY", temp_array[1])
-	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", temp_array[2])
-	if(ArraySize(temp_array[0]) > 0) {
-		for(i = 0; i < ArraySize(temp_array[0]); i++) {
-			ArrayGetString(temp_array[0], i, buffer, charsmax(buffer))
-			ArrayPushString(g_hm_sp_model, buffer)
-
-			if(ArraySize(temp_array[1]) >= i)
-				ArrayPushCell(g_hm_sp_body, ArrayGetCell(temp_array[1], i))
-			else 
-				ArrayPushCell(g_hm_sp_body, 0)
-			
-			if(ArraySize(temp_array[2]) >= i)
-				ArrayPushCell(g_hm_sp_skin, ArrayGetCell(temp_array[2], i))
-			else
-				ArrayPushCell(g_hm_sp_skin, 0)
-		}
-	}
-	else {
-		ArrayPushString(g_hm_sp_model, model)
-		ArrayPushCell(g_hm_sp_body, 0)
-		ArrayPushCell(g_hm_sp_skin, 0)
-	}
-	ArrayPushCell(g_hm_sp_modelsend, ArraySize(g_hm_sp_model))
-	for(i = 0; i < 3; i++) ArrayDestroy(temp_array[i]); // Destroy a Temporary Array
-	//----------------------------------------------------------------------------
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "HEALTH", value)) ArraySetCell(g_hm_sp_health, specialid, value);
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "SPEED", value)) ArraySetCell(g_hm_sp_speed, specialid, value);
-	if(amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "GRAVITY", value_f)) ArraySetCell(g_hm_sp_gravity, specialid, value_f);
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "AURA SIZE", value)) ArraySetCell(g_hm_sp_aurarad, specialid, value);
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GLOW ENABLE", value)) ArraySetCell(g_hm_sp_glow, specialid, value);
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NVISION ENABLE", value)) ArraySetCell(g_hm_sp_nvision, specialid, value);
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "RED", value)) ArraySetCell(g_hm_sp_r, specialid, value);
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GREEN", value)) ArraySetCell(g_hm_sp_g, specialid, value);
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "BLUE", value)) ArraySetCell(g_hm_sp_b, specialid, value);
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW LEAP", value)) ArraySetCell(g_hm_sp_leap, specialid, value);
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "LEAP FORCE", value)) ArraySetCell(g_hm_sp_leap_f, specialid, value);
-	if(amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP HEIGHT", value_f)) ArraySetCell(g_hm_sp_leap_h, specialid, value_f);
-	if(amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP COOLDOWN", value_f)) ArraySetCell(g_hm_sp_leap_c, specialid, value_f);
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "CLIP TYPE", value)) ArraySetCell(g_hm_sp_uclip, specialid, value);
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE FRAG", value)) ArraySetCell(g_hm_sp_ignorefrag, specialid, value);
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE AMMO", value)) ArraySetCell(g_hm_sp_ignoreammo, specialid, value);
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW RESPAWN", value)) ArraySetCell(g_hm_sp_respawn, specialid, value);
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "PAINFREE", value)) ArraySetCell(g_hm_sp_painfree, specialid, value);
-
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", value)) ArraySetCell(g_hm_sp_name_by_lang, specialid, value);
-	if(amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "LANG KEY", buffer, charsmax(buffer))) ArraySetString(g_hm_sp_lang_key, specialid, buffer);
-	
-	if(ArrayGetCell(g_hm_sp_enable, specialid) >= 1) { // Precache player model
-		for(i = ArrayGetCell(g_hm_sp_modelstart, specialid); i < ArrayGetCell(g_hm_sp_modelsend, specialid); i++) {
-			ArrayGetString(g_hm_sp_model, i, buffer, charsmax(buffer))
-			precache_player_model(buffer)
-		}
-	}
 	g_hm_specials_i++ // Increase registered special humans counter
 	return (g_hm_specials_i-1); // Return id under which we registered the human special 
 }
 // Native: zp_register_zombie_special
-public native_register_zombie_special(const name[], const model[], const knifemodel[], const pain_sound[], hp, speed, Float:gravity, flags, Float:knockback, aura_radius, glow, r, g, b) {
+public native_register_zombie_special(plugin_id, param_nums) {
 	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
 
-	param_convert(1); param_convert(2); param_convert(3); param_convert(4) // Strings passed byref
-	
+	static i, sp_name[32], name[32]
+	get_string(1, name, charsmax(name))
 	if(strlen(name) < 1) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Can't register Custom Special Class with an empty name")
 		return -1;
 	}
-
-	static i, sp_name[32]
 	for(i = MAX_SPECIALS_ZOMBIES; i < g_zm_specials_i; i++) {
 		ArrayGetString(g_zm_sp_realname, i-MAX_SPECIALS_ZOMBIES, sp_name, charsmax(sp_name))
 		if(equali(name, sp_name)) {
@@ -9664,257 +9555,356 @@ public native_register_zombie_special(const name[], const model[], const knifemo
 		}
 	}
 
+	static model[32], knifemodel[64], pain_snd[64], hp, speed, Float:gravity, flags, Float:knockback, aura_radius, glow, rgb[3]
+	get_string(2, model, charsmax(model));
+	get_string(3, knifemodel, charsmax(knifemodel));
+	get_string(4, pain_snd, charsmax(pain_snd));
+	hp = get_param(5);
+	speed = get_param(6);
+	gravity = get_param_f(7);
+	flags = get_param(8);
+	knockback = get_param_f(9);
+	aura_radius = get_param(10);
+	glow = get_param(11);
+	rgb[0] = get_param(12);
+	rgb[1] = get_param(13);
+	rgb[2] = get_param(14);
+
+	static section[32], szPrecache[64]
+	formatex(section, charsmax(section), "Z:%s", name)
 	ArrayPushString(g_zm_sp_realname, name)
+
+	// Replace Name
+	static value, Float:value_f, szValue[64];
+	if(!amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "NAME", name, charsmax(name))) 
+		amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "NAME", name)
 	ArrayPushString(g_zm_sp_name, name)
-	ArrayPushString(g_zm_sp_model, model)
-	ArrayPushCell(g_zm_sp_body, 0)
-	ArrayPushCell(g_zm_sp_skin, 0)
+
+	// Load Models/Body/Skin //
+	static Array:ArrModelTemp, Array:ArrBodyTemp, Array:ArrSkinTemp;
+	ArrModelTemp = ArrayCreate(32, 1)
+	ArrBodyTemp = ArrayCreate(1, 1)
+	ArrSkinTemp = ArrayCreate(1, 1)
+	amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", ArrModelTemp)
+	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "BODY", ArrBodyTemp)
+	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", ArrSkinTemp)
+	if (ArraySize(ArrModelTemp) > 0) {
+		// Precache player models
+		for (i = 0; i < ArraySize(ArrModelTemp); i++) {
+			ArrayGetString(ArrModelTemp, i, szPrecache, charsmax(szPrecache))
+			precache_player_model(szPrecache)
+		}
+	}
+	else {
+		ArrayPushString(ArrModelTemp, model)
+		ArrayPushCell(ArrBodyTemp, 0)
+		ArrayPushCell(ArrSkinTemp, 0)
+		amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", model)
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "BODY", 0)
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", 0)
+		precache_player_model(model)
+	}
+	ArrayPushCell(g_zm_sp_mdl_handle, ArrModelTemp)
+	ArrayPushCell(g_zm_sp_body_handle, ArrBodyTemp)
+	ArrayPushCell(g_zm_sp_skin_handle, ArrSkinTemp)
+	//----------------------------------------------------------------------------
+
+	if(!amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "V_KNIFE MODEL", knifemodel, charsmax(knifemodel))) 
+		amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "V_KNIFE MODEL", knifemodel)
 	ArrayPushString(g_zm_sp_knifemodel, knifemodel)
-	ArrayPushString(g_zm_sp_painsound, pain_sound)
+	engfunc(EngFunc_PrecacheModel, knifemodel)
+
+	static Array:ArrPainSnd
+	ArrPainSnd = ArrayCreate(64, 1)
+	ArrayPushCell(g_zm_sp_painsnd_handle, ArrPainSnd)
+	amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "PAIN SOUND", ArrPainSnd)
+	if(ArraySize(ArrPainSnd) > 0) {
+		for(i = 0; i < ArraySize(ArrPainSnd); i++) {
+			ArrayGetString(ArrPainSnd, i, szPrecache, charsmax(szPrecache))
+			engfunc(EngFunc_PrecacheSound, szPrecache) // Precache Pain Sound
+		}
+	}
+	else { 
+		amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "PAIN SOUND", pain_snd)
+		ArrayPushString(ArrPainSnd, pain_snd)
+	}
+	
+	static Array:ArrDeathSnd
+	ArrDeathSnd = ArrayCreate(64, 1)
+	ArrayPushCell(g_zm_sp_deathsnd_handle, ArrDeathSnd)
+	amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "DEATH SOUND", ArrDeathSnd)
+	if(ArraySize(ArrDeathSnd) > 0) {
+		ArrayPushCell(g_zm_sp_use_deathsnd, true)
+		for(i = 0; i < ArraySize(ArrDeathSnd); i++) {
+			ArrayGetString(ArrDeathSnd, i, szPrecache, charsmax(szPrecache))
+			engfunc(EngFunc_PrecacheSound, szPrecache) // Precache Pain Sound
+		}
+	}
+	else { 
+		amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "DEATH SOUND", "")
+		ArrayPushCell(g_zm_sp_use_deathsnd, false)
+	}
+
+	// Replace Health
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "HEALTH", hp)) 
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "HEALTH", hp)
 	ArrayPushCell(g_zm_sp_health, hp)
+
+	// Replace Speed
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "SPEED", speed)) 
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "SPEED", speed)
 	ArrayPushCell(g_zm_sp_speed, speed)
+
+	// Replace Gravity
+	if(!amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "GRAVITY", gravity)) 
+		amx_save_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "GRAVITY", gravity)
 	ArrayPushCell(g_zm_sp_gravity, gravity)
-	ArrayPushCell(g_zm_sp_flags, flags)
-	ArrayPushCell(g_zm_sp_aurarad, aura_radius)
+
+	// Replace Speed
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GLOW ENABLE", glow)) 
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GLOW ENABLE", glow)
 	ArrayPushCell(g_zm_sp_glow, glow)
-	ArrayPushCell(g_zm_sp_r, r)
-	ArrayPushCell(g_zm_sp_g, g)
-	ArrayPushCell(g_zm_sp_b, b)
-	ArrayPushCell(g_zm_sp_leap, 1)
-	ArrayPushCell(g_zm_sp_leap_f, 500)
-	ArrayPushCell(g_zm_sp_leap_h, 300.0)
-	ArrayPushCell(g_zm_sp_leap_c, 5.0)
-	ArrayPushCell(g_zm_sp_nvision, 1)
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NVISION ENABLE", value)) {
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NVISION ENABLE", 1)
+		ArrayPushCell(g_zm_sp_nvision, 1)
+	}
+	else ArrayPushCell(g_zm_sp_nvision, value)
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "AURA SIZE", aura_radius)) 
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "AURA SIZE", aura_radius)
+	ArrayPushCell(g_zm_sp_aurarad, aura_radius)
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "RED", rgb[0])) 
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "RED", rgb[0])
+	ArrayPushCell(g_zm_sp_r, rgb[0])
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GREEN", rgb[1])) 
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GREEN", rgb[1])
+	ArrayPushCell(g_zm_sp_g, rgb[1])
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "BLUE", rgb[2])) 
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "BLUE", rgb[2])
+	ArrayPushCell(g_zm_sp_b, rgb[2])
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW LEAP", value)) {
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW LEAP", 1)
+		ArrayPushCell(g_zm_sp_leap, 1)
+	}
+	else ArrayPushCell(g_zm_sp_leap, value)
+	
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "LEAP FORCE", value)) {
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "LEAP FORCE", 500)
+		ArrayPushCell(g_zm_sp_leap_f, 500)
+	}
+	else ArrayPushCell(g_zm_sp_leap_f, value)
+	
+	if(!amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP HEIGHT", value_f)) {
+		amx_save_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP HEIGHT", 300.0)
+		ArrayPushCell(g_zm_sp_leap_h, 300.0)
+	}
+	else ArrayPushCell(g_zm_sp_leap_h, value_f)
+	
+	if(!amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP COOLDOWN", value_f)) {
+		amx_save_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP COOLDOWN", 5.0)
+		ArrayPushCell(g_zm_sp_leap_c, 5.0)
+	}
+	else ArrayPushCell(g_zm_sp_leap_c, value_f)
+
+	if(!amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "KNOCKBACK", knockback)) 
+		amx_save_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "KNOCKBACK", knockback)
 	ArrayPushCell(g_zm_sp_knockback, knockback)
-	ArrayPushCell(g_zm_sp_ignorefrag, 0)
-	ArrayPushCell(g_zm_sp_ignoreammo, 0)
-	ArrayPushCell(g_zm_sp_respawn, 1)
-	ArrayPushCell(g_zm_sp_enable, 1)
-	ArrayPushCell(g_zm_sp_painfree, 0)
-	ArrayPushCell(g_zm_sp_allow_burn, 0)
-	ArrayPushCell(g_zm_sp_allow_frost, 0)
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE FRAG", value)) {
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE FRAG", 0)
+		ArrayPushCell(g_zm_sp_ignorefrag, 0)
+	}
+	else ArrayPushCell(g_zm_sp_ignorefrag, value)
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE AMMO", value)) {
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE AMMO", 0)
+		ArrayPushCell(g_zm_sp_ignoreammo, 0)
+	}
+	else ArrayPushCell(g_zm_sp_ignoreammo, value)
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW RESPAWN", value)) {
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW RESPAWN", 1)
+		ArrayPushCell(g_zm_sp_respawn, 1)
+	}
+	else ArrayPushCell(g_zm_sp_respawn, value)
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "PAINFREE", value)) {
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "PAINFREE", 0)
+		ArrayPushCell(g_zm_sp_painfree, 0)
+	}
+	else ArrayPushCell(g_zm_sp_painfree, value)
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW BURN", value)) {
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW BURN", 0)
+		ArrayPushCell(g_zm_sp_allow_burn, 0)
+	}
+	else ArrayPushCell(g_zm_sp_allow_burn, value)
+	
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW FROST", value)) {
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW FROST", 0)
+		ArrayPushCell(g_zm_sp_allow_frost, 0)
+	}
+	else ArrayPushCell(g_zm_sp_allow_frost, value)
+
+	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ENABLE", value)) {
+		if(value == 1 || value == 2 && !g_escape_map || value >= 3 && g_escape_map) ArrayPushCell(g_zm_sp_enable, 1)
+		else ArrayPushCell(g_zm_sp_enable, 0)
+	}
+	else {
+		ArrayPushCell(g_zm_sp_enable, 1)
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ENABLE", 1)
+	}
+	if(!amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "FLAGS", szValue, charsmax(szValue))) {
+		get_flags(flags, szValue, charsmax(szValue));
+		amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "FLAGS", szValue);
+		ArrayPushCell(g_zm_sp_flags, flags);
+	}
+	else ArrayPushCell(g_zm_sp_flags, read_flags(szValue))
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", value)) {
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", 0)
+		ArrayPushCell(g_zm_sp_name_by_lang, 0)
+	}
+	else ArrayPushCell(g_zm_sp_name_by_lang, value)
+
+	if(!amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "LANG KEY", szValue, charsmax(szValue))) {	
+		ArrayPushString(g_zm_sp_lang_key, "ITEM_LANG_DEFAULT_KEY")
+		amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "LANG KEY", "ITEM_LANG_DEFAULT_KEY")
+	}
+	else ArrayPushString(g_zm_sp_lang_key, szValue)
+
 	ArrayPushCell(ZP_TEAM_INDEX, ArraySize(ZP_TEAM_NAMES))
 	ArrayPushCell(iTeamIndexZm, ArraySize(ZP_TEAM_NAMES))
 	formatex(sp_name, charsmax(sp_name), name)
 	strtoupper(sp_name)
 	ArrayPushString(ZP_TEAM_NAMES, sp_name)
 
-	ArrayPushString(g_zm_sp_lang_key, "ITEM_LANG_DEFAULT_KEY")
-	ArrayPushCell(g_zm_sp_name_by_lang, 0)
-
-	ArrayPushCell(g_zm_specials, 1)
-
-	static section[64], buffer[64], value, Float:value_f, specialid, spRealName[64]
-	specialid = g_zm_specials_i-MAX_SPECIALS_ZOMBIES
-	ArrayGetString(g_zm_sp_realname, specialid, spRealName, charsmax(spRealName))
-	formatex(section, charsmax(section), "Z:%s", spRealName) // Fix bug if any human special have same name with zombie special
-	
-	// Load Custom Special Classes
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ENABLE", value)) {
-		if(value == 1 || value == 2 && !g_escape_map || value >= 3 && g_escape_map) ArraySetCell(g_zm_sp_enable, specialid, 1)
-		else ArraySetCell(g_zm_sp_enable, specialid, 0)
-	}
-	
-	if(amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "NAME", buffer, charsmax(buffer))) ArraySetString(g_zm_sp_name, specialid, buffer)
-		
-	// Load Models //
-	temp_array[0] = ArrayCreate(32, 1) // Create a Temporary Array
-	temp_array[1] = ArrayCreate(1, 1)
-	temp_array[2] = ArrayCreate(1, 1)
-	ArrayPushCell(g_zm_sp_modelstart, ArraySize(g_zm_sp_model))
-	amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", temp_array[0])
-	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "BODY", temp_array[1])
-	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", temp_array[2])
-	if(ArraySize(temp_array[0]) > 0) {
-		for(i = 0; i < ArraySize(temp_array[0]); i++) {
-			ArrayGetString(temp_array[0], i, buffer, charsmax(buffer))
-			ArrayPushString(g_zm_sp_model, buffer)
-
-			if(ArraySize(temp_array[1]) >= i)
-				ArrayPushCell(g_zm_sp_body, ArrayGetCell(temp_array[1], i))
-			else 
-				ArrayPushCell(g_zm_sp_body, 0)
-			
-			if(ArraySize(temp_array[2]) >= i)
-				ArrayPushCell(g_zm_sp_skin, ArrayGetCell(temp_array[2], i))
-			else
-				ArrayPushCell(g_zm_sp_skin, 0)
-		}
-	}
-	else {
-		ArrayPushString(g_zm_sp_model, model)
-		ArrayPushCell(g_zm_sp_body, 0)
-		ArrayPushCell(g_zm_sp_skin, 0)
-	}
-	ArrayPushCell(g_zm_sp_modelsend, ArraySize(g_zm_sp_model))
-	for(i = 0; i < 3; i++) ArrayDestroy(temp_array[i])
-	//----------------------------------------------------------------------------
-
-	// Knife model //
-	if(amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "V_KNIFE MODEL", buffer, charsmax(buffer))) 
-		ArraySetString(g_zm_sp_knifemodel, specialid, buffer)
-
-	//----------------------------------------------------------------------------
-
-	// Load Pain Sounds //
-	temp_array[1] = ArrayCreate(64, 1)
-	ArrayPushCell(g_zm_sp_painsndstart, ArraySize(g_zm_sp_painsound))
-	amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "PAIN SOUND", temp_array[1])
-	if(ArraySize(temp_array[1]) > 0) {
-		for(i = 0; i < ArraySize(temp_array[1]); i++) {
-			ArrayGetString(temp_array[1], i, buffer, charsmax(buffer))
-			ArrayPushString(g_zm_sp_painsound, buffer)
-		}
-	}
-	else ArrayPushString(g_zm_sp_painsound, pain_sound)
-
-	ArrayPushCell(g_zm_sp_painsndsend, ArraySize(g_zm_sp_painsound))
-	ArrayDestroy(temp_array[1])
-	
-	//-----------------------------------------------------------------------------
-	
-	// Load Death Sounds //
-	temp_array[2] = ArrayCreate(64, 1)
-	ArrayPushCell(g_zm_sp_deathsnd_start, ArraySize(g_zm_sp_deathsnd))
-	amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "DEATH SOUND", temp_array[2])
-	if(ArraySize(temp_array[2]) > 0) {
-		for(i = 0; i < ArraySize(temp_array[2]); i++) {
-			ArrayGetString(temp_array[2], i, buffer, charsmax(buffer))
-			ArrayPushString(g_zm_sp_deathsnd, buffer)
-		}
-	}
-	else { 
-		for(i = 0; i < ArraySize(ar_sound[1]); i++) {
-			ArrayGetString(ar_sound[1], i, buffer, charsmax(buffer))
-			ArrayPushString(g_zm_sp_deathsnd, buffer)
-		}
-	}
-
-	ArrayPushCell(g_zm_sp_deathsnd_end, ArraySize(g_zm_sp_deathsnd))
-	ArrayDestroy(temp_array[2])
-	//-----------------------------------------------------------------------------
-
-
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "HEALTH", value)) ArraySetCell(g_zm_sp_health, specialid, value);		
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "SPEED", value)) ArraySetCell(g_zm_sp_speed, specialid, value);		
-	if(amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "GRAVITY", value_f)) ArraySetCell(g_zm_sp_gravity, specialid, value_f);		
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "AURA SIZE", value)) ArraySetCell(g_zm_sp_aurarad, specialid, value);		
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GLOW ENABLE", value)) ArraySetCell(g_zm_sp_glow, specialid, value);
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NVISION ENABLE", value)) ArraySetCell(g_zm_sp_nvision, specialid, value);
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "RED", value)) ArraySetCell(g_zm_sp_r, specialid, value);	
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "GREEN", value)) ArraySetCell(g_zm_sp_g, specialid, value);		
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "BLUE", value)) ArraySetCell(g_zm_sp_b, specialid, value);		
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW LEAP", value)) ArraySetCell(g_zm_sp_leap, specialid, value);		
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "LEAP FORCE", value)) ArraySetCell(g_zm_sp_leap_f, specialid, value);	
-	if(amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP HEIGHT", value_f)) ArraySetCell(g_zm_sp_leap_h, specialid, value_f);		
-	if(amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "LEAP COOLDOWN", value_f)) ArraySetCell(g_zm_sp_leap_c, specialid, value_f);		
-	if(amx_load_setting_float(ZP_SPECIAL_CLASSES_FILE, section, "KNOCKBACK", value_f)) ArraySetCell(g_zm_sp_knockback, specialid, value_f);		
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE FRAG", value)) ArraySetCell(g_zm_sp_ignorefrag, specialid, value);	
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "IGNORE AMMO", value)) ArraySetCell(g_zm_sp_ignoreammo, specialid, value);		
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW RESPAWN", value)) ArraySetCell(g_zm_sp_respawn, specialid, value);		
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "PAINFREE", value)) ArraySetCell(g_zm_sp_painfree, specialid, value);		
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW BURN", value)) ArraySetCell(g_zm_sp_allow_burn, specialid, value);		
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW FROST", value)) ArraySetCell(g_zm_sp_allow_frost, specialid, value);		
-
-	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", value)) ArraySetCell(g_zm_sp_name_by_lang, specialid, value);
-	if(amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "LANG KEY", buffer, charsmax(buffer))) ArraySetString(g_zm_sp_lang_key, specialid, buffer);	
-
-	if(ArrayGetCell(g_zm_sp_enable, specialid) >= 1) {
-		ArrayGetString(g_zm_sp_knifemodel, specialid, buffer, charsmax(buffer))
-		engfunc(EngFunc_PrecacheModel, buffer)  // Precache Knife Model
-
-		for(i = ArrayGetCell(g_zm_sp_painsndstart, specialid); i < ArrayGetCell(g_zm_sp_painsndsend, specialid); i++) {
-			ArrayGetString(g_zm_sp_painsound, i, buffer, charsmax(buffer))
-			engfunc(EngFunc_PrecacheSound, buffer) // Precache Pain Sound
-		}
-		for(i = ArrayGetCell(g_zm_sp_modelstart, specialid); i < ArrayGetCell(g_zm_sp_modelsend, specialid); i++) {
-			ArrayGetString(g_zm_sp_model, i, buffer, charsmax(buffer))
-			precache_player_model(buffer)
-		}
-		for(i = ArrayGetCell(g_zm_sp_deathsnd_start, specialid); i < ArrayGetCell(g_zm_sp_deathsnd_end, specialid); i++) {
-			ArrayGetString(g_zm_sp_deathsnd, i, buffer, charsmax(buffer))
-			engfunc(EngFunc_PrecacheSound, buffer) // Precache Pain Sound
-		}
-	}
 	g_zm_specials_i++ // Increase registered special humans counter
-
 	return (g_zm_specials_i-1); // Return id under which we registered the human special 
 }
-public native_register_game_mode(const name[], flags, chance, allow, dm_mode) { // Native: zp_register_game_mode
-	return native_register_gamemode(name, flags, chance, allow, dm_mode, 0, 1)
-}
-
-public native_register_gamemode(const name[], flags, chance, allow, dm_mode, resp_limit, enable_in_ze) { // Native: zpsp_register_gamemode
+public native_register_gamemode(plugin_id, num_params) { // Native: zp_register_game_mode/zpsp_register_gamemode
 	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
 
-	param_convert(1) // Strings passed byref
+	static name[32]; get_string(1, name, charsmax(name))
 
 	if(strlen(name) < 1) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Can't register Game Mode with an empty name")
 		return -1;
 	}
-	static index, gm_name[32]
-	for(index = MAX_GAME_MODES; index < g_gamemodes_i; index++) {
-		ArrayGetString(g_gm_realname, index-MAX_GAME_MODES, gm_name, charsmax(gm_name))
-		if(equali(name, gm_name)) {
-			log_error(AMX_ERR_NATIVE, "[ZP] Game Mode already registered (%s)", gm_name)
-			return -1;
+
+	if(g_gamemodes_i > MAX_GAME_MODES) {
+		static index, gm_name[32]
+		for(index = MAX_GAME_MODES; index < g_gamemodes_i; index++) {
+			ArrayGetString(g_gm_realname, index-MAX_GAME_MODES, gm_name, charsmax(gm_name))
+			if(equali(name, gm_name)) {
+				log_error(AMX_ERR_NATIVE, "[ZP] Game Mode already registered (%s)", gm_name)
+				return -1;
+			}
 		}
 	}
-	// Add the game mode
-	ArrayPushString(g_gm_realname, name)
-	ArrayPushString(g_gm_name, name)
-	ArrayPushCell(g_gm_flag, flags)
-	ArrayPushCell(g_gm_chance, chance)
-	ArrayPushCell(g_gm_allow, allow)
-	ArrayPushCell(g_gm_dm, dm_mode)
-	ArrayPushCell(g_gm_respawn_limit, resp_limit)
+
+	static flags, chance, allow, dm_mode, resp_limit, enable_in_ze, uselang, langkey[32];
+	flags = get_param(2)
+	chance = get_param(3)
+	allow = get_param(4)
+	dm_mode = get_param(5)
+
+	if(num_params > 5) {
+		resp_limit = get_param(6)
+		enable_in_ze = get_param(7)
+	}
+	else {
+		resp_limit = 0
+		enable_in_ze = 1
+	}
+
+	if(num_params > 7) {
+		uselang = get_param(8)
+		get_string(9, langkey, charsmax(langkey))
+	}
+	else {
+		uselang = 0
+		langkey = "ITEM_LANG_DEFAULT_KEY"
+	}
+
+	ArrayPushCell(g_gm_allow, allow) // Allow infection
+
+	static section[32], value, szValue[32]
+	copy(section, charsmax(section), name)
+	ArrayPushString(g_gm_realname, section)
+
+	// Replace Name
+	if(!amx_load_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE NAME", name, charsmax(name))) 
+		amx_save_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE NAME", name)
+	ArrayPushString(g_gm_name, name)	
+
+	if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE", value)) {
+		amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE", 1)
+		ArrayPushCell(g_gm_enable, 1)
+	}
+	else ArrayPushCell(g_gm_enable, value)
+
+	if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE ON ESCAPE MAP", enable_in_ze)) 
+		amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE ON ESCAPE MAP", enable_in_ze)
 	ArrayPushCell(g_gm_enable_on_ze_map, enable_in_ze)
-	ArrayPushCell(g_gm_enable, 1)
-	ArrayPushCell(g_gamemodes_new, 1)
 
-	ArrayPushCell(g_gm_name_by_lang, 0)
-	ArrayPushString(g_gm_lang_key, "ITEM_LANG_DEFAULT_KEY")
+	if(!amx_load_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE FLAGS", szValue, charsmax(szValue))) {
+		get_flags(flags, szValue, charsmax(szValue));
+		amx_save_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE FLAGS", szValue);
+		ArrayPushCell(g_gm_flag, flags);
+	}
+	else ArrayPushCell(g_gm_flag, read_flags(szValue))
 
-	static section[64], szName[32], value, gameid
-	gameid = g_gamemodes_i-MAX_GAME_MODES
-	ArrayGetString(g_gm_realname, gameid, section, charsmax(section))
+	if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE CHANCE", chance)) 
+		amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE CHANCE", chance)
+	ArrayPushCell(g_gm_chance, chance);
+		
+	if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE RESPAWN MODE", dm_mode))
+		amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE RESPAWN MODE", dm_mode) 
+	ArrayPushCell(g_gm_dm, dm_mode);
 	
-	// Load Custom Game Modes	
-	if(amx_load_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE NAME", szName, charsmax(szName))) ArraySetString(g_gm_name, gameid, szName);
-	if(amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE", value)) ArraySetCell(g_gm_enable, gameid, value);
-	if(amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE ON ESCAPE MAP", value)) ArraySetCell(g_gm_enable_on_ze_map, gameid, value);
-	if(amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE CHANCE", value)) ArraySetCell(g_gm_chance, gameid, value);
-	if(amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE RESPAWN MODE", value)) ArraySetCell(g_gm_dm, gameid, value);
-	if(amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE RESPAWN LIMIT", value)) ArraySetCell(g_gm_respawn_limit, gameid, value);
+	if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE RESPAWN LIMIT", resp_limit))
+		amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE RESPAWN LIMIT", resp_limit) 
+	ArrayPushCell(g_gm_respawn_limit, resp_limit);
 
-	if(amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE NAME BY LANG", value)) ArraySetCell(g_gm_name_by_lang, gameid, value);
-	if(amx_load_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE LANG KEY", szName, charsmax(szName))) ArraySetString(g_gm_lang_key, gameid, szName);
+	if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE NAME BY LANG", uselang))
+		amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE NAME BY LANG", uselang)
+	ArrayPushCell(g_gm_name_by_lang, uselang)
+	
+	if(!amx_load_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE LANG KEY", langkey, charsmax(langkey)))
+		amx_save_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE LANG KEY", langkey) 
+	ArrayPushString(g_gm_lang_key, langkey)
 
 	g_gamemodes_i++ // Increase registered game modes counter
 	return (g_gamemodes_i-1); // Return id under which we registered the game mode
 }
-// Native: zp_zombie_class_textadd / zp_extra_item_textadd / zp_weapon_menu_textadd
-public native_menu_textadd(const text[]) {
-	param_convert(1)	
-	format(g_AdditionalMenuText, charsmax(g_AdditionalMenuText), "%s%s", g_AdditionalMenuText, text)
+// Native: zp_zombie_class_textadd / zp_extra_item_textadd / zp_weapon_menu_textadd / zp_menu_textadd
+public native_menu_textadd(plugin_id, num_params) {
+	get_string(1, g_AdditionalMenuText, charsmax(g_AdditionalMenuText))
 }
 // Native: zp_register_extra_item
-public native_register_extra_item(const name[], cost, team) {
+public native_register_extra_item(plugin_id, num_params) {
 	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
 
-	static i, itemname[32]
+	static i, itemname[32], name[32], cost, team;
+	get_string(1, name, charsmax(name))
+	cost = get_param(2)
+	team = get_param(3)
 
 	if(team == ZP_TEAM_ANY) team = GetTeamIndex(TEAM_HUMAN)|GetTeamIndex(TEAM_ZOMBIE) // For backwards compatibility
+	
 	// For easy making extra for any classes
 	else if(team == ZP_TEAM_ALL) for(i = 0; i < ArraySize(ZP_TEAM_NAMES); i++) team |= GetTeamIndex(i);
 	else if(team == ZP_TEAM_ANY_SPECIAL) for(i = 2; i < ArraySize(ZP_TEAM_NAMES); i++) team |= GetTeamIndex(i);
 	else if(team == ZP_TEAM_HUMAN_SPECIAL) for(i = 1; i < ArraySize(iTeamIndexHm); i++) team |= GetTeamIndex(ArrayGetCell(iTeamIndexHm, i));
 	else if(team == ZP_TEAM_ZOMBIE_SPECIAL) for(i = 1; i < ArraySize(iTeamIndexZm); i++) team |= GetTeamIndex(ArrayGetCell(iTeamIndexZm, i));
-
-	param_convert(1) // Strings passed byref
 
 	if(strlen(name) < 1) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Can't register extra item with an empty name")
@@ -9927,136 +9917,316 @@ public native_register_extra_item(const name[], cost, team) {
 			return -1;
 		}
 	}
+	static section[32]
+	copy(section, charsmax(section), name)
+	ArrayPushString(g_extraitem_realname, section)
 
-	// Add the item
+	// Replace Name
+	if(!amx_load_setting_string(ZP_EXTRAITEMS_FILE, section, "NAME", name, charsmax(name))) 
+		amx_save_setting_string(ZP_EXTRAITEMS_FILE, section, "NAME", name)
 	ArrayPushString(g_extraitem_name, name)
+
+	// Replace Cost
+	if(!amx_load_setting_int(ZP_EXTRAITEMS_FILE, section, "COST", cost)) 
+		amx_save_setting_int(ZP_EXTRAITEMS_FILE, section, "COST", cost)
 	ArrayPushCell(g_extraitem_cost, cost)
-	ArrayPushCell(g_extraitem_team, team)
-	ArrayPushString(g_extraitem_realname, name)
-	ArrayPushCell(g_extraitem_name_by_lang, 0)
-	ArrayPushString(g_extraitem_lang_key, "ITEM_LANG_DEFAULT_KEY")
 
-	temp_array[0] = ArrayCreate(32, 1)	// Create a Temporary Array
-	ArrayPushCell(g_extraitem_new, 1) // Set temporary new item flag
-	
-	static section[64], szValue[64], value, team2, szTeam[32], szTeam2[32], t
-	ArrayGetString(g_extraitem_realname, g_extraitem_i, section, charsmax(section))
-
-	if(amx_load_setting_string(ZP_EXTRAITEMS_FILE, section, "NAME", szValue, charsmax(szValue))) 
-		ArraySetString(g_extraitem_name, g_extraitem_i, szValue)
-	
-	if(amx_load_setting_int(ZP_EXTRAITEMS_FILE, section, "COST", value)) 
-		ArraySetCell(g_extraitem_cost, g_extraitem_i, value)
-
-	if(amx_load_setting_int(ZP_EXTRAITEMS_FILE, section, "NAME BY LANG", value)) 
-		ArraySetCell(g_extraitem_name_by_lang, g_extraitem_i, value)
-
-	if(amx_load_setting_string(ZP_EXTRAITEMS_FILE, section, "LANG KEY", szValue, charsmax(szValue))) 
-		ArraySetString(g_extraitem_lang_key, g_extraitem_i, szValue)
-	
-	team2 = 0
-	if(amx_load_setting_string_arr(ZP_EXTRAITEMS_FILE, section, "TEAMS", temp_array[0])) {
+	static szTeam[32], Array:ArrTeam;
+	ArrTeam = ArrayCreate(32, 1)
+	if(amx_load_setting_string_arr(ZP_EXTRAITEMS_FILE, section, "TEAMS", ArrTeam)) {
+		static t, szTeamList[32];
+		team = 0
 		for(t = 0; t < ArraySize(ZP_TEAM_NAMES); t++) {
-			for(i = 0; i < ArraySize(temp_array[0]); i++) {
-				ArrayGetString(temp_array[0], i, szTeam, charsmax(szTeam))
-				ArrayGetString(ZP_TEAM_NAMES, t, szTeam2, charsmax(szTeam2))
+			for(i = 0; i < ArraySize(ArrTeam); i++) {
+				ArrayGetString(ArrTeam, i, szTeam, charsmax(szTeam))
+				ArrayGetString(ZP_TEAM_NAMES, t, szTeamList, charsmax(szTeamList))
 
-				if(equal(szTeam, szTeam2)) team2 |= GetTeamIndex(t);
+				if(equal(szTeam, szTeamList)) team |= GetTeamIndex(t);
 			}
 		}
-		ArraySetCell(g_extraitem_team, g_extraitem_i, team2)
 	}
+	else {
+		for(i = 0; i < ArraySize(ZP_TEAM_NAMES); i++) {
+			if(IsTeam(team, i)) {
+				ArrayGetString(ZP_TEAM_NAMES, i, szTeam, charsmax(szTeam))
+				ArrayPushString(ArrTeam, szTeam)
+			}
+		}
+		amx_save_setting_string_arr(ZP_EXTRAITEMS_FILE, section, "TEAMS", ArrTeam) // Add Team
+
+	}
+	ArrayPushCell(g_extraitem_team, team)
+	ArrayDestroy(ArrTeam)
+	
+	static value, szValue[64]
+	if(!amx_load_setting_int(ZP_EXTRAITEMS_FILE, section, "NAME BY LANG", value)) {
+		amx_save_setting_int(ZP_EXTRAITEMS_FILE, section, "NAME BY LANG", 0)
+		ArrayPushCell(g_extraitem_name_by_lang, 0)
+	}
+	else ArrayPushCell(g_extraitem_name_by_lang, value)
+
+	if(!amx_load_setting_string(ZP_EXTRAITEMS_FILE, section, "LANG KEY", szValue, charsmax(szValue))) {	
+		ArrayPushString(g_extraitem_lang_key, "ITEM_LANG_DEFAULT_KEY")
+		amx_save_setting_string(ZP_EXTRAITEMS_FILE, section, "LANG KEY", "ITEM_LANG_DEFAULT_KEY")
+	}
+	else ArrayPushString(g_extraitem_lang_key, szValue)
 	
 	g_extraitem_i++ // Increase registered items counter	
-	ArrayDestroy(temp_array[0])
 	return (g_extraitem_i-1); // Return id under which we registered the item 
 }
-native_register_extra_item2(const name[], cost, team, name_by_lang, const szLangKey[]) { // Function: zp_register_extra_item (to be used within this plugin only)
+stock internal_register_extra_item(const name[], cost, team, name_by_lang, const szLangKey[]) { // Function: zp_register_extra_item (to be used within this plugin only)
 	ArrayPushString(g_extraitem_realname, name)
 	ArrayPushString(g_extraitem_name, name)
 	ArrayPushCell(g_extraitem_cost, cost)
 	ArrayPushCell(g_extraitem_team, team)
-	ArrayPushCell(g_extraitem_new, 1) // Set temporary new item flag
 	ArrayPushCell(g_extraitem_name_by_lang, name_by_lang)
 	ArrayPushString(g_extraitem_lang_key, szLangKey)
 	g_extraitem_i++ // Increase registered items counter
 }
-public native_register_extra_item3(const name[], cost, const szTeam[], name_by_lang, const szLangKey[]) { // Native: zpsp_register_extra_item
+public native_register_extra_item_sp(plugin_id, num_params) { // Native: zpsp_register_extra_item
 	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
-	
-	param_convert(1); param_convert(3) // Strings passed byref
+
+	static i, itemname[32], name[32], cost, szTeam[300], uselang, langkey[32];
+	get_string(1, name, charsmax(name))
+	cost = get_param(2)
+	get_string(3, szTeam, charsmax(szTeam))
+	uselang = get_param(4)
+	get_string(5, langkey, charsmax(langkey))
+
 	if(strlen(name) < 1) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Can't register extra item with an empty name")
 		return -1;
 	}
-	static index, itemname[32]
-	for(index = 0; index < g_extraitem_i; index++) {
-		ArrayGetString(g_extraitem_realname, index, itemname, charsmax(itemname))
+	for(i = 0; i < g_extraitem_i; i++) {
+		ArrayGetString(g_extraitem_realname, i, itemname, charsmax(itemname))
 		if(equali(name, itemname)) {
 			log_error(AMX_ERR_NATIVE, "[ZP] Extra Item already registered (%s)", itemname)
 			return -1;
 		}
 	}
+	static section[32]
+	copy(section, charsmax(section), name)
+	ArrayPushString(g_extraitem_realname, section)
 
-	// Add the item
+	// Replace Name
+	if(!amx_load_setting_string(ZP_EXTRAITEMS_FILE, section, "NAME", name, charsmax(name))) 
+		amx_save_setting_string(ZP_EXTRAITEMS_FILE, section, "NAME", name)
 	ArrayPushString(g_extraitem_name, name)
-	ArrayPushCell(g_extraitem_cost, cost)
-	ArrayPushString(g_extraitem_realname, name)
 
-	static key[64], value[512], team, buffer[64], t
+	// Replace Cost
+	if(!amx_load_setting_int(ZP_EXTRAITEMS_FILE, section, "COST", cost)) 
+		amx_save_setting_int(ZP_EXTRAITEMS_FILE, section, "COST", cost)
+	ArrayPushCell(g_extraitem_cost, cost)
+
+
+	static key[64], value[512], team, szTeamList[64], t
 	team = 0
 	formatex(value, charsmax(value), szTeam)
 	while(value[0] != 0 && strtok(value, key, charsmax(key), value, charsmax(value), ',')) {
 		trim(key); trim(value) // Trim spaces
 		for(t = 0; t < ArraySize(ZP_TEAM_NAMES); t++) {
-			ArrayGetString(ZP_TEAM_NAMES, t, buffer, charsmax(buffer))
-			if(equal(key, buffer)) team |= GetTeamIndex(t)
+			ArrayGetString(ZP_TEAM_NAMES, t, szTeamList, charsmax(szTeamList))
+			if(equal(key, szTeamList)) team |= GetTeamIndex(t)
 		}
 	}
-	ArrayPushCell(g_extraitem_team, team)
-	ArrayPushCell(g_extraitem_name_by_lang, name_by_lang)
-	ArrayPushString(g_extraitem_lang_key, szLangKey)
-
-	temp_array[0] = ArrayCreate(32, 1)	// Create a Temporary Array
-	ArrayPushCell(g_extraitem_new, 1) // Set temporary new item flag
-
-	static section[64], _value, szTeam2[32]
-	ArrayGetString(g_extraitem_realname, g_extraitem_i, section, charsmax(section))
-
-	if(amx_load_setting_string(ZP_EXTRAITEMS_FILE, section, "NAME", buffer, charsmax(buffer)))
-		ArraySetString(g_extraitem_name, g_extraitem_i, buffer)
 	
-	if(amx_load_setting_int(ZP_EXTRAITEMS_FILE, section, "COST", _value))
-		ArraySetCell(g_extraitem_cost, g_extraitem_i, _value)
-
-	if(amx_load_setting_int(ZP_EXTRAITEMS_FILE, section, "NAME BY LANG", _value)) 
-		ArraySetCell(g_extraitem_name_by_lang, g_extraitem_i, _value)
-
-	if(amx_load_setting_string(ZP_EXTRAITEMS_FILE, section, "LANG KEY", buffer, charsmax(buffer))) 
-		ArraySetString(g_extraitem_lang_key, g_extraitem_i, buffer)
-
-	_value = 0
-	if(amx_load_setting_string_arr(ZP_EXTRAITEMS_FILE, section, "TEAMS", temp_array[0])) {
+	static Array:ArrTeamTemp, szTeamLoad[32]
+	ArrTeamTemp = ArrayCreate(32, 1)
+	if(amx_load_setting_string_arr(ZP_EXTRAITEMS_FILE, section, "TEAMS", ArrTeamTemp)) {
+		team = 0
 		for(t = 0; t < ArraySize(ZP_TEAM_NAMES); t++) {
-			for(index = 0; index < ArraySize(temp_array[0]); index++) {
-				ArrayGetString(temp_array[0], index, buffer, charsmax(buffer))
-				ArrayGetString(ZP_TEAM_NAMES, t, szTeam2, charsmax(szTeam2))
-				if(equal(buffer, szTeam2)) _value |= GetTeamIndex(t)
+			for(i = 0; i < ArraySize(ArrTeamTemp); i++) {
+				ArrayGetString(ArrTeamTemp, i, szTeamLoad, charsmax(szTeamLoad))
+				ArrayGetString(ZP_TEAM_NAMES, t, szTeamList, charsmax(szTeamList))
+
+				if(equal(szTeamLoad, szTeamList)) team |= GetTeamIndex(t);
 			}
 		}
-		ArraySetCell(g_extraitem_team, g_extraitem_i, _value)
 	}
+	else {
+		for(i = 0; i < ArraySize(ZP_TEAM_NAMES); i++) {
+			if(IsTeam(team, i)) {
+				ArrayGetString(ZP_TEAM_NAMES, i, szTeamLoad, charsmax(szTeamLoad))
+				ArrayPushString(ArrTeamTemp, szTeamLoad)
+			}
+		}
+		amx_save_setting_string_arr(ZP_EXTRAITEMS_FILE, section, "TEAMS", ArrTeamTemp) // Add Team
+	}
+	ArrayPushCell(g_extraitem_team, team)
+	ArrayDestroy(ArrTeamTemp)
+
+	// Replace Cost
+	if(!amx_load_setting_int(ZP_EXTRAITEMS_FILE, section, "NAME BY LANG", uselang)) 
+		amx_save_setting_int(ZP_EXTRAITEMS_FILE, section, "NAME BY LANG", uselang)
+	ArrayPushCell(g_extraitem_name_by_lang, uselang)
+	
+	// Replace Name
+	if(!amx_load_setting_string(ZP_EXTRAITEMS_FILE, section, "LANG KEY", langkey, charsmax(langkey))) 
+		amx_save_setting_string(ZP_EXTRAITEMS_FILE, section, "LANG KEY", langkey)
+	ArrayPushString(g_extraitem_lang_key, langkey)
+
 	g_extraitem_i++ // Increase registered items counter
-	ArrayDestroy(temp_array[0])
 	return (g_extraitem_i-1); // Return id under which we registered the item
 }
-// Native: zp_register_zombie_class
-public native_register_zombie_class(const name[], const info[], const model[], const clawmodel[], hp, speed, Float:gravity, Float:knockback) {
+public native_register_human_class(plugin_id, num_params) {
 	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
 
-	param_convert(1); param_convert(2); param_convert(3); param_convert(4) // Strings passed byref
+	static name[32];
+	get_string(1, name, charsmax(name))
+	if(strlen(name) < 1) {
+		log_error(AMX_ERR_NATIVE, "[ZP] Can't register human class with an empty name")
+		return -1;
+	}
+
+	static i, hclass_name[32];
+	for(i = 0; i < g_hclass_i; i++) {
+		ArrayGetString(g_hclass_real_name, i, hclass_name, charsmax(hclass_name))
+		if(equali(name, hclass_name)) {
+			log_error(AMX_ERR_NATIVE, "[ZP] Human class already registered (%s)", name)
+			return -1;
+		}
+	}
+
+	static info[32], hp, armor, speed, Float:gravity, use_lang, name_lang_key[32], info_lang_key[32];
+	get_string(2, info, charsmax(info))
+	hp = get_param(3)
+	armor = get_param(4)
+	speed = get_param(5)
+	gravity = get_param_f(6)
+	use_lang = get_param(7)
+	get_string(8, name_lang_key, charsmax(name_lang_key))
+	get_string(9, info_lang_key, charsmax(info_lang_key))
+
+	static section[32]
+	copy(section, charsmax(section), name)
+	ArrayPushString(g_hclass_real_name, section)
+
+	// Replace Name
+	if(!amx_load_setting_string(ZP_HUMANCLASSES_FILE, section, "NAME", name, charsmax(name))) 
+		amx_save_setting_string(ZP_HUMANCLASSES_FILE, section, "NAME", name)
+	ArrayPushString(g_hclass_name, name)
+	
+	// Replace Info
+	if(!amx_load_setting_string(ZP_HUMANCLASSES_FILE, section, "INFO", info, charsmax(info))) 
+		amx_save_setting_string(ZP_HUMANCLASSES_FILE, section, "INFO", info)
+	ArrayPushString(g_hclass_info, info)
+
+	// Replace Health
+	if(!amx_load_setting_int(ZP_HUMANCLASSES_FILE, section, "HEALTH", hp)) 
+		amx_save_setting_int(ZP_HUMANCLASSES_FILE, section, "HEALTH", hp)
+	ArrayPushCell(g_hclass_hp, hp)
+
+	// Replace Armor
+	if(!amx_load_setting_int(ZP_HUMANCLASSES_FILE, section, "ARMOR", armor)) 
+		amx_save_setting_int(ZP_HUMANCLASSES_FILE, section, "ARMOR", armor)
+	ArrayPushCell(g_hclass_armor, armor)
+
+	// Replace Speed
+	if(!amx_load_setting_int(ZP_HUMANCLASSES_FILE, section, "SPEED", speed)) 
+		amx_save_setting_int(ZP_HUMANCLASSES_FILE, section, "SPEED", speed)
+	ArrayPushCell(g_hclass_speed, speed)
+
+	// Replace Gravity
+	if(!amx_load_setting_float(ZP_HUMANCLASSES_FILE, section, "GRAVITY", gravity)) 
+		amx_save_setting_float(ZP_HUMANCLASSES_FILE, section, "GRAVITY", gravity)
+	ArrayPushCell(g_hclass_gravity, gravity)
+
+	static Array:ArrModelTemp, Array:ArrBodyTemp, Array:ArrSkinTemp;
+	ArrModelTemp = ArrayCreate(64, 1)
+	ArrBodyTemp = ArrayCreate(1, 1)
+	ArrSkinTemp = ArrayCreate(1, 1)
+	amx_load_setting_string_arr(ZP_HUMANCLASSES_FILE, section, "MODELS", ArrModelTemp)
+	amx_load_setting_int_arr(ZP_HUMANCLASSES_FILE, section, "BODY", ArrBodyTemp)
+	amx_load_setting_int_arr(ZP_HUMANCLASSES_FILE, section, "SKIN", ArrSkinTemp)
+	if (ArraySize(ArrModelTemp) > 0) {
+		ArrayPushCell(g_hclass_mdl_file, true)
+		// Precache player models
+		static buffer[250];
+		for (i = 0; i < ArraySize(ArrModelTemp); i++) {
+			ArrayGetString(ArrModelTemp, i, buffer, charsmax(buffer))
+			precache_player_model(buffer)
+		}
+	}
+	else {
+		ArrayPushCell(g_hclass_mdl_file, false)
+		ArrayDestroy(ArrModelTemp)
+		ArrayDestroy(ArrBodyTemp)
+		ArrayDestroy(ArrSkinTemp)
+		amx_save_setting_string(ZP_HUMANCLASSES_FILE, section, "MODELS", "")
+		amx_save_setting_string(ZP_HUMANCLASSES_FILE, section, "BODY", "")
+		amx_save_setting_string(ZP_HUMANCLASSES_FILE, section, "SKIN", "")
+	}
+	ArrayPushCell(g_hclass_mdl_handle, ArrModelTemp)
+	ArrayPushCell(g_hclass_body_handle, ArrBodyTemp)
+	ArrayPushCell(g_hclass_skin_handle, ArrSkinTemp)
+
+	if(!amx_load_setting_int(ZP_HUMANCLASSES_FILE, section, "USE LANG", use_lang))
+		amx_save_setting_int(ZP_HUMANCLASSES_FILE, section, "USE LANG", use_lang)
+	ArrayPushCell(g_hclass_lang_enable, use_lang)
+
+	if(!amx_load_setting_string(ZP_HUMANCLASSES_FILE, section, "NAME LANG KEY", name_lang_key, charsmax(name_lang_key))) 
+		amx_save_setting_string(ZP_HUMANCLASSES_FILE, section, "NAME LANG KEY", name_lang_key)
+	ArrayPushString(g_hclass_name_lang_key, name_lang_key)
+	
+	if(!amx_load_setting_string(ZP_HUMANCLASSES_FILE, section, "INFO LANG KEY", info_lang_key, charsmax(info_lang_key)))
+		amx_save_setting_string(ZP_HUMANCLASSES_FILE, section, "INFO LANG KEY", info_lang_key)
+	ArrayPushString(g_hclass_info_lang_key, info_lang_key)
+
+	g_hclass_i++ // Increase registered classes counter
+	return (g_hclass_i-1); // Return id under which we registered the class
+
+}
+
+// Native: zp_register_hclass_model(classid, player_model[], body=0, skin=0)
+public native_register_hclass_model(classid, player_model[], body, skin)
+{
+	if (classid < 0 || classid >= g_hclass_i)
+	{
+		log_error(AMX_ERR_NATIVE, "[ZP] Invalid human class id (%d)", classid)
+		return false;
+	}
+	
+	// Player models already loaded from file
+	if (ArrayGetCell(g_hclass_mdl_file, classid))
+		return true;
+	
+	precache_player_model(player_model)
+	static Array:ArrModelTemp, Array:ArrBodyTemp, Array:ArrSkinTemp
+	ArrModelTemp = ArrayGetCell(g_hclass_mdl_handle, classid)
+	ArrBodyTemp = ArrayGetCell(g_hclass_body_handle, classid)
+	ArrSkinTemp = ArrayGetCell(g_hclass_skin_handle, classid)
+	
+	// No models registered yet?
+	if (ArrModelTemp == Invalid_Array) {
+		ArrModelTemp = ArrayCreate(32, 1)
+		ArrBodyTemp = ArrayCreate(1, 1)
+		ArrSkinTemp = ArrayCreate(1, 1)
+		ArraySetCell(g_hclass_mdl_handle, classid, ArrModelTemp)
+		ArraySetCell(g_hclass_body_handle, classid, ArrBodyTemp)
+		ArraySetCell(g_hclass_skin_handle, classid, ArrSkinTemp)
+	}
+	ArrayPushString(ArrModelTemp, player_model)
+	ArrayPushCell(ArrBodyTemp, body)
+	ArrayPushCell(ArrSkinTemp, skin)
+	
+	// Save models to file
+	static real_name[32]
+	ArrayGetString(g_hclass_real_name, classid, real_name, charsmax(real_name))
+	amx_save_setting_string_arr(ZP_HUMANCLASSES_FILE, real_name, "MODELS", ArrModelTemp)
+	amx_save_setting_int_arr(ZP_HUMANCLASSES_FILE, real_name, "BODY", ArrBodyTemp)
+	amx_save_setting_int_arr(ZP_HUMANCLASSES_FILE, real_name, "SKIN", ArrSkinTemp)
+	return true;
+}
+
+// Native: zp_register_zombie_class
+public native_register_zombie_class(plugin_id, num_params) {
+	if(!g_pluginenabled) return -1; // ZP Special disabled
+	if(!g_arrays_created) return -1; // Arrays not yet initialized
+
+	static name[32];
+	get_string(1, name, charsmax(name))
 	if(strlen(name) < 1) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Can't register zombie class with an empty name")
 		return -1;
@@ -10070,147 +10240,141 @@ public native_register_zombie_class(const name[], const info[], const model[], c
 			return -1;
 		}
 	}
-	
-	// Add the class
-	ArrayPushString(g_zclass_real_name, name)
+
+	static info[32], model[32], clawmodel[64], hp, speed, Float:gravity, Float:knockback;
+	get_string(2, info, charsmax(info))
+	get_string(3, model, charsmax(model))
+	get_string(4, clawmodel, charsmax(clawmodel))
+	hp = get_param(5)
+	speed = get_param(6)
+	gravity = get_param_f(7)
+	knockback = get_param_f(8)
+
+	static section[32], szPrecache[64]
+	copy(section, charsmax(section), name)
+	ArrayPushString(g_zclass_real_name, section)
+
+	// Load/Save Name
+	if(!amx_load_setting_string(ZP_ZOMBIECLASSES_FILE, section, "NAME", name, charsmax(name))) 
+		amx_save_setting_string(ZP_ZOMBIECLASSES_FILE, section, "NAME", name)
 	ArrayPushString(g_zclass_name, name)
-	ArrayPushString(g_zclass_info, info)	
-	ArrayPushString(g_zclass_clawmodel, clawmodel)
-	ArrayPushCell(g_zclass_hp, hp)
-	ArrayPushCell(g_zclass_spd, speed)
-	ArrayPushCell(g_zclass_grav, gravity)
-	ArrayPushCell(g_zclass_kb, knockback)
 
-	ArrayPushCell(g_zclass_lang_enable, 0)
-	ArrayPushString(g_zclass_name_lang_key, "ITEM_LANG_DEFAULT_KEY")
-	ArrayPushString(g_zclass_info_lang_key, "ITEM_LANG_DEFAULT_KEY")
+	// Load/Save Info
+	if(!amx_load_setting_string(ZP_ZOMBIECLASSES_FILE, section, "INFO", info, charsmax(info))) 
+		amx_save_setting_string(ZP_ZOMBIECLASSES_FILE, section, "INFO", info)
+	ArrayPushString(g_zclass_info, info)
 
-	ArrayPushCell(g_zclass_new, 1) // Set temporary new class flag
-	
-	static section[64], buffer[64], prec_mdl[64], value, Float:value_f
-	ArrayGetString(g_zclass_real_name, g_zclass_i, section, charsmax(section))
-	
-	// Replace Name
-	if(amx_load_setting_string(ZP_ZOMBIECLASSES_FILE, section, "NAME", buffer, charsmax(buffer))) 
-		ArraySetString(g_zclass_name, g_zclass_i, buffer)
-	
-	// Replace/Load Models
-	if(g_same_models_for_all) { // Using same zombie models for all classes?
-		ArrayPushCell(g_zclass_modelsstart, 0)
-		ArrayPushCell(g_zclass_modelsend, ArraySize(g_zclass_playermodel))
-	}
-	else {
-		temp_array[0] = ArrayCreate(32, 1) // Create Temporary Array
-		temp_array[1] = ArrayCreate(1, 1)
-		temp_array[2] = ArrayCreate(1, 1)
-		ArrayPushCell(g_zclass_modelsstart, ArraySize(g_zclass_playermodel))
-		amx_load_setting_string_arr(ZP_ZOMBIECLASSES_FILE, section, "MODELS", temp_array[0])
-		amx_load_setting_int_arr(ZP_ZOMBIECLASSES_FILE, section, "BODY", temp_array[1])
-		amx_load_setting_int_arr(ZP_ZOMBIECLASSES_FILE, section, "SKIN", temp_array[2])
-		if(ArraySize(temp_array[0]) > 0) {
-			for(i = 0; i < ArraySize(temp_array[0]); i++) {
-				ArrayGetString(temp_array[0], i, buffer, charsmax(buffer))
-				ArrayPushString(g_zclass_playermodel, buffer)
-
-				if(ArraySize(temp_array[1]) >= i)
-					ArrayPushCell(g_zclass_body, ArrayGetCell(temp_array[1], i))
-				else 
-					ArrayPushCell(g_zclass_body, 0)
-				
-				if(ArraySize(temp_array[2]) >= i)
-					ArrayPushCell(g_zclass_skin, ArrayGetCell(temp_array[2], i))
-				else
-					ArrayPushCell(g_zclass_skin, 0)
+	// Load/Save Models
+	if(!g_same_models_for_all) {
+		static Array:ArrModelTemp, Array:ArrBodyTemp, Array:ArrSkinTemp;
+		ArrModelTemp = ArrayCreate(32, 1)
+		ArrBodyTemp = ArrayCreate(1, 1)
+		ArrSkinTemp = ArrayCreate(1, 1)
+		amx_load_setting_string_arr(ZP_ZOMBIECLASSES_FILE, section, "MODELS", ArrModelTemp)
+		amx_load_setting_int_arr(ZP_ZOMBIECLASSES_FILE, section, "BODY", ArrBodyTemp)
+		amx_load_setting_int_arr(ZP_ZOMBIECLASSES_FILE, section, "SKIN", ArrSkinTemp)
+		if (ArraySize(ArrModelTemp) > 0) {
+			// Precache player models
+			for (i = 0; i < ArraySize(ArrModelTemp); i++) {
+				ArrayGetString(ArrModelTemp, i, szPrecache, charsmax(szPrecache))
+				precache_player_model(szPrecache)
 			}
 		}
 		else {
-			ArrayPushString(g_zclass_playermodel, model)
-			ArrayPushCell(g_zclass_body, 0)
-			ArrayPushCell(g_zclass_skin, 0)
+			ArrayPushString(ArrModelTemp, model)
+			ArrayPushCell(ArrBodyTemp, 0)
+			ArrayPushCell(ArrSkinTemp, 0)
+			amx_save_setting_string(ZP_ZOMBIECLASSES_FILE, section, "MODELS", model)
+			amx_save_setting_int(ZP_ZOMBIECLASSES_FILE, section, "BODY", 0)
+			amx_save_setting_int(ZP_ZOMBIECLASSES_FILE, section, "SKIN", 0)
+			precache_player_model(model)
 		}
-
-		ArrayPushCell(g_zclass_modelsend, ArraySize(g_zclass_playermodel))
-		for(i = 0; i < 3; i++) ArrayDestroy(temp_array[i])
-	}
-
-	if(amx_load_setting_string(ZP_ZOMBIECLASSES_FILE, section, "INFO", buffer, charsmax(buffer))) ArraySetString(g_zclass_info, g_zclass_i, buffer); // Replace info	
-	if(amx_load_setting_string(ZP_ZOMBIECLASSES_FILE, section, "CLAWMODEL", buffer, charsmax(buffer))) ArraySetString(g_zclass_clawmodel, g_zclass_i, buffer); // Replace clawmodel
-	if(amx_load_setting_int(ZP_ZOMBIECLASSES_FILE, section, "HEALTH", value)) ArraySetCell(g_zclass_hp, g_zclass_i, value); // Replace health	
-	if(amx_load_setting_int(ZP_ZOMBIECLASSES_FILE, section, "SPEED", value)) ArraySetCell(g_zclass_spd, g_zclass_i, value); // Replace speed	
-	if(amx_load_setting_float(ZP_ZOMBIECLASSES_FILE, section, "GRAVITY", value_f)) ArraySetCell(g_zclass_grav, g_zclass_i, value_f); // Replace gravity	
-	if(amx_load_setting_float(ZP_ZOMBIECLASSES_FILE, section, "KNOCKBACK", value_f)) ArraySetCell(g_zclass_kb, g_zclass_i, value_f); // Replace knockback
-
-
-	if(amx_load_setting_int(ZP_ZOMBIECLASSES_FILE, section, "ENABLE LANG", value)) ArraySetCell(g_zclass_lang_enable, g_zclass_i, value);
-	if(amx_load_setting_string(ZP_ZOMBIECLASSES_FILE, section, "CLASS NAME LANG KEY", buffer, charsmax(buffer))) ArraySetString(g_zclass_name_lang_key, g_zclass_i, buffer);
-	if(amx_load_setting_string(ZP_ZOMBIECLASSES_FILE, section, "CLASS INFO LANG KEY", buffer, charsmax(buffer))) ArraySetString(g_zclass_info_lang_key, g_zclass_i, buffer);	
-
-	if(!g_same_models_for_all) {
-		for(i = ArrayGetCell(g_zclass_modelsstart, g_zclass_i); i < ArrayGetCell(g_zclass_modelsend, g_zclass_i); i++) {
-			ArrayGetString(g_zclass_playermodel, i, buffer, charsmax(buffer))
-			precache_player_model(buffer)
-		}
+		ArrayPushCell(g_zclass_mdl_handle, ArrModelTemp)
+		ArrayPushCell(g_zclass_body_handle, ArrBodyTemp)
+		ArrayPushCell(g_zclass_skin_handle, ArrSkinTemp)
 	}	
 
-	// Load Pain Sounds //
-	temp_array[1] = ArrayCreate(64, 1)
-	ArrayPushCell(g_zclass_painsnd_start, ArraySize(g_zclass_painsnd))
-	amx_load_setting_string_arr(ZP_ZOMBIECLASSES_FILE, section, "PAIN SOUND", temp_array[1])
-	if(ArraySize(temp_array[1]) > 0) {
-		for(i = 0; i < ArraySize(temp_array[1]); i++) {
-			ArrayGetString(temp_array[1], i, buffer, charsmax(buffer))
-			ArrayPushString(g_zclass_painsnd, buffer)
+	// Load/Save Clawmodel
+	if(!amx_load_setting_string(ZP_ZOMBIECLASSES_FILE, section, "CLAWMODEL", clawmodel, charsmax(clawmodel))) 
+		amx_save_setting_string(ZP_ZOMBIECLASSES_FILE, section, "CLAWMODEL", clawmodel)
+	ArrayPushString(g_zclass_clawmodel, clawmodel)
+
+	engfunc(EngFunc_PrecacheModel, fmt("models/zombie_plague/%s", clawmodel)) // Precache clawmodel
+
+	// Load/Save Pain Sounds //
+	static Array:ArrPainSnd
+	ArrPainSnd = ArrayCreate(64, 1)
+	ArrayPushCell(g_zclass_painsnd_handle, ArrPainSnd)
+	amx_load_setting_string_arr(ZP_ZOMBIECLASSES_FILE, section, "PAIN SOUND", ArrPainSnd)
+	if(ArraySize(ArrPainSnd) > 0) {
+		ArrayPushCell(g_zclass_use_painsnd, true)
+		for(i = 0; i < ArraySize(ArrPainSnd); i++) {
+			ArrayGetString(ArrPainSnd, i, szPrecache, charsmax(szPrecache))
+			engfunc(EngFunc_PrecacheSound, szPrecache) // Precache Pain Sound
 		}
 	}
 	else { 
-		for(i = 0; i < ArraySize(zombie_pain[0]); i++) {
-			ArrayGetString(zombie_pain[0], i, buffer, charsmax(buffer))
-			ArrayPushString(g_zclass_painsnd, buffer)
-		}
+		amx_save_setting_string(ZP_ZOMBIECLASSES_FILE, section, "PAIN SOUND", "")
+		ArrayPushCell(g_zclass_use_painsnd, false)
 	}
 
-	ArrayPushCell(g_zclass_painsnd_end, ArraySize(g_zclass_painsnd))
-	ArrayDestroy(temp_array[1])
+	// Load/Save Death Sounds //
+	static Array:ArrDeathSnd
+	ArrDeathSnd = ArrayCreate(64, 1)
+	ArrayPushCell(g_zclass_deathsnd_handle, ArrDeathSnd)
+	amx_load_setting_string_arr(ZP_ZOMBIECLASSES_FILE, section, "DEATH SOUND", ArrDeathSnd)
+	if(ArraySize(ArrDeathSnd) > 0) {
+		ArrayPushCell(g_zclass_use_deathsnd, true)
+		for(i = 0; i < ArraySize(ArrDeathSnd); i++) {
+			ArrayGetString(ArrDeathSnd, i, szPrecache, charsmax(szPrecache))
+			engfunc(EngFunc_PrecacheSound, szPrecache) // Precache Pain Sound
+		}
+	}
+	else { 
+		amx_save_setting_string(ZP_ZOMBIECLASSES_FILE, section, "DEATH SOUND", "")
+		ArrayPushCell(g_zclass_use_deathsnd, false)
+	}
 	//--------------------------------------------------------------
 
-	// Load Death Sounds //
-	temp_array[2] = ArrayCreate(64, 1)
-	ArrayPushCell(g_zclass_deathsnd_start, ArraySize(g_zclass_deathsnd))
-	amx_load_setting_string_arr(ZP_ZOMBIECLASSES_FILE, section, "DEATH SOUND", temp_array[2])
-	if(ArraySize(temp_array[2]) > 0) {
-		for(i = 0; i < ArraySize(temp_array[2]); i++) {
-			ArrayGetString(temp_array[2], i, buffer, charsmax(buffer))
-			ArrayPushString(g_zclass_deathsnd, buffer)
-		}
-	}
-	else { 
-		for(i = 0; i < ArraySize(ar_sound[1]); i++) {
-			ArrayGetString(ar_sound[1], i, buffer, charsmax(buffer))
-			ArrayPushString(g_zclass_deathsnd, buffer)
-		}
-	}
-
-	ArrayPushCell(g_zclass_deathsnd_end, ArraySize(g_zclass_deathsnd))
-	ArrayDestroy(temp_array[2])
-	//-----------------------------------------------------------------
-
-	// Precache Section
-	for(i = ArrayGetCell(g_zclass_deathsnd_start, g_zclass_i); i < ArrayGetCell(g_zclass_deathsnd_end, g_zclass_i); i++) {
-		ArrayGetString(g_zclass_deathsnd, i, buffer, charsmax(buffer))
-		engfunc(EngFunc_PrecacheSound, buffer) // Precache Death Sound
-	}
-
-	for(i = ArrayGetCell(g_zclass_painsnd_start, g_zclass_i); i < ArrayGetCell(g_zclass_painsnd_end, g_zclass_i); i++) {
-		ArrayGetString(g_zclass_painsnd, i, buffer, charsmax(buffer))
-		engfunc(EngFunc_PrecacheSound, buffer) // Precache Pain Sound
-	}
-
-	ArrayGetString(g_zclass_clawmodel, g_zclass_i, buffer, charsmax(buffer))
-	formatex(prec_mdl, charsmax(prec_mdl), "models/zombie_plague/%s", buffer)
-	engfunc(EngFunc_PrecacheModel, prec_mdl) // Precache default clawmodel
-
-	//-----------------------------------------------------------------------------
+	// Load/Save Health
+	if(!amx_load_setting_int(ZP_ZOMBIECLASSES_FILE, section, "HEALTH", hp))
+		amx_save_setting_int(ZP_ZOMBIECLASSES_FILE, section, "HEALTH", hp)
+	ArrayPushCell(g_zclass_hp, hp)
 	
+	// Load/Save Speed
+	if(!amx_load_setting_int(ZP_ZOMBIECLASSES_FILE, section, "SPEED", speed))
+		amx_save_setting_int(ZP_ZOMBIECLASSES_FILE, section, "SPEED", speed)
+	ArrayPushCell(g_zclass_spd, speed)
+	
+	// Load/Save Gravity
+	if(!amx_load_setting_float(ZP_ZOMBIECLASSES_FILE, section, "GRAVITY", gravity))
+		amx_save_setting_float(ZP_ZOMBIECLASSES_FILE, section, "GRAVITY", gravity)
+	ArrayPushCell(g_zclass_grav, gravity)
+	
+	// Load/Save Knockback
+	if(!amx_load_setting_float(ZP_ZOMBIECLASSES_FILE, section, "KNOCKBACK", knockback))
+		amx_save_setting_float(ZP_ZOMBIECLASSES_FILE, section, "KNOCKBACK", knockback)
+	ArrayPushCell(g_zclass_kb, knockback)
+
+	static value, szValue[64]
+	if(!amx_load_setting_int(ZP_ZOMBIECLASSES_FILE, section, "ENABLE LANG", value)) {
+		amx_save_setting_int(ZP_ZOMBIECLASSES_FILE, section, "ENABLE LANG", 0)
+		ArrayPushCell(g_zclass_lang_enable, 0)
+	}
+	else ArrayPushCell(g_zclass_lang_enable, value)
+
+	if(!amx_load_setting_string(ZP_ZOMBIECLASSES_FILE, section, "CLASS NAME LANG KEY", szValue, charsmax(szValue))) {	
+		ArrayPushString(g_zclass_name_lang_key, "ITEM_LANG_DEFAULT_KEY")
+		amx_save_setting_string(ZP_ZOMBIECLASSES_FILE, section, "CLASS NAME LANG KEY", "ITEM_LANG_DEFAULT_KEY")
+	}
+	else ArrayPushString(g_zclass_name_lang_key, szValue)
+
+	if(!amx_load_setting_string(ZP_ZOMBIECLASSES_FILE, section, "CLASS INFO LANG KEY", szValue, charsmax(szValue))) {	
+		ArrayPushString(g_zclass_info_lang_key, "ITEM_LANG_DEFAULT_KEY")
+		amx_save_setting_string(ZP_ZOMBIECLASSES_FILE, section, "CLASS INFO LANG KEY", "ITEM_LANG_DEFAULT_KEY")
+	}
+	else ArrayPushString(g_zclass_info_lang_key, szValue)
+
 	g_zclass_i++ // Increase registered classes counter
 	return (g_zclass_i-1); // Return id under which we registered the class
 }
@@ -10248,14 +10412,12 @@ public native_get_zombie_class_id(const name[]) { // Native: zp_get_zombie_class
 	}
 	return classid;
 }
-public native_get_special_class_id(is_zombie, const _name[]) { // Native: zp_get_special_class_id
+public native_get_special_class_id(plugin_id, num_params) { // Native: zp_get_special_class_id
 	if(!g_pluginenabled) return -1; // ZP Special disabled
 	
-	param_convert(2); // Strings passed byref
-	
-	// Loop through every item
-	static i, class_name[32], name[32]
-	formatex(name, charsmax(name), _name)
+	static is_zombie, name[32], i, class_name[32];
+	is_zombie = get_param(1);
+	get_string(2, name, charsmax(name));
 	strtolower(name)
 
 	if(is_zombie) {
@@ -10287,7 +10449,9 @@ public native_get_special_class_id(is_zombie, const _name[]) { // Native: zp_get
 	}
 	return -1;
 }
-public native_set_custom_game_mod(gameid) { // Native: zp_set_custom_game_mod
+public native_set_custom_game_mod(plugin_id, num_params) { // Native: zp_set_custom_game_mod
+	static gameid;
+	gameid = get_param(1)
 	if(gameid < MAX_GAME_MODES || gameid >= g_gamemodes_i) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid game mod id (%d)", gameid)
 		return -1;
@@ -10298,7 +10462,11 @@ public native_set_custom_game_mod(gameid) { // Native: zp_set_custom_game_mod
 	}
 	return 0		
 }
-public native_start_game_mode(gameid, force_start) { // Native: zp_start_game_mode
+public native_start_game_mode(plugin_id, num_params) { // Native: zp_start_game_mode
+	static gameid, force_start;
+	gameid = get_param(1)
+	force_start = get_param(2)
+
 	if(gameid < 0 || gameid >= g_gamemodes_i) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid game mod id (%d)", gameid)
 		return -1;
@@ -10378,16 +10546,23 @@ public native_reset_lighting() { // Native: zp_reset_lighting
 	lighting_effects()
 	return 1
 }
-public native_is_user_stuck(id) return is_player_stuck(id) // Native: zp_is_user_stuck
-public native_register_weapon(const name[], secondary) { // Native: zp_register_weapon
+public native_is_user_stuck(id) return is_player_stuck(id); // Native: zp_is_user_stuck
+public native_register_weapon(plugin_id, num_params) { // Native: zp_register_weapon/zpsp_register_weapon
 	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
+
+	static name[32], secondary, uselang, langkey[32]
+	get_string(1, name, charsmax(name))
+	secondary = get_param(2)
+
+	if(num_params > 2) {
+		uselang = 0;
+		langkey = "ITEM_LANG_DEFAULT_KEY";
+	}
 
 	// Small Bug Prevention
 	if(secondary > 1) secondary = 1
 	if(secondary < 0) secondary = 0
-
-	param_convert(1); // Strings passed byref
 
 	if(strlen(name) < 1) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Can't register weapon with an empty name")
@@ -10397,46 +10572,43 @@ public native_register_weapon(const name[], secondary) { // Native: zp_register_
 	static index, wpn_name[32]
 	for(index = 0; index < g_wpn_i[secondary]; index++) {
 		ArrayGetString(g_wpn_realname[secondary], index, wpn_name, charsmax(wpn_name))
-		if(equali(name, wpn_name) && ArrayGetCell(g_wpn_is_custom[secondary], index))
-		{
+		if(equali(name, wpn_name) && ArrayGetCell(g_wpn_is_custom[secondary], index)) {
 			log_error(AMX_ERR_NATIVE, "[ZP] Custom Weapon already registered (%s)", name)
 			return -1;
 		}
 	}
 	
-	// Add the item
+	static section[32]
+	copy(section, charsmax(section), name)
+	ArrayPushString(g_wpn_realname[secondary], section)
+
+	if(!amx_load_setting_string(ZP_WEAPONS_FILE, section, "NAME", name, charsmax(name))) 
+		amx_save_setting_string(ZP_WEAPONS_FILE, section, "NAME", name)
 	ArrayPushString(g_wpn_name[secondary], name)
-	ArrayPushString(g_wpn_realname[secondary], name)
+
+	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", uselang)) 
+		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", uselang)
+	ArrayPushCell(g_wpn_name_by_lang[secondary], uselang)
+
+	if(!amx_load_setting_string(ZP_WEAPONS_FILE, section, "LANG KEY", langkey, charsmax(langkey))) 
+		amx_save_setting_string(ZP_WEAPONS_FILE, section, "LANG KEY", langkey)
+	ArrayPushString(g_wpn_lang_key[secondary], name)
+
 	ArrayPushCell(g_wpn_is_custom[secondary], 1)
-
-	ArrayPushCell(g_wpn_name_by_lang[secondary], 0)
-	ArrayPushString(g_wpn_lang_key[secondary], "ITEM_LANG_DEFAULT_KEY")	
-
 	ArrayPushCell(secondary ? g_wpn_ids[1] : g_wpn_ids[0], 0) // Small Bug Prevention
-	
-	static section[64], sz_custom_name[32], value
-	ArrayGetString(g_wpn_realname[secondary], g_wpn_i[secondary], section, charsmax(section))
-
-	if(amx_load_setting_string(ZP_WEAPONS_FILE, section, "NAME", sz_custom_name, charsmax(sz_custom_name))) 
-		ArraySetString(g_wpn_name[secondary], g_wpn_i[secondary], sz_custom_name)
-
-	if(amx_load_setting_int(ZP_WEAPONS_FILE, section, "NAME BY LANG", value))
-		ArraySetCell(g_wpn_name_by_lang[secondary], g_wpn_i[secondary], value)
-
-	if(amx_load_setting_string(ZP_WEAPONS_FILE, section, "LANG KEY", sz_custom_name, charsmax(sz_custom_name))) 
-		ArraySetString(g_wpn_lang_key[secondary], g_wpn_i[secondary], sz_custom_name)
 
 	g_wpn_i[secondary]++ // Increase registered items counter
 	return (g_wpn_i[secondary]-1); // Return id under which we registered the item
 }
-public native_get_random_player(team) { // Native: zp_get_random_player(const team = 0)
-	static iPlayersnum; iPlayersnum = fnGetAlive()
+public native_get_random_player(plugin_id, num_params) { // Native: zp_get_random_player(const team = 0)
+	static team, iPlayersnum; 
+	team = get_param(1)
+	iPlayersnum = fnGetAlive()
 	if(team) return fnGetRandomAliveByTeam(team);
 	return fnGetRandomAlive(random_num(1, iPlayersnum))
 }
-public native_set_fw_param_string(string[]) { // Native: zp_set_model_param(string[])
-	param_convert(1)
-	formatex(g_ForwardParameter, charsmax(g_ForwardParameter), string)
+public native_set_fw_param_string(plugin_id, num_params) { // Native: zp_set_model_param(string[])
+	get_string(1, g_ForwardParameter, charsmax(g_ForwardParameter))
 	return 1;
 }
 public native_set_fw_param_int(int_id, value) { // Native: zp_set_fw_param_int(int_id, value)
@@ -11694,21 +11866,15 @@ public reset_player_models(id) {
 	cs_get_user_model(id, currentmodel, charsmax(currentmodel)) // Get current model for comparing it with the current one
 	if(g_zombie[id]) {
 		if(isCustomSpecialZombie(id)) {
-			Arr_Model = g_zm_sp_model;
-			Arr_Body = g_zm_sp_body;
-			Arr_Skin = g_zm_sp_skin;
-			l_Start = ArrayGetCell(g_zm_sp_modelstart, g_zm_special[id]-MAX_SPECIALS_ZOMBIES);
-			l_End = ArrayGetCell(g_zm_sp_modelsend, g_zm_special[id]-MAX_SPECIALS_ZOMBIES) - 1;
-			l_Sub = 0;
+			Arr_Model = ArrayGetCell(g_zm_sp_mdl_handle, g_zm_special[id]-MAX_SPECIALS_ZOMBIES);
+			Arr_Body = ArrayGetCell(g_zm_sp_body_handle, g_zm_special[id]-MAX_SPECIALS_ZOMBIES);
+			Arr_Skin = ArrayGetCell(g_zm_sp_skin_handle, g_zm_special[id]-MAX_SPECIALS_ZOMBIES);
 		}
 		else if(isDefaultSpecialZombie(id)) {
 			if(zm_special_enable[g_zm_special[id]]) {
 				Arr_Model = model_zm_special[g_zm_special[id]];
 				Arr_Body = model_zm_special_body[g_zm_special[id]];
 				Arr_Skin = model_zm_special_skin[g_zm_special[id]];
-				l_Start = 0;
-				l_End = ArraySize(Arr_Model);
-				l_Sub = 1;
 			}
 		}
 		else {
@@ -11716,45 +11882,38 @@ public reset_player_models(id) {
 				Arr_Model = model_adm_zm;
 				Arr_Body = model_adm_zm_body;
 				Arr_Skin = model_adm_zm_skin;
-				l_Start = 0;
-				l_End = ArraySize(Arr_Model);
-				l_Sub = 1;
 			}
 			else if(get_pcvar_num(cvar_vipmodelszombie) && (UserFlags & g_access_flag[ACCESS_VIP_MODELS])) {
 				Arr_Model = model_vip_zm;
 				Arr_Body = model_vip_zm_body;
 				Arr_Skin = model_vip_zm_skin;
-				l_Start = 0;
-				l_End = ArraySize(Arr_Model);
-				l_Sub = 1;
 			} 
-			else {
+			else if(g_same_models_for_all) {
 				Arr_Model = g_zclass_playermodel;
 				Arr_Body = g_zclass_body;
 				Arr_Skin = g_zclass_skin;
-				l_Start = ArrayGetCell(g_zclass_modelsstart, g_zombieclass[id]);
-				l_End = ArrayGetCell(g_zclass_modelsend, g_zombieclass[id]);
-				l_Sub = 1;
+			}
+			else {
+				Arr_Model = ArrayGetCell(g_zclass_mdl_handle, g_zombieclass[id]);
+				Arr_Body = ArrayGetCell(g_zclass_body_handle, g_zombieclass[id]);
+				Arr_Skin = ArrayGetCell(g_zclass_skin_handle, g_zombieclass[id]);
 			}
 		}
+		l_Start = 0;
+		l_End = ArraySize(Arr_Model);
+		l_Sub = 1;
 	}
 	else {
 		if(isCustomSpecialHuman(id)) { // Set the right model, after checking that we don't already have it
-			Arr_Model = g_hm_sp_model;
-			Arr_Body = g_hm_sp_body;
-			Arr_Skin = g_hm_sp_skin;
-			l_Start = ArrayGetCell(g_hm_sp_modelstart, g_hm_special[id]-MAX_SPECIALS_HUMANS);
-			l_End = ArrayGetCell(g_hm_sp_modelsend, g_hm_special[id]-MAX_SPECIALS_HUMANS) - 1;
-			l_Sub = 0;
+			Arr_Model = ArrayGetCell(g_hm_sp_mdl_handle, g_hm_special[id]-MAX_SPECIALS_HUMANS);
+			Arr_Body = ArrayGetCell(g_hm_sp_body_handle, g_hm_special[id]-MAX_SPECIALS_HUMANS);
+			Arr_Skin = ArrayGetCell(g_hm_sp_skin_handle, g_hm_special[id]-MAX_SPECIALS_HUMANS);
 		}			
 		else if(isDefaultSpecialHuman(id)) {
 			if(hm_special_enable[g_hm_special[id]]) {
 				Arr_Model = model_human[g_hm_special[id]];
 				Arr_Body = model_human_body[g_hm_special[id]];
 				Arr_Skin = model_human_skin[g_hm_special[id]];
-				l_Start = 0;
-				l_End = ArraySize(Arr_Model);
-				l_Sub = 1;
 			}
 		}
 		else {
@@ -11768,15 +11927,28 @@ public reset_player_models(id) {
 				Arr_Body = model_vip_hm_body;
 				Arr_Skin = model_vip_hm_skin;
 			}
-			else {
+			else if(!g_hclass_i) {
 				Arr_Model = model_human[0];
 				Arr_Body = model_human_body[0];
 				Arr_Skin = model_human_skin[0];
 			}
-			l_Start = 0;
-			l_End = ArraySize(Arr_Model);
-			l_Sub = 1;
+			else if(g_hclass_i) {
+				if(ArrayGetCell(g_hclass_mdl_file, g_user_hclass[id])) {
+					Arr_Model = ArrayGetCell(g_hclass_mdl_handle, g_user_hclass[id]);
+					Arr_Body = ArrayGetCell(g_hclass_body_handle, g_user_hclass[id]);
+					Arr_Skin = ArrayGetCell(g_hclass_skin_handle, g_user_hclass[id]);
+				}
+				else {
+					Arr_Model = model_human[0];
+					Arr_Body = model_human_body[0];
+					Arr_Skin = model_human_skin[0];
+				}
+			}
+			
 		}
+		l_Start = 0;
+		l_End = ArraySize(Arr_Model);
+		l_Sub = 1;
 	}
 
 	for(i = l_Start; i < l_End; i++) {
