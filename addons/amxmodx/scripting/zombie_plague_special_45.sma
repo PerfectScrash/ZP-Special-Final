@@ -249,11 +249,12 @@
 
 		* 4.5:
 			- REMOVED Amx 1.8.2 SUPORT
-			- Fixed trigger_hurt when killing with bugged players.
+			- Fixed trigger_hurt when killing with bugged players (i think).
 			- Fixed chat lang bug. (Sometimes appears in [en] language not in players language)
 			- Added Native: zp_force_user_class(id, spid, zombie, attacker = 0, sillentmode = 1)
-			- Added Native: zpsp_set_user_frozen(id, set, Float:Duration = -1.0)
-			- Added Native: zpsp_set_user_burn(id, set, Float:Duration = -1.0)
+			- Updated Native: zp_set_user_frozen(id, set, Float:Duration = -1.0)
+			- Updated Native: zp_set_user_madness(id, set, Float:Duration = -1.0)
+			- Updated Native: zp_set_user_burn(id, set, Float:Duration = -1.0)
 			- Added Cvars: zp_human_frags_for_disinfect, zp_human_disnfect_reward, zp_green_deathmsg
 			- Removed "HANDLE MODELS ON SEPARATE ENT"
 			- Removed "MODELCHANGE DELAY"
@@ -264,6 +265,35 @@
 			- Added Native: zp_set_fw_param_int(int_id, value)
 			- Added Many Stocks (Check zpsp_stocks.inc)
 			- Fixed bug when you create a custom zombie special with same name with any custom human special
+			- Added Human Classes System
+			- Added Native: zp_register_human_class(const name[], const info[], hp, armor, speed, Float:gravity, use_lang=0, const name_lang_key[]="ITEM_LANG_DEFAULT_KEY", const info_lang_key[]="ITEM_LANG_DEFAULT_KEY");
+			- Added Native: zp_get_user_human_class(id);
+			- Added Native: zp_get_next_human_class(id);
+			- Added Native: zp_set_user_human_class(id, classid);
+			- Added Native: zp_register_hclass_model(classid, player_model[], body=0, skin=0)
+			- Added Native: zp_get_human_class_id(const name[])
+			- Added Native: zp_get_human_class_info(id, info[], len)
+			- Added Native: zp_get_human_class_name(id, name[], len)
+			- Added Native: zp_set_human_class_info(id, const info[])
+			- Added Native: zp_set_human_class_name(id, const name[])
+			- Added Native: zp_get_human_class_realname(id, realname[], len)
+			- Added Forward: zp_human_class_choosed_pre(id, classid)
+			- Added Forward: zp_human_class_choosed_post(id, classid)
+			- Added Native: zp_drop_weapons(id, dropwhat)
+			- Added Native: zp_give_item(id, const item[])
+			- Added Native: zp_strip_user_weapons(id)
+			- Added Native: zp_menu_textadd(const text[])
+			- Updated Native: zp_register_weapon(const name[], wpn_type, uselang=0, const langkey[] = "ITEM_LANG_DEFAULT_KEY")
+			- Added Cvar: zp_choose_hclass_instantanly
+			- Added "FLAGS" option in "zpsp_gamemodes.ini" and in "zpsp_special_classes.ini"
+			- Improved "save_custonomization" system
+			- Improved model/sound system for any external class
+			- Updated Native: zp_disinfect_user(id, silent, attacker) 
+			- Updated Native: zpsp_register_gamemode(const name[], flags, chance, allow, dm_mode, resp_limit=0, enable_in_ze=0, uselang=0, const langkey[]="ITEM_LANG_DEFAULT_KEY");
+			- Added Forward: zp_player_show_hud(id, target, SpHudType:hudtype);
+			- Added Native: zp_add_hud_text(const text[]);
+			- Added Native: zp_get_user_hud_type(id);
+			- Now all natives are using "style 0"
 
 
 ============================================================================================================================*/
@@ -271,7 +301,7 @@
 /*================================================================================
  [Plugin Info]
 =================================================================================*/
-#define PLUGIN "Zombie Plague Special (4.5 Stable)"
+#define PLUGIN "Zombie Plague Special"
 #define VERSION "4.5"
 #define AUTHOR "MeRcyLeZZ | @bdul! | [P]erfect [S]crash"
 
@@ -666,7 +696,7 @@ new g_lights_i, g_lights_cycle[32], g_lights_cycle_len, Float:g_teams_targettime
 new g_trailSpr[MAX_GRENADES], g_ExplodeSpr[MAX_GRENADES], g_GibSpr[MAX_GRENADES], g_RingSpr, g_flameSpr, g_smokeSpr, g_glassSpr, g_modname[32], g_freezetime, MaxPlayers, g_czero;
 new g_hamczbots, g_fwSpawn, g_fwPrecacheSound, g_infbombcounter, g_antidotecounter, g_madnesscounter, g_arrays_created, g_escape_map;
 new g_lastplayerleaving, g_switchingteam, g_buyzone_ent, zm_special_enable[MAX_SPECIALS_ZOMBIES], hm_special_enable[MAX_SPECIALS_HUMANS];
-new custom_lighting[2], g_custom_light, g_ForwardParameter[64], g_FW_intParam[10];
+new custom_lighting[2], g_custom_light, g_ForwardParameter[64], g_FW_intParam[10], g_AdditionalHudText[500];
 
 // Message IDs vars
 new g_msgScoreInfo, g_msgNVGToggle, g_msgScoreAttrib, g_msgAmmoPickup, g_msgScreenFade, g_msgDeathMsg, g_msgSetFOV, g_msgFlashlight, g_msgFlashBat, 
@@ -712,6 +742,7 @@ enum { // Forward Enum
 	WEAPON_SELECTED_POST,
 	H_CLASS_CHOOSED_PRE,
 	H_CLASS_CHOOSED_POST,
+	PLAYER_SHOW_HUD,
 	MAX_FORWARDS_NUM
 };
 new g_forwards[MAX_FORWARDS_NUM], g_fwDummyResult;
@@ -759,9 +790,9 @@ enable_trail[MAX_GRENADES], enable_explode[MAX_GRENADES], enable_gib[MAX_GRENADE
 sprite_grenade_ring[64], sprite_grenade_fire[64], sprite_grenade_smoke[64], sprite_grenade_glass[64], grenade_rgb[MAX_GRENADES][3], Float:weapon_spd_multi[31] = { 1.0, ... };
 
 // CVAR pointers
-new cvar_green_dm, cvar_lighting, cvar_zombiefov, cvar_removemoney, cvar_thunder, cvar_deathmatch, cvar_customnvg, cvar_nvg_alpha, cvar_hitzones, cvar_flashsize[2], cvar_ammodamage, cvar_ammodamage_quantity, cvar_zombiearmor, cvar_chosse_instantanly,
+new cvar_green_dm, cvar_lighting, cvar_zombiefov, cvar_removemoney, cvar_thunder, cvar_deathmatch, cvar_customnvg, cvar_nvg_alpha, cvar_hitzones, cvar_flashsize[2], cvar_ammodamage, cvar_ammodamage_quantity, cvar_zombiearmor, cvar_chosse_instantanly[2],
 cvar_flashdrain, cvar_zombiebleeding, cvar_removedoors, cvar_customflash, cvar_randspawn, cvar_ammoinfect, cvar_toggle, cvar_knockbackpower, cvar_freezeduration, cvar_triggered, cvar_flashcharge,
-cvar_firegrenades, cvar_frostgrenades, cvar_logcommands, cvar_spawnprotection, cvar_nvgsize, cvar_flareduration, cvar_zclasses, cvar_extraitems, cvar_showactivity, cvar_warmup, cvar_flashdist, cvar_flarecolor, cvar_fireduration, cvar_firedamage,
+cvar_firegrenades, cvar_frostgrenades, cvar_logcommands, cvar_spawnprotection, cvar_nvgsize, cvar_flareduration, cvar_zclasses, cvar_hclasses, cvar_extraitems, cvar_showactivity, cvar_warmup, cvar_flashdist, cvar_flarecolor, cvar_fireduration, cvar_firedamage,
 cvar_flaregrenades, cvar_knockbackducking, cvar_knockbackdamage, cvar_knockbackzvel, cvar_multiratio, cvar_swarmratio, cvar_flaresize[2], cvar_spawndelay, cvar_extraantidote, cvar_extramadness, cvar_extraantidote_ze, cvar_extramadness_ze,
 cvar_extraweapons, cvar_extranvision, cvar_zm_nvggive[MAX_SPECIALS_ZOMBIES], cvar_hm_nvggive[MAX_SPECIALS_HUMANS], cvar_spec_nvggive, cvar_preventconsecutive, cvar_botquota, cvar_buycustom, cvar_fireslowdown, cvar_sniperfraggore, cvar_nemfraggore, cvar_humansurvive, cvar_antidote_minzms,
 cvar_extrainfbomb, cvar_extrainfbomb_ze, cvar_knockback, cvar_ammo_disinfect, cvar_fragsinfect, cvar_frags_disinfect, cvar_ammodamage_zombie, cvar_fragskill, cvar_humanarmor, cvar_zombiesilent, cvar_removedropped, cvar_huddisplay, cvar_allow_buy_no_start,
@@ -809,120 +840,120 @@ public plugin_natives() {
 	register_native("zp_get_user_last_human", "native_get_user_last_human");
 	register_native("zp_get_user_zombie_class", "native_get_user_zombie_class");
 	register_native("zp_get_user_next_class", "native_get_user_next_class");
-	register_native("zp_set_user_zombie_class", "native_set_user_zombie_class", 1);
+	register_native("zp_set_user_zombie_class", "native_set_user_zombie_class");
 	register_native("zp_get_user_ammo_packs", "native_get_user_ammo_packs");
-	register_native("zp_set_user_ammo_packs", "native_set_user_ammo_packs", 1);
-	register_native("zp_get_zombie_maxhealth", "native_get_zombie_maxhealth", 1);
+	register_native("zp_set_user_ammo_packs", "native_set_user_ammo_packs");
+	register_native("zp_get_zombie_maxhealth", "native_get_zombie_maxhealth");
 	register_native("zp_get_user_batteries", "native_get_user_batteries");
-	register_native("zp_set_user_batteries", "native_set_user_batteries", 1);
+	register_native("zp_set_user_batteries", "native_set_user_batteries");
 	register_native("zp_get_user_nightvision", "native_get_user_nightvision");
-	register_native("zp_set_user_nightvision", "native_set_user_nightvision", 1);
-	register_native("zp_infect_user", "native_infect_user", 1);
-	register_native("zp_disinfect_user", "native_disinfect_user", 1);
-	register_native("zp_make_user_nemesis", "native_make_user_nemesis", 1);
-	register_native("zp_make_user_survivor", "native_make_user_survivor", 1);
-	register_native("zp_respawn_user", "native_respawn_user", 1);
-	register_native("zp_force_buy_extra_item", "native_force_buy_extra_item", 1);
+	register_native("zp_set_user_nightvision", "native_set_user_nightvision");
+	register_native("zp_infect_user", "native_infect_user");
+	register_native("zp_disinfect_user", "native_disinfect_user");
+	register_native("zp_make_user_nemesis", "native_make_user_nemesis");
+	register_native("zp_make_user_survivor", "native_make_user_survivor");
+	register_native("zp_respawn_user", "native_respawn_user");
+	register_native("zp_force_buy_extra_item", "native_force_buy_extra_item");
 	register_native("zp_get_user_sniper", "native_get_user_sniper");
-	register_native("zp_make_user_sniper", "native_make_user_sniper", 1);
+	register_native("zp_make_user_sniper", "native_make_user_sniper");
 	register_native("zp_get_user_assassin", "native_get_user_assassin");
-	register_native("zp_make_user_assassin", "native_make_user_assassin", 1);
+	register_native("zp_make_user_assassin", "native_make_user_assassin");
 	register_native("zp_get_user_predator", "native_get_user_predator");
-	register_native("zp_make_user_predator", "native_make_user_predator", 1);
+	register_native("zp_make_user_predator", "native_make_user_predator");
 	register_native("zp_get_user_bombardier", "native_get_user_bombardier");
-	register_native("zp_make_user_bombardier", "native_make_user_bombardier", 1);
+	register_native("zp_make_user_bombardier", "native_make_user_bombardier");
 	register_native("zp_get_user_dragon", "native_get_user_dragon");
-	register_native("zp_make_user_dragon", "native_make_user_dragon", 1);
+	register_native("zp_make_user_dragon", "native_make_user_dragon");
 	register_native("zp_get_user_berserker", "native_get_user_berserker");
-	register_native("zp_make_user_berserker", "native_make_user_berserker", 1);
+	register_native("zp_make_user_berserker", "native_make_user_berserker");
 	register_native("zp_get_user_wesker", "native_get_user_wesker");
-	register_native("zp_make_user_wesker", "native_make_user_wesker", 1);
+	register_native("zp_make_user_wesker", "native_make_user_wesker");
 	register_native("zp_get_user_spy", "native_get_user_spy");
-	register_native("zp_make_user_spy", "native_make_user_spy", 1);
+	register_native("zp_make_user_spy", "native_make_user_spy");
 	register_native("zp_get_user_model", "native_get_user_model");
-	register_native("zp_override_user_model", "native_override_user_model", 1);
-	register_native("zp_set_user_model", "native_override_user_model", 1);
+	register_native("zp_override_user_model", "native_override_user_model");
+	register_native("zp_set_user_model", "native_override_user_model");
 	
 	// Round natives;
-	register_native("zp_has_round_started", "native_has_round_started", 1);
-	register_native("zp_is_nemesis_round", "native_is_nemesis_round", 1);
-	register_native("zp_is_survivor_round", "native_is_survivor_round", 1);
-	register_native("zp_is_swarm_round", "native_is_swarm_round", 1);
-	register_native("zp_is_plague_round", "native_is_plague_round", 1);
-	register_native("zp_get_zombie_count", "native_get_zombie_count", 1);
-	register_native("zp_get_human_count", "native_get_human_count", 1);
-	register_native("zp_get_nemesis_count", "native_get_nemesis_count", 1);
-	register_native("zp_get_survivor_count", "native_get_survivor_count", 1);
-	register_native("zp_is_sniper_round", "native_is_sniper_round", 1);
-	register_native("zp_get_sniper_count", "native_get_sniper_count", 1);
-	register_native("zp_is_assassin_round", "native_is_assassin_round", 1);
-	register_native("zp_get_assassin_count", "native_get_assassin_count", 1);
-	register_native("zp_is_predator_round", "native_is_predator_round", 1);
-	register_native("zp_get_predator_count", "native_get_predator_count", 1);
-	register_native("zp_is_bombardier_round", "native_is_bombardier_round", 1);
-	register_native("zp_get_bombardier_count", "native_get_bombardier_count", 1);
-	register_native("zp_is_dragon_round", "native_is_dragon_round", 1);
-	register_native("zp_get_dragon_count", "native_get_dragon_count", 1);
-	register_native("zp_is_berserker_round", "native_is_berserker_round", 1);
-	register_native("zp_get_berserker_count", "native_get_berserker_count", 1);
-	register_native("zp_is_wesker_round", "native_is_wesker_round", 1);
-	register_native("zp_get_wesker_count", "native_get_wesker_count", 1);
-	register_native("zp_is_spy_round", "native_is_spy_round", 1);
-	register_native("zp_get_spy_count", "native_get_spy_count", 1);
-	register_native("zp_is_lnj_round", "native_is_lnj_round", 1);
-	register_native("zp_get_current_mode", "native_get_current_mode", 1);
-	register_native("zp_get_last_mode", "native_get_last_mode", 1);
+	register_native("zp_has_round_started", "native_has_round_started");
+	register_native("zp_is_nemesis_round", "native_is_nemesis_round");
+	register_native("zp_is_survivor_round", "native_is_survivor_round");
+	register_native("zp_is_swarm_round", "native_is_swarm_round");
+	register_native("zp_is_plague_round", "native_is_plague_round");
+	register_native("zp_get_zombie_count", "native_get_zombie_count");
+	register_native("zp_get_human_count", "native_get_human_count");
+	register_native("zp_get_nemesis_count", "native_get_nemesis_count");
+	register_native("zp_get_survivor_count", "native_get_survivor_count");
+	register_native("zp_is_sniper_round", "native_is_sniper_round");
+	register_native("zp_get_sniper_count", "native_get_sniper_count");
+	register_native("zp_is_assassin_round", "native_is_assassin_round");
+	register_native("zp_get_assassin_count", "native_get_assassin_count");
+	register_native("zp_is_predator_round", "native_is_predator_round");
+	register_native("zp_get_predator_count", "native_get_predator_count");
+	register_native("zp_is_bombardier_round", "native_is_bombardier_round");
+	register_native("zp_get_bombardier_count", "native_get_bombardier_count");
+	register_native("zp_is_dragon_round", "native_is_dragon_round");
+	register_native("zp_get_dragon_count", "native_get_dragon_count");
+	register_native("zp_is_berserker_round", "native_is_berserker_round");
+	register_native("zp_get_berserker_count", "native_get_berserker_count");
+	register_native("zp_is_wesker_round", "native_is_wesker_round");
+	register_native("zp_get_wesker_count", "native_get_wesker_count");
+	register_native("zp_is_spy_round", "native_is_spy_round");
+	register_native("zp_get_spy_count", "native_get_spy_count");
+	register_native("zp_is_lnj_round", "native_is_lnj_round");
+	register_native("zp_get_current_mode", "native_get_current_mode");
+	register_native("zp_get_last_mode", "native_get_last_mode");
 	
 	// External additions natives;
 	register_native("zp_register_game_mode", "native_register_gamemode");
 	register_native("zp_register_extra_item", "native_register_extra_item");
 	register_native("zp_register_zombie_class", "native_register_zombie_class");
-	register_native("zp_get_extra_item_id", "native_get_extra_item_id", 1);
-	register_native("zp_get_zombie_class_id", "native_get_zombie_class_id", 1);
+	register_native("zp_get_extra_item_id", "native_get_extra_item_id");
+	register_native("zp_get_zombie_class_id", "native_get_zombie_class_id");
 	
 	// New Natives;
 	register_native("zp_get_user_madness", "native_get_user_madness");
-	register_native("zp_set_user_madness", "native_set_user_madness", 1);
+	register_native("zp_set_user_madness", "native_set_user_madness");
 	register_native("zp_get_user_burn", "native_get_user_burn");
-	register_native("zp_set_user_burn", "native_set_user_burn", 1);
+	register_native("zp_set_user_burn", "native_set_user_burn");
 	register_native("zp_get_user_frozen", "native_get_user_frozen");
-	register_native("zp_set_user_frozen", "native_set_user_frozen", 1);
+	register_native("zp_set_user_frozen", "native_set_user_frozen");
 	register_native("zp_get_user_infectnade", "native_get_user_infectnade");
-	register_native("zp_set_user_infectnade", "native_set_user_infectnade", 1);
+	register_native("zp_set_user_infectnade", "native_set_user_infectnade");
 	register_native("zp_extra_item_textadd", "native_menu_textadd");
 	register_native("zp_zombie_class_textadd", "native_menu_textadd");
 	register_native("zp_get_human_special_class", "native_get_human_special_class");
 	register_native("zp_get_zombie_special_class", "native_get_zombie_special_class");
 	
 	// New Natives (2.3 or High Available);
-	register_native("zp_set_user_rendering", "native_set_rendering", 1);
-	register_native("zp_reset_user_rendering", "native_reset_user_rendering", 1);
-	register_native("zp_get_extra_item_cost", "native_get_extra_item_cost", 1);
+	register_native("zp_set_user_rendering", "native_set_rendering");
+	register_native("zp_reset_user_rendering", "native_reset_user_rendering");
+	register_native("zp_get_extra_item_cost", "native_get_extra_item_cost");
 	register_native("zp_get_extra_item_name", "native_get_extra_item_name");
-	register_native("zp_set_user_maxspeed", "native_set_user_maxspeed", 1);
+	register_native("zp_set_user_maxspeed", "native_set_user_maxspeed");
 	register_native("zp_get_user_maxspeed", "native_get_user_maxspeed");
-	register_native("zp_reset_user_maxspeed", "native_reset_user_maxspeed", 1);
+	register_native("zp_reset_user_maxspeed", "native_reset_user_maxspeed");
 	
 	// New Natives (2.4 or High Available);
-	register_native("zp_set_extra_damage", "native_set_extra_damage", 1);
-	register_native("zp_set_extra_item_team", "native_set_extra_item_team", 1);
-	register_native("zp_set_extra_item_cost", "native_set_extra_item_cost", 1);
-	register_native("zp_set_extra_item_name", "native_set_extra_item_name", 1);
+	register_native("zp_set_extra_damage", "native_set_extra_damage");
+	register_native("zp_set_extra_item_team", "native_set_extra_item_team");
+	register_native("zp_set_extra_item_cost", "native_set_extra_item_cost");
+	register_native("zp_set_extra_item_name", "native_set_extra_item_name");
 	register_native("zp_get_zombie_class_info", "native_get_zombie_class_info");
 	register_native("zp_get_zombie_class_name", "native_get_zombie_class_name");
-	register_native("zp_set_zombie_class_info", "native_set_zombie_class_info", 1);
-	register_native("zp_set_zombie_class_name", "native_set_zombie_class_name", 1);
-	register_native("zp_has_round_ended", "native_has_round_ended", 1);
+	register_native("zp_set_zombie_class_info", "native_set_zombie_class_info");
+	register_native("zp_set_zombie_class_name", "native_set_zombie_class_name");
+	register_native("zp_has_round_ended", "native_has_round_ended");
 	register_native("zp_get_extra_item_realname", "native_get_extra_item_realname");
 	register_native("zp_get_current_mode_name", "native_get_current_mode_name");
 	
 	// New Natives (3.0 or High Available);
 	register_native("zp_register_human_special", "native_register_human_special");
 	register_native("zp_register_zombie_special", "native_register_zombie_special");
-	register_native("zp_make_user_special", "native_make_user_special", 1);
+	register_native("zp_make_user_special", "native_make_user_special");
 	register_native("zp_set_custom_game_mod", "native_set_custom_game_mod");
-	register_native("zp_get_special_count", "native_get_special_count", 1);
-	register_native("zp_reset_player_model", "native_reset_player_model", 1);
+	register_native("zp_get_special_count", "native_get_special_count");
+	register_native("zp_reset_player_model", "native_reset_player_model");
 	
 	// New Natives (3.1 or High Available);
 	register_native("zp_get_special_class_name", "native_special_class_name");
@@ -932,61 +963,64 @@ public plugin_natives() {
 	register_native("zp_get_zombie_class_realname", "native_get_zclass_realname");
 	
 	// New Natives (3.4 or High Available);
-	register_native("zp_get_extra_item_count", "native_get_extra_item_count", 1);
-	register_native("zp_get_zclass_count", "native_get_zclass_count", 1);
-	register_native("zp_get_gamemodes_count", "native_get_gamemodes_count", 1);
-	register_native("zp_get_custom_special_count", "native_get_custom_special_count", 1);
-	register_native("zp_get_gamemode_id", "native_get_gamemode_id", 1);
+	register_native("zp_get_extra_item_count", "native_get_extra_item_count");
+	register_native("zp_get_zclass_count", "native_get_zclass_count");
+	register_native("zp_get_gamemodes_count", "native_get_gamemodes_count");
+	register_native("zp_get_custom_special_count", "native_get_custom_special_count");
+	register_native("zp_get_gamemode_id", "native_get_gamemode_id");
 	
 	// New Natives (3.5 or High Available);
-	register_native("zp_is_escape_map", "native_is_escape_map", 1);
-	register_native("zp_do_random_spawn", "native_do_random_spawn", 1);
+	register_native("zp_is_escape_map", "native_is_escape_map");
+	register_native("zp_do_random_spawn", "native_do_random_spawn");
 
 	// New Natives (4.2 or High Available);
-	register_native("zp_reload_csdm_respawn", "native_reload_csdm_respawn", 1);
-	register_native("zp_set_lighting", "native_set_lighting", 1);
-	register_native("zp_reset_lighting", "native_reset_lighting", 1);
-	register_native("zp_is_user_stuck", "native_is_user_stuck", 1);
+	register_native("zp_reload_csdm_respawn", "native_reload_csdm_respawn");
+	register_native("zp_set_lighting", "native_set_lighting");
+	register_native("zp_reset_lighting", "native_reset_lighting");
+	register_native("zp_is_user_stuck", "native_is_user_stuck");
 	register_native("zp_register_weapon", "native_register_weapon");
 	register_native("zp_weapon_menu_textadd", "native_menu_textadd");
 	register_native("zp_get_weapon_realname", "native_get_weapon_realname");
 	register_native("zp_get_weapon_name", "native_get_weapon_name");
-	register_native("zp_set_weapon_name", "native_set_weapon_name", 1);
-	register_native("zp_weapon_is_custom", "native_weapon_is_custom", 1);
+	register_native("zp_set_weapon_name", "native_set_weapon_name");
+	register_native("zp_weapon_is_custom", "native_weapon_is_custom");
 	register_native("zp_weapon_count", "native_weapon_count");
 	register_native("zp_get_random_player", "native_get_random_player");
 	register_native("zp_set_model_param", "native_set_fw_param_string");
 
 	// New Natives (4.3 or High Available);
 	register_native("zp_start_game_mode", "native_start_game_mode");
-	register_native("zp_set_next_game_mode", "native_set_next_game_mode", 1);
+	register_native("zp_set_next_game_mode", "native_set_next_game_mode");
 	register_native("zpsp_register_extra_item", "native_register_extra_item_sp");
-	register_native("zp_is_special_class_enable", "native_is_special_class_enable", 1);
-	register_native("zp_is_gamemode_enable", "native_is_gamemode_enable", 1);
+	register_native("zp_is_special_class_enable", "native_is_special_class_enable");
+	register_native("zp_is_gamemode_enable", "native_is_gamemode_enable");
 
 	// New Natives (4.4 or High Available);
-	register_native("zp_set_user_extra_damage", "native_set_user_extra_damage", 1);
+	register_native("zp_set_user_extra_damage", "native_set_extra_damage");
 	register_native("zpsp_register_gamemode", "native_register_gamemode");
-	register_native("zp_get_custom_extra_start", "native_get_custom_extra_start", 1);
+	register_native("zp_get_custom_extra_start", "native_get_custom_extra_start");
 
 	// New Natives (4.5 or High Available)
-	register_native("zp_force_user_class", "native_force_user_class", 1);
-	register_native("zpsp_set_user_frozen", "native_set_user_frozen2", 1);
-	register_native("zpsp_set_user_burn", "native_set_user_burn2", 1);
-	register_native("zpsp_set_user_madness", "native_set_user_madness2", 1);
-	register_native("zpsp_override_user_model", "native_override_user_model2", 1);
-	register_native("zp_set_fw_param_int", "native_set_fw_param_int", 1);
-	register_native("zp_drop_weapons", "native_drop_weapons", 1);
-	register_native("zp_give_item", "native_give_item", 1);
-	register_native("zp_strip_user_weapons", "native_strip_user_weapons", 1);
-	register_native("zpsp_disinfect_user", "native_disinfect_user2", 1);
+	register_native("zp_force_user_class", "native_force_user_class");
+	register_native("zpsp_override_user_model", "native_override_user_model2");
+	register_native("zp_set_fw_param_int", "native_set_fw_param_int");
+	register_native("zp_drop_weapons", "native_drop_weapons");
+	register_native("zp_give_item", "native_give_item");
+	register_native("zp_strip_user_weapons", "native_strip_user_weapons");
 	register_native("zp_register_human_class", "native_register_human_class");
-	register_native("zp_register_hclass_model", "native_register_hclass_model", 1);
+	register_native("zp_register_hclass_model", "native_register_hclass_model");
 	register_native("zp_get_user_human_class", "native_get_user_human_class");
-	register_native("zp_get_next_human_class", "native_get_next_human_class", 1);
-	register_native("zp_set_user_human_class", "native_set_user_human_class", 1);
+	register_native("zp_get_next_human_class", "native_get_next_human_class");
+	register_native("zp_set_user_human_class", "native_set_user_human_class");
 	register_native("zp_menu_textadd", "native_menu_textadd");
-	register_native("zpsp_register_weapon", "native_register_weapon");
+	register_native("zp_get_human_class_id", "native_get_human_class_id");
+	register_native("zp_add_hud_text", "native_add_hud_text");
+	register_native("zp_get_user_hud_type", "native_get_user_hud_type");
+	register_native("zp_get_human_class_info", "native_get_human_class_info");
+	register_native("zp_get_human_class_name", "native_get_human_class_name");
+	register_native("zp_set_human_class_info", "native_set_human_class_info");
+	register_native("zp_set_human_class_name", "native_set_human_class_name");
+	register_native("zp_get_human_class_realname", "native_get_hclass_realname");
 }
 public plugin_precache() {
 	register_plugin(PLUGIN, VERSION, AUTHOR) // Register earlier to show up in plugins list properly after plugin disable/error at loading
@@ -1520,6 +1554,7 @@ public plugin_init() {
 	cvar_adminknifemodelszombie = register_cvar("zp_admin_knife_models_zombie", "0")
 	cvar_vipknifemodelszombie = register_cvar("zp_vip_knife_models_zombie", "0")
 	cvar_zclasses = register_cvar("zp_zombie_classes", "1")
+	cvar_hclasses = register_cvar("zp_human_classes", "1")
 	cvar_statssave = register_cvar("zp_stats_save", "1")
 	cvar_startammopacks = register_cvar("zp_starting_ammo_packs", "5")
 	cvar_preventconsecutive = register_cvar("zp_prevent_consecutive_modes", "1")
@@ -1532,7 +1567,8 @@ public plugin_init() {
 	cvar_bot_buyitem_interval = register_cvar("zp_bot_buy_extra_interval", "20.0")
 	cvar_huddisplay = register_cvar("zp_hud_display", "1")
 	cvar_allow_buy_no_start = register_cvar("zp_allow_buy_extra_before_start", "1")
-	cvar_chosse_instantanly = register_cvar("zp_choose_zclass_instantanly", "1")
+	cvar_chosse_instantanly[0] = register_cvar("zp_choose_zclass_instantanly", "1")
+	cvar_chosse_instantanly[1] = register_cvar("zp_choose_hclass_instantanly", "1")
 	cvar_ammodamage_quantity = register_cvar("zp_ammopack_damage", "1")
 	cvar_green_dm = register_cvar("zp_green_deathmsg", "1")
 	
@@ -2050,6 +2086,7 @@ public plugin_init() {
 	// New forwards (4.5 or higher)
 	g_forwards[H_CLASS_CHOOSED_PRE] = CreateMultiForward("zp_human_class_choosed_pre", ET_CONTINUE, FP_CELL, FP_CELL)
 	g_forwards[H_CLASS_CHOOSED_POST] = CreateMultiForward("zp_human_class_choosed_post", ET_IGNORE, FP_CELL, FP_CELL)
+	g_forwards[PLAYER_SHOW_HUD] = CreateMultiForward("zp_player_show_hud", ET_CONTINUE, FP_CELL, FP_CELL, FP_CELL)
 
 	load_spawns() // Collect random spawn points
 	
@@ -2080,20 +2117,6 @@ public plugin_cfg() {
 	static cfgdir[32]; get_configsdir(cfgdir, charsmax(cfgdir)) // Get configs dir
 	server_cmd("exec %s/zombie_plague_special.cfg", cfgdir) // Execute config file (zombie_plague_special.cfg)
 
-	//  	if(!g_hclass_i) {
-	// 	ArrayPushString(g_hclass_real_name, "Default")
-	// 	ArrayPushString(g_hclass_name, "Default")
-	// 	ArrayPushString(g_hclass_info, "Default")
-	// 	ArrayPushCell(g_hclass_hp, get_pcvar_num(cvar_hm_health[0]))
-	// 	ArrayPushCell(g_hclass_armor, 0)
-	// 	ArrayPushCell(g_hclass_speed, get_pcvar_num(cvar_hm_spd[0]))
-	// 	ArrayPushCell(g_hclass_gravity, get_pcvar_float(cvar_hmgravity[0]))
-	// 	ArrayPushCell(g_hclass_lang_enable, 1)
-	// 	ArrayPushString(g_hclass_name_lang_key, "CLASS_HUMAN")
-	// 	ArrayPushString(g_hclass_info_lang_key, "CLASS_HUMAN")
-	// 	g_hclass_i++ // Increase registered classes counter
-	// }
- 	
 	g_arrays_created = false // Prevent any more stuff from registering
 
 	set_task(5.0, "lighting_effects", _, _, _, "b") // Lighting task
@@ -2145,7 +2168,7 @@ public logevent_round_end() { // Log Event Round End
 	if(current_time - lastendtime < 0.5) return;
 	lastendtime = current_time
 	
-	if(get_pcvar_num(cvar_chosse_instantanly)) {
+	if(get_pcvar_num(cvar_chosse_instantanly[0]) || get_pcvar_num(cvar_chosse_instantanly[1])) {
 		for(id = 1; id <= MaxPlayers; id++) {
 			g_choosed_zclass[id] = false
 			g_choosed_hclass[id] = false
@@ -2327,7 +2350,7 @@ public fw_PlayerSpawn_Post(id) { // Ham Player Spawn Post Forward
 	g_buytime[id] = get_gametime()
 	
 	if(!g_hm_special[id] && g_hclass_i) {
-		set_hclass_attributes(id, 1)
+		set_hclass_attributes(id)
 	}
 	else {
 		fm_set_user_health(id, get_pcvar_num(cvar_hm_health[g_hm_special[id]]))
@@ -3403,7 +3426,7 @@ public show_menu_game(id) { // Game Menu
 	len += formatex(menu[len], charsmax(menu) - len, "%s %L^n", get_pcvar_num(cvar_buycustom) ? "\r1.\w" : "\d1.", id, "MENU_BUY") /* 1. Buy weapons */ 
 	len += formatex(menu[len], charsmax(menu) - len, "%s %L^n", (get_pcvar_num(cvar_extraitems) && g_isalive[id]) ? "\r2.\w" : "\d2.", id, "MENU_EXTRABUY") /* 2. Extra items */ 
 	len += formatex(menu[len], charsmax(menu) - len, "%s %L^n", get_pcvar_num(cvar_zclasses) ? "\r3.\w" : "\d3.", id, "MENU_ZCLASS") /* 3. Zombie class */ 
-	len += formatex(menu[len], charsmax(menu) - len, "%s %L^n", (g_hclass_i > 1) ? "\r4.\w" : "\d4.", id, "MENU_HCLASS") /* 4. Human class */ 
+	len += formatex(menu[len], charsmax(menu) - len, "%s %L^n", (g_hclass_i > 1 && get_pcvar_num(cvar_hclasses)) ? "\r4.\w" : "\d4.", id, "MENU_HCLASS") /* 4. Human class */ 
 	
 	/* 5. Unstuck */
 	ExecuteForward(g_forwards[UNSTUCK_PRE], g_fwDummyResult, id);
@@ -4378,8 +4401,8 @@ public menu_game(id, key) { // Game Menu
 			else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ZCLASSES")
 		}
 		case 3: { // Human Classes
-			if(g_hclass_i > 1) show_menu_human_class(id)
-			else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
+			if(g_hclass_i > 1 && get_pcvar_num(cvar_hclasses)) show_menu_human_class(id)
+			else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_HCLASSES")
 		}
 		case 4: { // Unstuck
 			if(g_isalive[id]) { // Check if player is stuck
@@ -4670,7 +4693,6 @@ public menu_zclass(id, menuid, item) { // Zombie Class Menu?
 		return PLUGIN_HANDLED;
 	}
 
-	
 	if(item == MENU_EXIT) { // Menu was closed
 		menu_destroy(menuid)
 		return PLUGIN_HANDLED;
@@ -4699,17 +4721,16 @@ public menu_zclass(id, menuid, item) { // Zombie Class Menu?
 	else ArrayGetString(g_zclass_name, g_zombieclassnext[id], name, charsmax(name))
 
 	// Choose Zclass Instantanly
-	if(g_isalive[id] && isDefaultZombie(id) && !g_choosed_zclass[id] && get_pcvar_num(cvar_chosse_instantanly)) {
-		client_print_color(id, print_team_default, "%L %L^1:^4 %s", id, "ZP_CHAT_TAG", id, "ZOMBIE_SELECT_NOW", name)
+	if(g_isalive[id] && isDefaultZombie(id) && !g_choosed_zclass[id] && get_pcvar_num(cvar_chosse_instantanly[0])) {
+		client_print_color(id, print_team_default, "%L %L^4 %s", id, "ZP_CHAT_TAG", id, "ZOMBIE_SELECT_NOW", name)
+		g_choosed_zclass[id] = true
 		zombieme(id, 0, 0, 2, 0)
 	}
-	else client_print_color(id, print_team_default, "%L %L^1:^4 %s", id, "ZP_CHAT_TAG", id, "ZOMBIE_SELECT", name)
+	else client_print_color(id, print_team_default, "%L %L^4 %s", id, "ZP_CHAT_TAG", id, "ZOMBIE_SELECT", name)
 
 	// Show selected zombie class info and stats
 	client_print_color(id, print_team_default, "%L %L^1:^4 %d^1 |^1 %L^1:^4 %d^1 |^1 %L^1:^4 %d^1 |^1 %L^1:^4 %d%%", id, "ZP_CHAT_TAG", id, "ZOMBIE_ATTRIB1", ArrayGetCell(g_zclass_hp, g_zombieclassnext[id]), id, "ZOMBIE_ATTRIB2", ArrayGetCell(g_zclass_spd, g_zombieclassnext[id]),
 	id, "ZOMBIE_ATTRIB3", floatround(Float:ArrayGetCell(g_zclass_grav, g_zombieclassnext[id]) * 800.0), id, "ZOMBIE_ATTRIB4", floatround(Float:ArrayGetCell(g_zclass_kb, g_zombieclassnext[id]) * 100.0))
-
-	g_choosed_zclass[id] = true
 
 	ExecuteForward(g_forwards[CLASS_CHOOSED_POST], g_fwDummyResult, id, classid);
 	menu_destroy(menuid)
@@ -4751,17 +4772,31 @@ public menu_hclass(id, menuid, item) { // Human Class Menu?
 	else ArrayGetString(g_hclass_name, g_hclass_next[id], name, charsmax(name))
 
 	// Choose Human Class Instantanly
-	if(g_isalive[id] && isDefaultHuman(id) && !g_choosed_hclass[id] && get_pcvar_num(cvar_chosse_instantanly)) {
-		client_print_color(id, print_team_default, "%L %L^1:^4 %s", id, "ZP_CHAT_TAG", id, "HUMAN_SELECT_NOW", name)
+	if(g_isalive[id] && isDefaultHuman(id) && !g_choosed_hclass[id] && get_pcvar_num(cvar_chosse_instantanly[1])) {
+		client_print_color(id, print_team_default, "%L %L^4 %s", id, "ZP_CHAT_TAG", id, "HUMAN_SELECT_NOW", name)
+		g_choosed_hclass[id] = true
 		humanme(id, 0, 2, 0)
 	}
-	else client_print_color(id, print_team_default, "%L %L^1:^4 %s", id, "ZP_CHAT_TAG", id, "HUMAN_SELECT", name)
+	else client_print_color(id, print_team_default, "%L %L^4 %s", id, "ZP_CHAT_TAG", id, "HUMAN_SELECT", name)
 
 	// Show selected human class info and stats
-	client_print_color(id, print_team_default, "%L %L^1:^4 %d^1 |^1 %L^1:^4 %d^1 |^1 %L^1:^4 %d^1 |^1 %L^1:^4 %d", id, "ZP_CHAT_TAG", id, "ZOMBIE_ATTRIB1", ArrayGetCell(g_hclass_hp, g_hclass_next[id]), id, "ZOMBIE_ATTRIB5", ArrayGetCell(g_hclass_armor, g_hclass_next[id]), id, "ZOMBIE_ATTRIB2", ArrayGetCell(g_hclass_speed, g_hclass_next[id]),
-	id, "ZOMBIE_ATTRIB3", floatround(Float:ArrayGetCell(g_hclass_gravity, g_hclass_next[id]) * 800.0))
+	static hp, armor, speed, Float:Gravity
 
-	g_choosed_hclass[id] = true
+	hp = ArrayGetCell(g_hclass_hp, g_hclass_next[id])
+	armor = ArrayGetCell(g_hclass_armor, g_hclass_next[id])
+	speed = ArrayGetCell(g_hclass_speed, g_hclass_next[id])
+	Gravity = Float:ArrayGetCell(g_hclass_gravity, g_hclass_next[id])
+
+	if(hp <= 0)
+		hp = get_pcvar_num(cvar_hm_health[0])
+
+	if(speed <= 0)
+		speed = get_pcvar_num(cvar_hm_spd[0])
+
+	if(Gravity <= 0)
+		Gravity = get_pcvar_float(cvar_hmgravity[0])
+
+	client_print_color(id, print_team_default, "%L %L^1:^4 %d^1 |^1 %L^1:^4 %d^1 |^1 %L^1:^4 %d^1 |^1 %L^1:^4 %d", id, "ZP_CHAT_TAG", id, "ZOMBIE_ATTRIB1", hp, id, "ZOMBIE_ATTRIB5", armor, id, "ZOMBIE_ATTRIB2", speed, id, "ZOMBIE_ATTRIB3", floatround(Gravity * 800.0))
 
 	ExecuteForward(g_forwards[H_CLASS_CHOOSED_POST], g_fwDummyResult, id, classid);
 	menu_destroy(menuid)
@@ -5596,7 +5631,7 @@ public make_zombie_task() { // Make Zombie Task
 		return;
 	}
 	if(g_nextmode != MODE_NONE && g_nextmode < g_gamemodes_i) {
-		native_start_game_mode(g_nextmode, 0)
+		start_game_mode(g_nextmode, 0)
 		g_nextmode = MODE_NONE
 	}
 	else start_swarm_mode(0, MODE_NONE) // Start the game modes cycle
@@ -6298,7 +6333,7 @@ zombieme(id, infector, classid, silentmode, rewards) {
 	
 	// Show zombie class menu if they haven't chosen any (e.g. just connected)
 	if(g_zombieclassnext[id] == NULL_CLASS && get_pcvar_num(cvar_zclasses) && classid <= 0
-	|| !g_choosed_zclass[id] && get_pcvar_num(cvar_zclasses) && classid <= 0 && get_pcvar_num(cvar_chosse_instantanly))
+	|| !g_choosed_zclass[id] && get_pcvar_num(cvar_zclasses) && classid <= 0 && get_pcvar_num(cvar_chosse_instantanly[0]))
 		set_task(0.2, "show_menu_zclass", id)
 	
 	g_zombieclass[id] = g_zombieclassnext[id]
@@ -6341,7 +6376,6 @@ zombieme(id, infector, classid, silentmode, rewards) {
 
 	if(ArrayGetCell(g_zclass_lang_enable, g_zombieclass[id])) {
 		ArrayGetString(g_zclass_name_lang_key, g_zombieclass[id], g_pl_classname[id], charsmax(g_pl_classname[]))
-		//formatex(g_pl_classname[id], charsmax(g_pl_classname[]), "%L", id, g_pl_classname[id])
 		g_pl_classname_lang[id] = true
 	}
 	else {
@@ -6672,7 +6706,7 @@ humanme(id, classid, silentmode, attacker) { // Function Human Me (player id, tu
 		if(get_pcvar_num(cvar_buycustom)) set_task(0.2, "menu_buy_show", id+TASK_SPAWN) // Show custom buy menu?
 	}
 	else { // Human class attributes
-		set_hclass_attributes(id, (silentmode == 2) ? 0 : 1)
+		set_hclass_attributes(id)
 	}
 
 	if(!silentmode && classid <= 0) { // Silent mode = no HUD messages, no antidote sound
@@ -6728,35 +6762,43 @@ humanme(id, classid, silentmode, attacker) { // Function Human Me (player id, tu
 	fnCheckLastZombie() // Last Zombie Check
 }
 
-set_hclass_attributes(id, reset) 
+set_hclass_attributes(id) 
 {
 	if(!is_user_valid_alive(id))
 		return;
 
+	static CvarHclasses;
+	CvarHclasses = get_pcvar_num(cvar_hclasses);
+	if(g_hclass_next[id] == NULL_CLASS && CvarHclasses || !g_choosed_hclass[id] && CvarHclasses && get_pcvar_num(cvar_chosse_instantanly[1]))
+		set_task(0.2, "show_menu_human_class", id+TASK_SPAWN)
+	else if(get_pcvar_num(cvar_buycustom)) 
+		set_task(0.2, "menu_buy_show", id+TASK_SPAWN) // Show custom buy menu?
+
 	g_user_hclass[id] = g_hclass_next[id]
 	if(g_user_hclass[id] == NULL_CLASS) g_user_hclass[id] = 0
 
-	static ClassArmor
+	static ClassArmor, userHealth, Float:Gravity
 	ClassArmor = ArrayGetCell(g_hclass_armor, g_user_hclass[id])
-
-	if(reset) {
-		fm_set_user_health(id, ArrayGetCell(g_hclass_hp, g_user_hclass[id])) // Dont change HP when choose other hclass instantanly
-		if(ClassArmor > 0) 
-			set_pev(id, pev_armorvalue, float(ClassArmor))
-		else cs_set_user_armor(id, 0, CS_ARMOR_NONE)
-	}
-
+	userHealth = ArrayGetCell(g_hclass_hp, g_user_hclass[id])
+	Gravity = Float:ArrayGetCell(g_hclass_gravity, g_user_hclass[id])
 	g_spd[id] = float(ArrayGetCell(g_hclass_speed, g_user_hclass[id]))
 
+	// If Gravity/Armor/Health are equal or less than 0 use a default internal human configs
+	if(g_spd[id] <= 0)
+		g_spd[id] = get_pcvar_float(cvar_hm_spd[0])
+	if(Gravity <= 0.0)
+		Gravity = get_pcvar_float(cvar_hmgravity[0])
+
+	fm_set_user_health(id, (userHealth > 0) ? userHealth : get_pcvar_num(cvar_hm_health[0])) // Dont change HP when choose other hclass instantanly
+
+	// Set Class Armor
+	if(ClassArmor > 0) 
+		set_pev(id, pev_armorvalue, float(ClassArmor))
+	else cs_set_user_armor(id, 0, CS_ARMOR_NONE)
+
 	// Set gravity, unless frozen
-	if(!g_frozen[id]) set_pev(id, pev_gravity, Float:ArrayGetCell(g_hclass_gravity, g_user_hclass[id]))
-	else g_frozen_gravity[id] = Float:ArrayGetCell(g_hclass_gravity, g_user_hclass[id])
-
-	if(g_hclass_next[id] == NULL_CLASS && g_hclass_i)
-		set_task(0.2, "show_menu_human_class", id+TASK_SPAWN)
-
-	else if(get_pcvar_num(cvar_buycustom)) 
-		set_task(0.2, "menu_buy_show", id+TASK_SPAWN) // Show custom buy menu?
+	if(!g_frozen[id]) set_pev(id, pev_gravity, Gravity)
+	else g_frozen_gravity[id] = Gravity
 
 	if(ArrayGetCell(g_hclass_lang_enable, g_user_hclass[id])) {
 		ArrayGetString(g_hclass_name_lang_key, g_user_hclass[id], g_pl_classname[id], charsmax(g_pl_classname[]))
@@ -7742,6 +7784,11 @@ public ShowHUD(taskid) { // Show HUD Task
 		id = pev(id, PEV_SPEC_TARGET) // Get spectating target
 		if(!is_user_valid_alive(id)) return; // Target not alive
 	}
+
+	g_AdditionalHudText[0] = 0
+	ExecuteForward(g_forwards[PLAYER_SHOW_HUD], g_fwDummyResult, ID_SHOWHUD, (ID_SHOWHUD == id) ? 0 : id, g_hud_type[ID_SHOWHUD]); // Player Show Hud
+	if(g_fwDummyResult >= ZP_PLUGIN_HANDLED)
+		return;
 	
 	static class[32], rgb[3], sp_id // Format classname
 	
@@ -7795,8 +7842,8 @@ public ShowHUD(taskid) { // Show HUD Task
 	if(id != ID_SHOWHUD) { // Spectating someone else?
 		// Show name, health, class, and ammo packs and armor
 		set_hudmessage(rgb[0], rgb[1], rgb[2], HUD_SPECT_X, HUD_SPECT_Y, 1, 6.0, 1.1, 0.0, 0.0, -1)
-		ShowSyncHudMsg(ID_SHOWHUD, g_MsgSync[1], "%L %s^nHP: %s - %L %s - %L %s - %L %s", ID_SHOWHUD, "SPECTATING", g_playername[id],
-		add_point(fm_get_user_health(id)), ID_SHOWHUD, "CLASS_CLASS", class, ID_SHOWHUD, "AMMO_PACKS1", add_point(g_ammopacks[id]), ID_SHOWHUD, "ARMOR", add_point(pev(id, pev_armorvalue)))
+		ShowSyncHudMsg(ID_SHOWHUD, g_MsgSync[1], "%L %s^nHP: %s - %L %s - %L %s - %L %s%s", ID_SHOWHUD, "SPECTATING", g_playername[id],
+		add_point(fm_get_user_health(id)), ID_SHOWHUD, "CLASS_CLASS", class, ID_SHOWHUD, "AMMO_PACKS1", add_point(g_ammopacks[id]), ID_SHOWHUD, "ARMOR", add_point(pev(id, pev_armorvalue)), g_AdditionalHudText)
 		return;
 	}
 
@@ -7823,35 +7870,34 @@ public ShowHUD(taskid) { // Show HUD Task
 	switch(g_hud_type[id]) {
 		case 0: { // Default
 			set_hudmessage(rgb[0], rgb[1], rgb[2], 0.78, 0.18, 0, 6.0, 1.1, 0.0, 0.0, -1)
-			ShowSyncHudMsg(id, g_MsgSync[1], "[%L: %s]^n[%L %s]^n[%L %s]^n[%L: %s]^n[%L: %d]^n[%L: %i]^n[%L: %d]^n[%L: %s]", id, "ZOMBIE_ATTRIB1", szHealth, id, "CLASS_CLASS",
-			class, id, "AMMO_PACKS1", szAmmoPack, id, "ZOMBIE_ATTRIB5", szArmor, id, "ZOMBIE_ATTRIB8", userDeaths, id, "ZOMBIE_ATTRIB7", userFrags, id, "ZOMBIE_ATTRIB2", userSpd, id, "ZOMBIE_ATTRIB6", g_ModeName);
+			ShowSyncHudMsg(id, g_MsgSync[1], "[%L: %s]^n[%L %s]^n[%L %s]^n[%L: %s]^n[%L: %d]^n[%L: %i]^n[%L: %d]^n[%L: %s]%s", id, "ZOMBIE_ATTRIB1", szHealth, id, "CLASS_CLASS",
+			class, id, "AMMO_PACKS1", szAmmoPack, id, "ZOMBIE_ATTRIB5", szArmor, id, "ZOMBIE_ATTRIB8", userDeaths, id, "ZOMBIE_ATTRIB7", userFrags, id, "ZOMBIE_ATTRIB2", userSpd, id, "ZOMBIE_ATTRIB6", g_ModeName, g_AdditionalHudText);
 		}
 		case 1: { // Classic
 			set_hudmessage(rgb[0], rgb[1], rgb[2], 0.02, 0.9, 0, 6.0, 1.1, 0.0, 0.0, -1)
-			ShowSyncHudMsg(id, g_MsgSync[1], "HP: %s - %L %s - %L %s", szHealth, id, "CLASS_CLASS", class, id, "AMMO_PACKS1", szAmmoPack)
+			ShowSyncHudMsg(id, g_MsgSync[1], "HP: %s - %L %s - %L %s%s", szHealth, id, "CLASS_CLASS", class, id, "AMMO_PACKS1", szAmmoPack, g_AdditionalHudText)
 		}
 		case 2: { // Center
 			set_hudmessage(rgb[0], rgb[1], rgb[2], -1.0, 0.60, 0, 6.0, 1.1, 0.0, 0.0, -1)
-			ShowSyncHudMsg(id, g_MsgSync[1], "[%L: %s]^n[%L %s]^n[%L %s]^n[%L: %s]^n[%L: %d]^n[%L: %i]^n[%L: %d]^n[%L: %s]", id, "ZOMBIE_ATTRIB1", szHealth, id, "CLASS_CLASS",
-			class, id, "AMMO_PACKS1", szAmmoPack, id, "ZOMBIE_ATTRIB5", szArmor, id, "ZOMBIE_ATTRIB8", userDeaths, id, "ZOMBIE_ATTRIB7", userFrags, id, "ZOMBIE_ATTRIB2", userSpd, id, "ZOMBIE_ATTRIB6", g_ModeName);
+			ShowSyncHudMsg(id, g_MsgSync[1], "[%L: %s]^n[%L %s]^n[%L %s]^n[%L: %s]^n[%L: %d]^n[%L: %i]^n[%L: %d]^n[%L: %s]%s", id, "ZOMBIE_ATTRIB1", szHealth, id, "CLASS_CLASS",
+			class, id, "AMMO_PACKS1", szAmmoPack, id, "ZOMBIE_ATTRIB5", szArmor, id, "ZOMBIE_ATTRIB8", userDeaths, id, "ZOMBIE_ATTRIB7", userFrags, id, "ZOMBIE_ATTRIB2", userSpd, id, "ZOMBIE_ATTRIB6", g_ModeName, g_AdditionalHudText);
 		}
 		case 3: { // Antrax Style
 			set_hudmessage(rgb[0], rgb[1], rgb[2], 0.57, 0.75, 1, 6.0, 1.1, 0.0, 0.0, -1)
-			ShowSyncHudMsg(id, g_MsgSync[1], "[%s]^n[%L] [%s] - [%L] [%s]^n[%L] [%s] - [%L] [%s]^n[%L] [%s]", g_playername[id], id, "ZOMBIE_ATTRIB1", szHealth, id, "ZOMBIE_ATTRIB5", szArmor, id, "CLASS_CLASS", class, id, "AMMO_PACKS1", 
-			szAmmoPack, id, "CURRENT_MODE", g_ModeName)
+			ShowSyncHudMsg(id, g_MsgSync[1], "[%s]^n[%L] [%s] - [%L] [%s]^n[%L] [%s] - [%L] [%s]^n[%L] [%s]%s", g_playername[id], id, "ZOMBIE_ATTRIB1", szHealth, id, "ZOMBIE_ATTRIB5", szArmor, id, "CLASS_CLASS", class, id, "AMMO_PACKS1", 
+			szAmmoPack, id, "CURRENT_MODE", g_ModeName, g_AdditionalHudText)
 		}
 		case 4: { // Under Radar
 			set_hudmessage(rgb[0], rgb[1], rgb[2], 0.01, 0.22, 0, 6.0, 1.1, 0.0, 0.0, -1)
-			ShowSyncHudMsg(id, g_MsgSync[1], "[%L: %s]^n[%L %s]^n[%L %s]^n[%L: %s]^n[%L: %d]^n[%L: %i]^n[%L: %d]^n[%L: %s]", id, "ZOMBIE_ATTRIB1", szHealth, id, "CLASS_CLASS",
-			class, id, "AMMO_PACKS1", szAmmoPack, id, "ZOMBIE_ATTRIB5", szArmor, id, "ZOMBIE_ATTRIB8", userDeaths, id, "ZOMBIE_ATTRIB7", userFrags, id, "ZOMBIE_ATTRIB2", userSpd, id, "ZOMBIE_ATTRIB6", g_ModeName);
+			ShowSyncHudMsg(id, g_MsgSync[1], "[%L: %s]^n[%L %s]^n[%L %s]^n[%L: %s]^n[%L: %d]^n[%L: %i]^n[%L: %d]^n[%L: %s]%s", id, "ZOMBIE_ATTRIB1", szHealth, id, "CLASS_CLASS",
+			class, id, "AMMO_PACKS1", szAmmoPack, id, "ZOMBIE_ATTRIB5", szArmor, id, "ZOMBIE_ATTRIB8", userDeaths, id, "ZOMBIE_ATTRIB7", userFrags, id, "ZOMBIE_ATTRIB2", userSpd, id, "ZOMBIE_ATTRIB6", g_ModeName, g_AdditionalHudText);
 		}
 		case 5: { // Center Antrax
 			set_hudmessage(rgb[0], rgb[1], rgb[2], -1.0, 0.75, 1, 6.0, 1.1, 0.0, 0.0, -1)
-			ShowSyncHudMsg(id, g_MsgSync[1], "[%s]^n[%L] [%s] - [%L] [%s]^n[%L] [%s] - [%L] [%s]^n[%L] [%s]", g_playername[id], id, "ZOMBIE_ATTRIB1", szHealth, id, "ZOMBIE_ATTRIB5", szArmor, id, "CLASS_CLASS", class, id, "AMMO_PACKS1", 
-			szAmmoPack, id, "CURRENT_MODE", g_ModeName)
+			ShowSyncHudMsg(id, g_MsgSync[1], "[%s]^n[%L] [%s] - [%L] [%s]^n[%L] [%s] - [%L] [%s]^n[%L] [%s]%s", g_playername[id], id, "ZOMBIE_ATTRIB1", szHealth, id, "ZOMBIE_ATTRIB5", szArmor, id, "CLASS_CLASS", class, id, "AMMO_PACKS1", 
+			szAmmoPack, id, "CURRENT_MODE", g_ModeName, g_AdditionalHudText)
 		}
 	}
-	
 }
 public zombie_play_idle(taskid) { // Play idle zombie sounds
 	if(g_endround || g_newround || !get_pcvar_num(cvar_zm_idle_sound)) return; // Round ended/new one starting
@@ -8386,65 +8432,69 @@ stock zp_log_message(id, player, const lang[]) {
 /*================================================================================
  [Custom Natives]
 =================================================================================*/
-public native_get_user_zombie(plugin_id, param_nums) { // Native: zp_get_user_zombie
+public native_get_user_zombie(plugin_id, num_params) { // Native: zp_get_user_zombie
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_zombie[id];
 }
-public native_get_user_nemesis(plugin_id, param_nums) { // Native: zp_get_user_nemesis
+public native_get_user_nemesis(plugin_id, num_params) { // Native: zp_get_user_nemesis
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 
 	return g_zm_special[id] == NEMESIS;
 }
-public native_get_user_survivor(plugin_id, param_nums) { // Native: zp_get_user_survivor
+public native_get_user_survivor(plugin_id, num_params) { // Native: zp_get_user_survivor
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 
 	return g_hm_special[id] == SURVIVOR;
 }
-public native_get_user_first_zombie(plugin_id, param_nums) { // Native: zp_get_user_first_zombie
+public native_get_user_first_zombie(plugin_id, num_params) { // Native: zp_get_user_first_zombie
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_firstzombie[id];
 }
-public native_get_human_special_class(plugin_id, param_nums) { // Native: zp_get_human_special_class
+public native_get_human_special_class(plugin_id, num_params) { // Native: zp_get_human_special_class
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_zombie[id] ? 0 : g_hm_special[id];
 }
-public native_get_zombie_special_class(plugin_id, param_nums) { // Native: zp_get_zombie_special_class
+public native_get_zombie_special_class(plugin_id, num_params) { // Native: zp_get_zombie_special_class
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_zombie[id] ? g_zm_special[id] : 0
 }
-public native_get_user_last_zombie(plugin_id, param_nums) { // Native: zp_get_user_last_zombie
+public native_get_user_last_zombie(plugin_id, num_params) { // Native: zp_get_user_last_zombie
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_lastzombie[id];
 }
-public native_get_user_last_human(plugin_id, param_nums) { // Native: zp_get_user_last_human
+public native_get_user_last_human(plugin_id, num_params) { // Native: zp_get_user_last_human
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_lasthuman[id];
 }
-public native_get_user_madness(plugin_id, param_nums) { // Native: zp_get_user_madness
+public native_get_user_madness(plugin_id, num_params) { // Native: zp_get_user_madness
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_nodamage[id];
 }
-public native_get_user_zombie_class(plugin_id, param_nums) { // Native: zp_get_user_zombie_class
+public native_get_user_zombie_class(plugin_id, num_params) { // Native: zp_get_user_zombie_class
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	if(g_zm_special[id] > 0) return -1 // Fix Bug of Special Classes using Zombie Classes's Skills
 	return g_zombieclass[id];
 }
-public native_get_user_next_class(plugin_id, param_nums) { // Native: zp_get_user_next_class
+public native_get_user_next_class(plugin_id, num_params) { // Native: zp_get_user_next_class
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_zombieclassnext[id];
 }
-public native_set_user_zombie_class(id, classid) { // Native: zp_set_user_zombie_class
+public native_set_user_zombie_class(plugin_id, num_params) { // Native: zp_set_user_zombie_class
+	static id, classid;
+	id = get_param(1);
+	classid = get_param(2);
+
 	if(!is_user_valid(id)) return false;
 	
 	if(classid < 0 || classid >= g_zclass_i) {
@@ -8454,17 +8504,22 @@ public native_set_user_zombie_class(id, classid) { // Native: zp_set_user_zombie
 	g_zombieclassnext[id] = classid
 	return true;
 }
-public native_get_user_human_class(plugin_id, param_nums) { // Native: zp_get_user_human_class
+public native_get_user_human_class(plugin_id, num_params) { // Native: zp_get_user_human_class
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	if(g_hm_special[id] > 0) return -1
 	return g_user_hclass[id];
 }
-public native_get_next_human_class(id) { // Native: zp_get_next_human_class
+public native_get_next_human_class(plugin_id, num_params) { // Native: zp_get_next_human_class
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_hclass_next[id];
 }
-public native_set_user_human_class(id, classid) { // Native: zp_set_user_human_class
+public native_set_user_human_class(plugin_id, num_params) { // Native: zp_set_user_human_class
+	static id, classid;
+	id = get_param(1);
+	classid = get_param(2);
+
 	if(!is_user_valid(id)) return false;
 	
 	if(classid < 0 || classid >= g_hclass_i) {
@@ -8475,32 +8530,36 @@ public native_set_user_human_class(id, classid) { // Native: zp_set_user_human_c
 	return true;
 }
 
-public native_get_user_ammo_packs(plugin_id, param_nums) { // Native: zp_get_user_ammo_packs
+public native_get_user_ammo_packs(plugin_id, num_params) { // Native: zp_get_user_ammo_packs
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_ammopacks[id];
 }
-public native_set_user_ammo_packs(id, amount) { // Native: zp_set_user_ammo_packs
+public native_set_user_ammo_packs(plugin_id, num_params) { // Native: zp_set_user_ammo_packs
+	static id, amount; 
+	id = get_param(1);
+	amount = get_param(2);
 	if(!is_user_valid(id)) return false;
 	g_ammopacks[id] = amount;
 	return true;
 }
-public native_get_user_frozen(plugin_id, param_nums) { // Native: zp_get_user_frozen
+public native_get_user_frozen(plugin_id, num_params) { // Native: zp_get_user_frozen
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_frozen[id];
 }
-public native_get_user_burn(plugin_id, param_nums) { // Native: zp_get_user_burn
+public native_get_user_burn(plugin_id, num_params) { // Native: zp_get_user_burn
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_burning_dur[id] > 0
 }
-public native_get_user_infectnade(plugin_id, param_nums) { // Native: zp_get_user_infectnade
+public native_get_user_infectnade(plugin_id, num_params) { // Native: zp_get_user_infectnade
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return (g_zombie[id] && g_zm_special[id] <= 0 && user_has_weapon(id, CSW_HEGRENADE));
 }
-public native_get_zombie_maxhealth(id) { // Native: zp_get_zombie_maxhealth
+public native_get_zombie_maxhealth(plugin_id, num_params) { // Native: zp_get_zombie_maxhealth
+	static id; id = get_param(1)
 	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!is_user_valid(id)) return -1;
 
@@ -8515,12 +8574,15 @@ public native_get_zombie_maxhealth(id) { // Native: zp_get_zombie_maxhealth
 	}
 	return -1;
 }
-public native_get_user_batteries(plugin_id, param_nums) { // Native: zp_get_user_batteries
+public native_get_user_batteries(plugin_id, num_params) { // Native: zp_get_user_batteries
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return g_flashbattery[id];
 }
-public native_set_user_batteries(id, value) { // Native: zp_set_user_batteries
+public native_set_user_batteries(plugin_id, num_params) { // Native: zp_set_user_batteries
+	static id, value; 
+	id = get_param(1);
+	value = get_param(2);
 	if(!g_pluginenabled) return false; // ZP Special disabled
 	if(!is_user_valid(id) || !is_user_valid_connected(id)) return false;
 	
@@ -8531,7 +8593,7 @@ public native_set_user_batteries(id, value) { // Native: zp_set_user_batteries
 	}
 	return true;
 }
-public native_get_user_nightvision(plugin_id, param_nums) { // Native: zp_get_user_nightvision
+public native_get_user_nightvision(plugin_id, num_params) { // Native: zp_get_user_nightvision
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 
@@ -8543,27 +8605,38 @@ public native_get_user_nightvision(plugin_id, param_nums) { // Native: zp_get_us
 
 	return 0;
 }
-public native_set_rendering(id, fx, r, g, b, render, amount) { // Native: zp_set_user_rendering
+public native_set_rendering(plugin_id, num_params) { // Native: zp_set_user_rendering
+	static id, fx, rgb[3], render, amount
+	id = get_param(1);
+	fx = get_param(2);
+	rgb[0] = get_param(3);
+	rgb[1] = get_param(4);
+	rgb[2] = get_param(5);
+	render = get_param(6);
+	amount = get_param(7);
+
 	if(!is_user_valid(id)) return false;
 	if(!g_isconnected[id] || !g_isalive[id]) return false;
 
-	fm_set_rendering(id, fx, r, g, b, render, amount)
+	fm_set_rendering(id, fx, rgb[0], rgb[1], rgb[2], render, amount)
 	return true;
 }
-public native_reset_user_rendering(id) { // Native: zp_reset_user_rendering
+public native_reset_user_rendering(plugin_id, num_params) { // Native: zp_reset_user_rendering
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return false;
 	reset_user_rendering(id)
 	return true
 }
-public native_get_extra_item_cost(itemid) { // Native: zp_get_extra_item_cost
+public native_get_extra_item_cost(plugin_id, num_params) { // Native: zp_get_extra_item_cost
+	static itemid; itemid = get_param(1);
 	if(itemid < 0 || itemid >= g_extraitem_i) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid extra item id (%d)", itemid)
 		return -1;
 	}
 	return ArrayGetCell(g_extraitem_cost, itemid)
 }
-public native_get_extra_item_name(plugin_id, param_nums) { // Native: zp_get_extra_item_name
-	if(param_nums != 3) return -1;
+public native_get_extra_item_name(plugin_id, num_params) { // Native: zp_get_extra_item_name
+	if(num_params != 3) return -1;
 
 	static itemid, buffer[50]
 	itemid = get_param(1)
@@ -8576,8 +8649,8 @@ public native_get_extra_item_name(plugin_id, param_nums) { // Native: zp_get_ext
 	set_string(2, buffer, get_param(3))
 	return 1;
 }
-public native_get_weapon_name(plugin_id, param_nums) { // Native: zp_get_weapon_name
-	if(param_nums != 4)
+public native_get_weapon_name(plugin_id, num_params) { // Native: zp_get_weapon_name
+	if(num_params != 4)
 		return -1;
 	
 	static wpn_type, itemid, buffer[50]
@@ -8593,8 +8666,8 @@ public native_get_weapon_name(plugin_id, param_nums) { // Native: zp_get_weapon_
 	set_string(3, buffer, get_param(4))
 	return 1;
 }
-public native_get_weapon_realname(plugin_id, param_nums) { // Native: zp_get_weapon_realname
-	if(param_nums != 4) return -1;
+public native_get_weapon_realname(plugin_id, num_params) { // Native: zp_get_weapon_realname
+	if(num_params != 4) return -1;
 
 	static wpn_type, itemid, buffer[50]
 	wpn_type = get_param(1)
@@ -8608,7 +8681,11 @@ public native_get_weapon_realname(plugin_id, param_nums) { // Native: zp_get_wea
 	set_string(3, buffer, get_param(4))
 	return 1;
 }
-public native_weapon_is_custom(wpn_type, wpn_id) { // Native: zp_weapon_is_custom
+public native_weapon_is_custom(plugin_id, num_params) { // Native: zp_weapon_is_custom
+	static wpn_type, wpn_id
+	wpn_type = get_param(1);
+	wpn_id = get_param(2)
+
 	if(wpn_id < 0 || wpn_id >= g_wpn_i[wpn_type]) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid Weapon id (%d)", wpn_id)
 		return -1;
@@ -8630,8 +8707,8 @@ public native_weapon_count(plugin_id, num_params) { // Native: zp_weapon_count
 	}
 	return count
 }
-public native_special_class_name(plugin_id, param_nums) { // Native: zp_get_special_class_name
-	if(param_nums != 3) return -1;
+public native_special_class_name(plugin_id, num_params) { // Native: zp_get_special_class_name
+	if(num_params != 3) return -1;
 	if(!g_pluginenabled) return -1; // ZP Special disabled
 	
 	static id; id = get_param(1)
@@ -8655,8 +8732,8 @@ public native_special_class_name(plugin_id, param_nums) { // Native: zp_get_spec
 	
 	return 1;
 }
-public native_get_current_mode_name(plugin_id, param_nums) { // Native: zp_get_current_mode_name(name[], len) 
-	if(param_nums != 2) return -1;
+public native_get_current_mode_name(plugin_id, num_params) { // Native: zp_get_current_mode_name(name[], len) 
+	if(num_params != 2) return -1;
 
 	new const mode_name[][] = { "None", "Infection", "Nemesis", "Assassin", "Predator", "Bombardier", "Dragon",
 	"Survivor", "Sniper", "Berserker", "Wesker", "Spy", "Swarm", "Multi-Infection", "Plague", "Armageddon", "Undefined" }
@@ -8669,8 +8746,10 @@ public native_get_current_mode_name(plugin_id, param_nums) { // Native: zp_get_c
 	
 	return 1;
 }
-public native_get_gamemode_id(const name[]) { // Native: zp_get_gamemode_id(const name[])
-	param_convert(1)
+public native_get_gamemode_id(plugin_id, num_params) { // Native: zp_get_gamemode_id(const name[])
+	
+	static name[32];
+	get_string(1, name, charsmax(name))
 	
 	new const mode_name[][] = { "None", "Infection", "Nemesis", "Assassin", "Predator", "Bombardier", "Dragon",
 	"Survivor", "Sniper", "Berserker", "Wesker", "Spy", "Swarm", "Multi-Infection", "Plague", "Armageddon", "Undefined" }
@@ -8701,8 +8780,8 @@ public native_get_gamemode_id(const name[]) { // Native: zp_get_gamemode_id(cons
 	}
 	return mode_id	
 }
-public native_get_extra_item_realname(plugin_id, param_nums) { // Native: zp_get_extra_item_realname
-	if(param_nums != 3) return -1;
+public native_get_extra_item_realname(plugin_id, num_params) { // Native: zp_get_extra_item_realname
+	if(num_params != 3) return -1;
 	
 	static itemid, buffer[50]
 	itemid = get_param(1)
@@ -8715,8 +8794,79 @@ public native_get_extra_item_realname(plugin_id, param_nums) { // Native: zp_get
 	set_string(2, buffer, get_param(3))
 	return 1;
 }
-public native_get_zombie_class_name(plugin_id, param_nums) { // Native: zp_get_zombie_class_name
-	if(param_nums != 3) return -1;
+
+
+public native_get_human_class_name(plugin_id, num_params) { // Native: zp_get_human_class_name
+	if(num_params != 3) return -1;
+	
+	static class, buffer[50]
+	class = get_param(1)
+	
+	if(class < 0 || class >= g_hclass_i) {
+		log_error(AMX_ERR_NATIVE, "[ZP] Invalid human class id (%d)", class)
+		return -1;
+	}
+	ArrayGetString(g_hclass_name, class, buffer, charsmax(buffer))
+	set_string(2, buffer, get_param(3))
+	return 1;
+}
+public native_get_hclass_realname(plugin_id, num_params) { // Native: zp_get_human_class_realname
+	if(num_params != 3) return -1;
+	
+	static class, buffer[50]
+	class = get_param(1)
+	
+	if(class < 0 || class >= g_hclass_i) {
+		log_error(AMX_ERR_NATIVE, "[ZP] Invalid human class id (%d)", class)
+		return -1;
+	}
+	ArrayGetString(g_hclass_real_name, class, buffer, charsmax(buffer))
+	set_string(2, buffer, get_param(3))
+	return 1;
+}
+public native_get_human_class_info(plugin_id, num_params) { // Native: zp_get_human_class_info
+	if(num_params != 3) return -1;
+	
+	static class, buffer[50]
+	class = get_param(1)
+	
+	if(class < 0 || class >= g_hclass_i) {
+		log_error(AMX_ERR_NATIVE, "[ZP] Invalid human class id (%d)", class)
+		return -1;
+	}
+	ArrayGetString(g_hclass_info, class, buffer, charsmax(buffer))
+	set_string(2, buffer, get_param(3))
+	return 1;
+}
+public native_set_human_class_info(plugin_id, num_params) { // Native: zp_set_human_class_info
+	static classid, newinfo[64];
+	classid = get_param(1);
+	get_string(2, newinfo, charsmax(newinfo))
+	
+	if(classid < 0 || classid >= g_hclass_i) {
+		log_error(AMX_ERR_NATIVE, "[ZP] Invalid human class id (%d)", classid)
+		return false;
+	}
+	ArraySetString(g_hclass_info, classid, newinfo)
+	ArraySetCell(g_hclass_lang_enable, classid, 0)
+	return true
+}
+public native_set_human_class_name(plugin_id, num_params) { // Native: zp_set_human_class_name
+	static classid, newname[32];
+	classid = get_param(1);
+	get_string(2, newname, charsmax(newname))
+
+	if(classid < 0 || classid >= g_hclass_i) {
+		log_error(AMX_ERR_NATIVE, "[ZP] Invalid human class id (%d)", classid)
+		return false;
+	}
+	ArraySetString(g_hclass_name, classid, newname)
+	ArraySetCell(g_hclass_lang_enable, classid, 0)
+	return true
+}
+
+public native_get_zombie_class_name(plugin_id, num_params) { // Native: zp_get_zombie_class_name
+	if(num_params != 3) return -1;
 	
 	static class, buffer[50]
 	class = get_param(1)
@@ -8729,8 +8879,8 @@ public native_get_zombie_class_name(plugin_id, param_nums) { // Native: zp_get_z
 	set_string(2, buffer, get_param(3))
 	return 1;
 }
-public native_get_zclass_realname(plugin_id, param_nums) { // Native: zp_get_zombie_class_realname
-	if(param_nums != 3) return -1;
+public native_get_zclass_realname(plugin_id, num_params) { // Native: zp_get_zombie_class_realname
+	if(num_params != 3) return -1;
 	
 	static class, buffer[50]
 	class = get_param(1)
@@ -8743,8 +8893,8 @@ public native_get_zclass_realname(plugin_id, param_nums) { // Native: zp_get_zom
 	set_string(2, buffer, get_param(3))
 	return 1;
 }
-public native_get_zombie_class_info(plugin_id, param_nums) { // Native: zp_get_zombie_class_info
-	if(param_nums != 3) return -1;
+public native_get_zombie_class_info(plugin_id, num_params) { // Native: zp_get_zombie_class_info
+	if(num_params != 3) return -1;
 	
 	static class, buffer[50]
 	class = get_param(1)
@@ -8757,28 +8907,36 @@ public native_get_zombie_class_info(plugin_id, param_nums) { // Native: zp_get_z
 	set_string(2, buffer, get_param(3))
 	return 1;
 }
-public native_set_zombie_class_info(class, const newinfo[]) { // Native: zp_set_zombie_class_info
-	param_convert(2)
+public native_set_zombie_class_info(plugin_id, num_params) { // Native: zp_set_zombie_class_info
+	static classid, newinfo[64];
+	classid = get_param(1);
+	get_string(2, newinfo, charsmax(newinfo))
 	
-	if(class < 0 || class >= g_zclass_i) {
-		log_error(AMX_ERR_NATIVE, "[ZP] Invalid zombie class id (%d)", class)
+	if(classid < 0 || classid >= g_zclass_i) {
+		log_error(AMX_ERR_NATIVE, "[ZP] Invalid zombie class id (%d)", classid)
 		return false;
 	}
-	ArraySetString(g_zclass_info, class, newinfo)
-	ArraySetCell(g_zclass_lang_enable, class, 0)
+	ArraySetString(g_zclass_info, classid, newinfo)
+	ArraySetCell(g_zclass_lang_enable, classid, 0)
 	return true
 }
-public native_set_zombie_class_name(class, const newname[]) { // Native: zp_set_zombie_class_name
-	param_convert(2)
-	if(class < 0 || class >= g_zclass_i) {
-		log_error(AMX_ERR_NATIVE, "[ZP] Invalid zombie class id (%d)", class)
+public native_set_zombie_class_name(plugin_id, num_params) { // Native: zp_set_zombie_class_name
+	static classid, newname[32];
+	classid = get_param(1);
+	get_string(2, newname, charsmax(newname))
+
+	if(classid < 0 || classid >= g_zclass_i) {
+		log_error(AMX_ERR_NATIVE, "[ZP] Invalid zombie class id (%d)", classid)
 		return false;
 	}
-	ArraySetString(g_zclass_name, class, newname)
-	ArraySetCell(g_zclass_lang_enable, class, 0)
+	ArraySetString(g_zclass_name, classid, newname)
+	ArraySetCell(g_zclass_lang_enable, classid, 0)
 	return true
 }
-public native_set_extra_item_team(itemid, team) { // Native: zp_set_extra_item_team
+public native_set_extra_item_team(plugin_id, num_params) { // Native: zp_set_extra_item_team
+	static itemid, team;
+	itemid = get_param(1);
+	team = get_param(2);
 	if(itemid < 0 || itemid >= g_extraitem_i) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid extra item id (%d)", itemid)
 		return false;
@@ -8786,7 +8944,10 @@ public native_set_extra_item_team(itemid, team) { // Native: zp_set_extra_item_t
 	ArraySetCell(g_extraitem_team, itemid, team)
 	return true
 }
-public native_set_extra_item_cost(itemid, cost) { // Native: zp_set_extra_item_cost
+public native_set_extra_item_cost(plugin_id, num_params) { // Native: zp_set_extra_item_cost
+	static itemid, cost;
+	itemid = get_param(1);
+	cost = get_param(2);
 	if(itemid < 0 || itemid >= g_extraitem_i) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid extra item id (%d)", itemid)
 		return false;
@@ -8794,8 +8955,10 @@ public native_set_extra_item_cost(itemid, cost) { // Native: zp_set_extra_item_c
 	ArraySetCell(g_extraitem_cost, itemid, cost)
 	return true;
 }
-public native_set_extra_item_name(itemid, const newname[]) { // Native: zp_set_extra_item_name
-	param_convert(2)
+public native_set_extra_item_name(plugin_id, num_params)  { // Native: zp_set_extra_item_name
+	static itemid, newname[32]; 
+	itemid = get_param(1);
+	get_string(2, newname, charsmax(newname));
 	if(itemid < 0 || itemid >= g_extraitem_i) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid extra item id (%d)", itemid)
 		return false;
@@ -8804,8 +8967,12 @@ public native_set_extra_item_name(itemid, const newname[]) { // Native: zp_set_e
 	ArraySetCell(g_extraitem_name_by_lang, itemid, 0)
 	return true
 }
-public native_set_weapon_name(wpn_type, itemid, const newname[]) { // Native: zp_set_weapon_name
-	param_convert(3)
+public native_set_weapon_name(plugin_id, num_params) { // Native: zp_set_weapon_name
+	static wpn_type, itemid, newname[32]
+	wpn_type = get_param(1);
+	itemid = get_param(2);
+	get_string(3, newname, charsmax(newname))
+
 	if(itemid < 0 || itemid >= g_wpn_i[wpn_type]) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid Weapon id (%d)", itemid)
 		return false;
@@ -8815,16 +8982,24 @@ public native_set_weapon_name(wpn_type, itemid, const newname[]) { // Native: zp
 	return true
 }
 
-// Native: zp_set_extra_damage
-public native_set_extra_damage(victim, attacker, damage, const weaponDescription[], dmg_dealth) { 
-	param_convert(4)
-	return native_set_user_extra_damage(victim, attacker, damage, weaponDescription, 0);
+// Native: zp_set_extra_damage / zp_set_user_extra_damage
+public native_set_extra_damage(plugin_id, num_params) { 
+
+	static victim, attacker, damage, weaponDescription[32], dmg_dealth;
+	victim = get_param(1);
+	attacker = get_param(2);
+	damage = get_param(3);
+	get_string(4, weaponDescription, charsmax(weaponDescription))
+
+	if(num_params > 4)
+		dmg_dealth = get_param(5)
+	else 
+		dmg_dealth = 0
+
+	return set_user_extra_damage(victim, attacker, damage, weaponDescription, dmg_dealth);
 }
 
-// Native: zp_set_user_extra_damage
-public native_set_user_extra_damage(victim, attacker, damage, const weaponDescription[], dmg_dealth) { 
-	param_convert(4)
-
+public set_user_extra_damage(victim, attacker, damage, const weaponDescription[], dmg_dealth) { 
 	if(!is_user_valid_alive(attacker) || !is_user_valid_alive(victim)) 
 		return 0;
 
@@ -8860,7 +9035,11 @@ public native_set_user_extra_damage(victim, attacker, damage, const weaponDescri
 	}
 	return 1;
 }
-public native_set_user_maxspeed(id, Float:Speed) { // Native: zp_set_user_maxspeed
+public native_set_user_maxspeed(plugin_id, num_params) { // Native: zp_set_user_maxspeed
+	static id, Float:Speed
+	id = get_param(1);
+	Speed = get_param_f(2);
+
 	if(!is_user_valid(id)) return false;
 
 	if(!g_isalive[id]) return false;
@@ -8872,7 +9051,7 @@ public native_set_user_maxspeed(id, Float:Speed) { // Native: zp_set_user_maxspe
 	return true
 }
 public Float:native_get_user_maxspeed(plugin_id, num_params) { // Native: zp_get_user_maxspeed
-	static id; id = get_param(id)
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1.0;
 	
 	if(g_user_custom_speed[id]) return g_current_maxspeed[id];
@@ -8881,7 +9060,8 @@ public Float:native_get_user_maxspeed(plugin_id, num_params) { // Native: zp_get
 
 	return get_pcvar_float(cvar_hm_spd[g_hm_special[id]]);
 }
-public native_reset_user_maxspeed(id) { // Native: zp_reset_user_maxspeed
+public native_reset_user_maxspeed(plugin_id, num_params) { // Native: zp_reset_user_maxspeed
+	static id; id = get_param(1)
 	if(!is_user_valid(id)) return false;
 
 	if(g_user_custom_speed[id]) {
@@ -8891,7 +9071,11 @@ public native_reset_user_maxspeed(id) { // Native: zp_reset_user_maxspeed
 	ExecuteHamB(Ham_Player_ResetMaxSpeed, id)
 	return true;
 }
-public native_set_user_nightvision(id, set) { // Native: zp_set_user_nightvision
+public native_set_user_nightvision(plugin_id, num_params) { // Native: zp_set_user_nightvision
+	static id, set; 
+	id = get_param(1)
+	set = get_param(2)
+
 	if(!is_user_valid_connected(id)) return false;
 
 	if(!g_pluginenabled) return false; // ZP Special disabled
@@ -8913,15 +9097,19 @@ public native_set_user_nightvision(id, set) { // Native: zp_set_user_nightvision
 	return true;
 }
 
-// Native zp_set_user_madness(id, set)
-public native_set_user_madness(id, set) {
-	return set_user_madness(id, set, -1.0);
+// Native zp_set_user_madness(id, set, Float:Duration)
+public native_set_user_madness(plugin_id, num_params) {
+	static id, set, Float:Duration
+
+	id = get_param(1)
+	set = get_param(2)
+
+	if(num_params < 3) Duration = -1.0
+	else Duration = get_param_f(3)
+
+	return set_user_madness(id, set, Duration);
 }
 
-// Native zpsp_set_user_madness(id, set, Float:Duration)
-public native_set_user_madness2(id, set, Float:Duration) {
-	return set_user_madness(id, set, -1.0);
-}
 public set_user_madness(id, set, Float:Duration) {
 	if(!is_user_valid(id)) return false;
 	
@@ -8951,17 +9139,22 @@ public set_user_madness(id, set, Float:Duration) {
 	return true;
 }
 // Native: zp_set_user_frozen
-public native_set_user_frozen(id, set) {
-	return set_user_frozen(id, set, get_pcvar_float(cvar_freezeduration))
-}
+public native_set_user_frozen(plugin_id, num_params) {
+	
+	static id, set, Float:Duration
 
-// Native: zpsp_set_user_frozen
-public native_set_user_frozen2(id, set, Float:Duration) {
+	id = get_param(1)
+	set = get_param(2)
+
+	if(num_params < 3) Duration = -1.0
+	else Duration = get_param_f(3)
+
 	if(Duration == -1.0)
-		Duration = get_pcvar_float(cvar_fireduration)
+		Duration = get_pcvar_float(cvar_freezeduration)
 
 	return set_user_frozen(id, set, Duration);
 }
+
 public set_user_frozen(id, set, Float:Duration) {
 	if(!is_user_valid(id)) return false;
 
@@ -9049,16 +9242,21 @@ public set_user_frozen(id, set, Float:Duration) {
 
 	return true
 }
-public native_set_user_burn(id, set) {
-	return set_user_burn(id, set, get_pcvar_float(cvar_fireduration))
-}
-public native_set_user_burn2(id, set, Float:Duration) {
+public native_set_user_burn(plugin_id, num_params) {
+	static id, set, Float:Duration
+
+	id = get_param(1)
+	set = get_param(2)
+
+	if(num_params < 3) Duration = -1.0
+	else Duration = get_param_f(3)
 
 	if(Duration == -1.0)
 		Duration = get_pcvar_float(cvar_fireduration)
 
 	return set_user_burn(id, set, Duration)
 }
+
 public set_user_burn(id, set, Float:Duration) {
 	if(!is_user_valid(id)) return false;
 	if(!g_pluginenabled) return false;
@@ -9094,7 +9292,11 @@ public set_user_burn(id, set, Float:Duration) {
 
 	return true
 }
-public native_set_user_infectnade(id, set) {
+public native_set_user_infectnade(plugin_id, num_params) {
+	static id, set;
+	id = get_param(1);
+	set = get_param(2);
+
 	if(!is_user_valid_alive(id)) return false;
 	if(!g_pluginenabled || !g_zombie[id] || !g_isalive[id]) return false;
 
@@ -9104,8 +9306,15 @@ public native_set_user_infectnade(id, set) {
 	return true;
 
 }
-public native_infect_user(id, infector, silent, rewards) { // Native: zp_infect_user
+public native_infect_user(plugin_id, num_params) { // Native: zp_infect_user
 	if(!g_pluginenabled) return false; // ZP Special disabled
+
+	static id, infector, silent, rewards;
+	id = get_param(1);
+	infector = get_param(2);
+	silent = get_param(3)
+	rewards = get_param(4)
+
 	if(!is_user_valid_alive(id)) return false;	
 	if(!allowed_zombie(id)) return false; // Not allowed to be zombie
 	
@@ -9117,35 +9326,40 @@ public native_infect_user(id, infector, silent, rewards) { // Native: zp_infect_
 	
 	return true;
 }
-public native_disinfect_user(id, silent) { // Native: zp_disinfect_user
+public native_disinfect_user(plugin_id, num_params) { // Native: zp_disinfect_user
 	if(!g_pluginenabled) return false; // ZP Special disabled
-	if(!is_user_valid_alive(id)) return false;
-	if(!allowed_human(id)) return false; // Not allowed to be human
+	
+	static id, silent, attacker
+	id = get_param(1)
+	silent = get_param(2)
 
-	humanme(id, 0, (silent == 1) ? 1 : 0, 0) // Turn to human
-	return true;
-}
+	if(num_params > 2)
+		attacker = get_param(3)
+	else 
+		attacker = 0
 
-public native_disinfect_user2(id, silent, attacker) { // Native: zpsp_disinfect_user
-	if(!g_pluginenabled) return false; // ZP Special disabled
 	if(!is_user_valid_alive(id)) return false;
 	if(!allowed_human(id)) return false; // Not allowed to be human
 
 	humanme(id, 0, (silent == 1) ? 1 : 0, attacker) // Turn to human
 	return true;
 }
-public native_make_user_nemesis(id) return native_make_user_special(id, NEMESIS, 1); // Native: zp_make_user_nemesis
-public native_make_user_survivor(id) return native_make_user_special(id, SURVIVOR, 0); // Native: zp_make_user_survivor
-public native_make_user_sniper(id) return native_make_user_special(id, SNIPER, 0); // Native: zp_make_user_sniper
-public native_make_user_assassin(id) return native_make_user_special(id, ASSASSIN, 1); // Native: zp_make_user_assassin
-public native_make_user_predator(id) return native_make_user_special(id, PREDATOR, 1); // Native: zp_make_user_predator
-public native_make_user_bombardier(id) return native_make_user_special(id, BOMBARDIER, 1); // Native: zp_make_user_bombardier
-public native_make_user_dragon(id) return native_make_user_special(id, DRAGON, 1); // Native: zp_make_user_dragon
-public native_make_user_berserker(id) return native_make_user_special(id, BERSERKER, 0); // Native: zp_make_user_berserker
-public native_make_user_wesker(id) return native_make_user_special(id, WESKER, 0); // Native: zp_make_user_wesker
-public native_make_user_spy(id) return native_make_user_special(id, SPY, 0); // Native: zp_make_user_spy
 
-public native_make_user_special(id, spid, zombie) { // Native: zp_make_user_special
+
+public native_make_user_nemesis(plugin_id, num_params) return make_user_special(get_param(1), NEMESIS, 1);  // Native: zp_make_user_nemesis
+public native_make_user_survivor(plugin_id, num_params) return make_user_special(get_param(1), SURVIVOR, 0);  // Native: zp_make_user_survivor
+public native_make_user_sniper(plugin_id, num_params) return make_user_special(get_param(1), SNIPER, 0);  // Native: zp_make_user_sniper
+public native_make_user_assassin(plugin_id, num_params) return make_user_special(get_param(1), ASSASSIN, 1);  // Native: zp_make_user_assassin
+public native_make_user_predator(plugin_id, num_params) return make_user_special(get_param(1), PREDATOR, 1);  // Native: zp_make_user_predator
+public native_make_user_bombardier(plugin_id, num_params) return make_user_special(get_param(1), BOMBARDIER, 1);  // Native: zp_make_user_bombardier
+public native_make_user_dragon(plugin_id, num_params) return make_user_special(get_param(1), DRAGON, 1);  // Native: zp_make_user_dragon
+public native_make_user_berserker(plugin_id, num_params) return make_user_special(get_param(1), BERSERKER, 0);  // Native: zp_make_user_berserker
+public native_make_user_wesker(plugin_id, num_params) return make_user_special(get_param(1), WESKER, 0);  // Native: zp_make_user_wesker
+public native_make_user_spy(plugin_id, num_params) return make_user_special(get_param(1), SPY, 0); // Native: zp_make_user_spy
+public native_make_user_special(plugin_id, num_params) { // Native: zp_make_user_special
+	return make_user_special(get_param(1), get_param(2), get_param(3));
+}
+public make_user_special(id, spid, zombie) {
 	if(!is_user_valid_alive(id)) return -1;
 
 	if(spid >= g_zm_specials_i && zombie || spid >= g_hm_specials_i && !zombie) {
@@ -9166,8 +9380,16 @@ public native_make_user_special(id, spid, zombie) { // Native: zp_make_user_spec
 	}
 	return 1;
 }
-public native_force_user_class(id, spid, zombie, attacker, silent) {
+public native_force_user_class(plugin_id, num_params) {
 	if(!g_pluginenabled) return -1; // ZP Special disabled
+
+	static id, spid, zombie, attacker, silent
+	id = get_param(1)
+	spid = get_param(2)
+	zombie = get_param(3)
+	attacker = get_param(4)
+	silent = get_param(5)
+
 	if(!is_user_valid_alive(id)) return -1;
 
 	if(spid >= g_zm_specials_i && zombie || spid >= g_hm_specials_i && !zombie) {
@@ -9182,8 +9404,13 @@ public native_force_user_class(id, spid, zombie, attacker, silent) {
 
 	return 1;
 }
-public native_respawn_user(id, team) { // Native: zp_respawn_user
+public native_respawn_user(plugin_id, num_params) { // Native: zp_respawn_user
 	if(!g_pluginenabled) return false; // ZP Special disabled
+
+	static id, team;
+	id = get_param(1);
+	team = get_param(2);
+
 	if(!is_user_valid_connected(id)) return false;
 	if(!allowed_respawn(id)) return false; // Respawn not allowed
 
@@ -9191,8 +9418,14 @@ public native_respawn_user(id, team) { // Native: zp_respawn_user
 	respawn_player_manually(id) // Respawnish!
 	return true;
 }
-public native_force_buy_extra_item(id, itemid, ignorecost) { // Native: zp_force_buy_extra_item
+public native_force_buy_extra_item(plugin_id, num_params) { // Native: zp_force_buy_extra_item
 	if(!g_pluginenabled) return false; // ZP Special disabled	
+	
+	static id, itemid, ignorecost;
+	id = get_param(1);
+	itemid = get_param(2);
+	ignorecost = get_param(3);
+
 	if(!is_user_valid_alive(id)) return false;
 
 	if(itemid < 0 || itemid >= g_extraitem_i) {
@@ -9202,49 +9435,49 @@ public native_force_buy_extra_item(id, itemid, ignorecost) { // Native: zp_force
 	buy_extra_item(id, itemid, ignorecost)
 	return true;
 }
-public native_get_user_sniper(plugin_id, param_nums) { // Native: zp_get_user_sniper
+public native_get_user_sniper(plugin_id, num_params) { // Native: zp_get_user_sniper
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return (g_hm_special[id] == SNIPER);
 }
-public native_get_user_assassin(plugin_id, param_nums) { // Native: zp_get_user_assassin
+public native_get_user_assassin(plugin_id, num_params) { // Native: zp_get_user_assassin
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return (g_zm_special[id] == ASSASSIN);
 }
-public native_get_user_predator(plugin_id, param_nums) { // Native: zp_get_user_predator
+public native_get_user_predator(plugin_id, num_params) { // Native: zp_get_user_predator
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return (g_zm_special[id] == PREDATOR);
 }
-public native_get_user_bombardier(plugin_id, param_nums) { // Native: zp_get_user_bombardier
+public native_get_user_bombardier(plugin_id, num_params) { // Native: zp_get_user_bombardier
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return (g_zm_special[id] == BOMBARDIER);
 }
-public native_get_user_dragon(plugin_id, param_nums) { // Native: zp_get_user_dragon
+public native_get_user_dragon(plugin_id, num_params) { // Native: zp_get_user_dragon
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return (g_zm_special[id] == DRAGON);
 }
-public native_get_user_berserker(plugin_id, param_nums) { // Native: zp_get_user_berserker
+public native_get_user_berserker(plugin_id, num_params) { // Native: zp_get_user_berserker
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return (g_hm_special[id] == BERSERKER);
 }
-public native_get_user_wesker(plugin_id, param_nums) { // Native: zp_get_user_wesker
+public native_get_user_wesker(plugin_id, num_params) { // Native: zp_get_user_wesker
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return (g_hm_special[id] == WESKER);
 }
-public native_get_user_spy(plugin_id, param_nums) { // Native: zp_get_user_spy
+public native_get_user_spy(plugin_id, num_params) { // Native: zp_get_user_spy
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
 	return (g_hm_special[id] == SPY);
 }
-public native_get_user_model(plugin_id, param_nums) { // Native: zp_get_user_model
+public native_get_user_model(plugin_id, num_params) { // Native: zp_get_user_model
 	if(!g_pluginenabled) return -1; // ZP Special disabled
-	if(param_nums != 3) return -1; // Insufficient number of arguments
+	if(num_params != 3) return -1; // Insufficient number of arguments
 
 	static id; id = get_param(1) // Retrieve the player's index
 	if(!is_user_valid_alive(id)) return 0; // Not an alive player or invalid player
@@ -9256,13 +9489,22 @@ public native_get_user_model(plugin_id, param_nums) { // Native: zp_get_user_mod
 	return 1;
 }
 
-public native_override_user_model(id, const newmodel[], modelindex) { // Native: zp_override_user_model
-	param_convert(2) // Strings passed byref
+public native_override_user_model(plugin_id, num_params)  { // Native: zp_override_user_model
+	static id, newmodel[32], modelindex;
+	id = get_param(1);
+	get_string(2, newmodel, charsmax(newmodel));
+	modelindex = get_param(3);
+
 	return override_user_model(id, newmodel, 0, 0, modelindex);
 }
 
-public native_override_user_model2(id, const newmodel[], body, skin, modelindex) {// Native: zpsp_override_user_model
-	param_convert(2) // Strings passed byref
+public native_override_user_model2(plugin_id, num_params)  {// Native: zpsp_override_user_model
+	static id, newmodel[32], body, skin, modelindex;
+	id = get_param(1);
+	get_string(2, newmodel, charsmax(newmodel));
+	body = get_param(3);
+	skin = get_param(4);
+	modelindex = get_param(5);
 	return override_user_model(id, newmodel, body, skin, modelindex);
 }
 
@@ -9294,40 +9536,44 @@ public override_user_model(id, const newmodel[], body, skin, modelindex) {
 	ExecuteForward(g_forwards[MODEL_CHANGE_POST], g_fwDummyResult, id, newmodel, body, skin)
 	return true;
 }
-public native_has_round_started() { // Native: zp_has_round_started
+public native_has_round_started(plugin_id, num_params) { // Native: zp_has_round_started
 	if(g_newround) return 0; // not started
 	if(g_modestarted) return 1; // started
 	return 2; // starting
 }
-public native_get_current_mode() return g_currentmode; // Native: zp_get_current_mode
-public native_get_last_mode() return g_lastmode; // Native: zp_get_last_mode
-public native_has_round_ended() return g_endround;  // Native: zp_has_round_ended
-public native_is_nemesis_round() return (g_currentmode == MODE_NEMESIS); // Native: zp_is_nemesis_round
-public native_is_survivor_round() return (g_currentmode == MODE_SURVIVOR); // Native: zp_is_survivor_round
-public native_is_swarm_round() return (g_currentmode == MODE_SWARM); // Native: zp_is_swarm_round
-public native_is_plague_round() return (g_currentmode == MODE_PLAGUE); // Native: zp_is_plague_round
-public native_get_zombie_count() return fnGetZombies(); // Native: zp_get_zombie_count
-public native_get_human_count() return fnGetHumans(); // Native: zp_get_human_count
-public native_get_nemesis_count() return fnGetSpecials(1, NEMESIS); // Native: zp_get_nemesis_count
-public native_get_survivor_count() return fnGetSpecials(0, SURVIVOR); // Native: zp_get_survivor_count
-public native_is_sniper_round() return (g_currentmode == MODE_SNIPER); // Native: zp_is_sniper_round
-public native_get_sniper_count() return fnGetSpecials(0, SNIPER); // Native: zp_get_sniper_count
-public native_is_assassin_round() return (g_currentmode == MODE_ASSASSIN); // Native: zp_is_assassin_round
-public native_get_assassin_count() return fnGetSpecials(1, ASSASSIN); // Native: zp_get_assassin_count
-public native_is_predator_round() return (g_currentmode == MODE_PREDATOR); // Native: zp_is_predator_round
-public native_get_predator_count() return fnGetSpecials(1, PREDATOR); // Native: zp_get_predator_count
-public native_is_bombardier_round() return (g_currentmode == MODE_BOMBARDIER); // Native: zp_is_bombardier_round
-public native_get_bombardier_count() return fnGetSpecials(1, BOMBARDIER); // Native: zp_get_bombardier_count
-public native_is_dragon_round() return (g_currentmode == MODE_DRAGON); // Native: zp_is_dragon_round
-public native_get_dragon_count() return fnGetSpecials(1, DRAGON); // Native: zp_get_dragon_count
-public native_is_berserker_round() return (g_currentmode == MODE_BERSERKER); // Native: zp_is_berserker_round
-public native_is_wesker_round() return (g_currentmode == MODE_WESKER); // Native: zp_is_wesker_round
-public native_is_spy_round() return (g_currentmode == MODE_SPY); // Native: zp_is_spy_round
-public native_get_berserker_count() return fnGetSpecials(0, BERSERKER); // Native: zp_get_berserker_count
-public native_get_wesker_count() return fnGetSpecials(0, WESKER); // Native: zp_get_wesker_count
-public native_get_spy_count() return fnGetSpecials(0, SPY); // Native: zp_get_spy_count
-public native_is_lnj_round() return (g_currentmode == MODE_LNJ); // Native: zp_is_lnj_round
-public native_get_special_count(is_zombie, specialid) {	
+public native_get_current_mode(plugin_id, num_params) return g_currentmode; // Native: zp_get_current_mode
+public native_get_last_mode(plugin_id, num_params) return g_lastmode; // Native: zp_get_last_mode
+public native_has_round_ended(plugin_id, num_params) return g_endround;  // Native: zp_has_round_ended
+public native_is_nemesis_round(plugin_id, num_params) return (g_currentmode == MODE_NEMESIS); // Native: zp_is_nemesis_round
+public native_is_survivor_round(plugin_id, num_params) return (g_currentmode == MODE_SURVIVOR); // Native: zp_is_survivor_round
+public native_is_swarm_round(plugin_id, num_params) return (g_currentmode == MODE_SWARM); // Native: zp_is_swarm_round
+public native_is_plague_round(plugin_id, num_params) return (g_currentmode == MODE_PLAGUE); // Native: zp_is_plague_round
+public native_get_zombie_count(plugin_id, num_params) return fnGetZombies(); // Native: zp_get_zombie_count
+public native_get_human_count(plugin_id, num_params) return fnGetHumans(); // Native: zp_get_human_count
+public native_get_nemesis_count(plugin_id, num_params) return fnGetSpecials(1, NEMESIS); // Native: zp_get_nemesis_count
+public native_get_survivor_count(plugin_id, num_params) return fnGetSpecials(0, SURVIVOR); // Native: zp_get_survivor_count
+public native_is_sniper_round(plugin_id, num_params) return (g_currentmode == MODE_SNIPER); // Native: zp_is_sniper_round
+public native_get_sniper_count(plugin_id, num_params) return fnGetSpecials(0, SNIPER); // Native: zp_get_sniper_count
+public native_is_assassin_round(plugin_id, num_params) return (g_currentmode == MODE_ASSASSIN); // Native: zp_is_assassin_round
+public native_get_assassin_count(plugin_id, num_params) return fnGetSpecials(1, ASSASSIN); // Native: zp_get_assassin_count
+public native_is_predator_round(plugin_id, num_params) return (g_currentmode == MODE_PREDATOR); // Native: zp_is_predator_round
+public native_get_predator_count(plugin_id, num_params) return fnGetSpecials(1, PREDATOR); // Native: zp_get_predator_count
+public native_is_bombardier_round(plugin_id, num_params) return (g_currentmode == MODE_BOMBARDIER); // Native: zp_is_bombardier_round
+public native_get_bombardier_count(plugin_id, num_params) return fnGetSpecials(1, BOMBARDIER); // Native: zp_get_bombardier_count
+public native_is_dragon_round(plugin_id, num_params) return (g_currentmode == MODE_DRAGON); // Native: zp_is_dragon_round
+public native_get_dragon_count(plugin_id, num_params) return fnGetSpecials(1, DRAGON); // Native: zp_get_dragon_count
+public native_is_berserker_round(plugin_id, num_params) return (g_currentmode == MODE_BERSERKER); // Native: zp_is_berserker_round
+public native_is_wesker_round(plugin_id, num_params) return (g_currentmode == MODE_WESKER); // Native: zp_is_wesker_round
+public native_is_spy_round(plugin_id, num_params) return (g_currentmode == MODE_SPY); // Native: zp_is_spy_round
+public native_get_berserker_count(plugin_id, num_params) return fnGetSpecials(0, BERSERKER); // Native: zp_get_berserker_count
+public native_get_wesker_count(plugin_id, num_params) return fnGetSpecials(0, WESKER); // Native: zp_get_wesker_count
+public native_get_spy_count(plugin_id, num_params) return fnGetSpecials(0, SPY); // Native: zp_get_spy_count
+public native_is_lnj_round(plugin_id, num_params) return (g_currentmode == MODE_LNJ); // Native: zp_is_lnj_round
+public native_get_special_count(plugin_id, num_params) {	
+	static is_zombie, specialid;
+	is_zombie = get_param(1)
+	specialid = get_param(2)
+
 	if(specialid < 0 || specialid >= g_zm_specials_i && is_zombie || specialid >= g_hm_specials_i && !is_zombie) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid Special class id (%d)", specialid)
 		return -1;
@@ -9336,7 +9582,7 @@ public native_get_special_count(is_zombie, specialid) {
 }
 
 // Native: zp_register_human_special
-public native_register_human_special(plugin_id, param_nums) {
+public native_register_human_special(plugin_id, num_params) {
 	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
 	
@@ -9537,7 +9783,7 @@ public native_register_human_special(plugin_id, param_nums) {
 	return (g_hm_specials_i-1); // Return id under which we registered the human special 
 }
 // Native: zp_register_zombie_special
-public native_register_zombie_special(plugin_id, param_nums) {
+public native_register_zombie_special(plugin_id, num_params) {
 	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
 
@@ -9888,6 +10134,20 @@ public native_register_gamemode(plugin_id, num_params) { // Native: zp_register_
 public native_menu_textadd(plugin_id, num_params) {
 	get_string(1, g_AdditionalMenuText, charsmax(g_AdditionalMenuText))
 }
+// Native: zp_add_hud_text(const text[])
+public native_add_hud_text(plugin_id, num_params) {
+	static text[500]; get_string(1, text, charsmax(text))
+	strcat(g_AdditionalHudText, fmt(" %s", text), charsmax(g_AdditionalHudText))
+}
+// Native: zp_get_user_hud_type(id)
+public native_get_user_hud_type(plugin_id, num_params) {
+	static id; id = get_param(1);
+	if(!is_user_valid_connected(id))
+		return -1;
+
+	return g_hud_type[id]
+}
+
 // Native: zp_register_extra_item
 public native_register_extra_item(plugin_id, num_params) {
 	if(!g_pluginenabled) return -1; // ZP Special disabled
@@ -10180,8 +10440,14 @@ public native_register_human_class(plugin_id, num_params) {
 }
 
 // Native: zp_register_hclass_model(classid, player_model[], body=0, skin=0)
-public native_register_hclass_model(classid, player_model[], body, skin)
+public native_register_hclass_model(plugin_id, num_params)
 {
+	static classid, player_model[32], body, skin;
+	classid = get_param(1);
+	get_string(2, player_model, charsmax(player_model))
+	body = get_param(3);
+	skin = get_param(4);
+
 	if (classid < 0 || classid >= g_hclass_i)
 	{
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid human class id (%d)", classid)
@@ -10378,10 +10644,11 @@ public native_register_zombie_class(plugin_id, num_params) {
 	g_zclass_i++ // Increase registered classes counter
 	return (g_zclass_i-1); // Return id under which we registered the class
 }
-public native_get_extra_item_id(const name[]) { // Native: zp_get_extra_item_id
+public native_get_extra_item_id(plugin_id, num_params) { // Native: zp_get_extra_item_id
 	if(!g_pluginenabled) return -1; // ZP Special disabled
 
-	param_convert(1) // Strings passed byref
+	static name[32];
+	get_string(1, name, charsmax(name))
 	
 	// Loop through every item
 	static i, item_name[32], itemid
@@ -10395,16 +10662,35 @@ public native_get_extra_item_id(const name[]) { // Native: zp_get_extra_item_id
 	}
 	return itemid;
 }
-public native_get_zombie_class_id(const name[]) { // Native: zp_get_zombie_class_id
+public native_get_zombie_class_id(plugin_id, num_params) { // Native: zp_get_zombie_class_id
 	if(!g_pluginenabled) return -1; // ZP Special disabled
 	
-	param_convert(1); // Strings passed byref
+	static name[32];
+	get_string(1, name, charsmax(name))
 	
 	// Loop through every class
 	static i, class_name[32], classid
 	classid = -1
 	for(i = 0; i < g_zclass_i; i++) {
 		ArrayGetString(g_zclass_real_name, i, class_name, charsmax(class_name))
+		if(equali(name, class_name)) { // Check if this is the class to retrieve
+			classid = i;
+			break;
+		}
+	}
+	return classid;
+}
+public native_get_human_class_id(plugin_id, num_params) { // Native: zp_get_human_class_id
+	if(!g_pluginenabled) return -1; // ZP Special disabled
+	
+	static name[32];
+	get_string(1, name, charsmax(name))
+	
+	// Loop through every class
+	static i, class_name[32], classid
+	classid = -1
+	for(i = 0; i < g_hclass_i; i++) {
+		ArrayGetString(g_hclass_real_name, i, class_name, charsmax(class_name))
 		if(equali(name, class_name)) { // Check if this is the class to retrieve
 			classid = i;
 			break;
@@ -10463,10 +10749,9 @@ public native_set_custom_game_mod(plugin_id, num_params) { // Native: zp_set_cus
 	return 0		
 }
 public native_start_game_mode(plugin_id, num_params) { // Native: zp_start_game_mode
-	static gameid, force_start;
-	gameid = get_param(1)
-	force_start = get_param(2)
-
+	return start_game_mode(get_param(1), get_param(2))
+}
+public start_game_mode(gameid, force_start) {
 	if(gameid < 0 || gameid >= g_gamemodes_i) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid game mod id (%d)", gameid)
 		return -1;
@@ -10499,7 +10784,8 @@ public native_start_game_mode(plugin_id, num_params) { // Native: zp_start_game_
 	}
 	return started
 }
-public native_set_next_game_mode(gameid) { // Native: zp_set_next_game_mode
+public native_set_next_game_mode(plugin_id, num_params) { // Native: zp_set_next_game_mode
+	static gameid; gameid = get_param(1);
 	if(gameid < 0 || gameid >= g_gamemodes_i) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid game mod id (%d)", gameid)
 		return -1;
@@ -10507,46 +10793,53 @@ public native_set_next_game_mode(gameid) { // Native: zp_set_next_game_mode
 	g_nextmode = gameid
 	return 1
 }
-public native_reset_player_model(id) { // Native: zp_reset_player_model
+public native_reset_player_model(plugin_id, num_params) { // Native: zp_reset_player_model
+	static id; id = get_param(1);
 	if(!is_user_valid_alive(id)) return false;
 
-	reset_player_models(id)
-	return true
+	return reset_player_models(id)
 }
-public native_get_extra_item_count() return g_extraitem_i; // Native: zp_get_extra_item_count
-public native_get_zclass_count() return g_zclass_i; // Native: zp_get_zclass_count
-public native_get_gamemodes_count() return (g_gamemodes_i - MAX_GAME_MODES); // Native: zp_get_gamemodes_count
-public native_get_custom_special_count(zm) return zm ? (g_zm_specials_i - MAX_SPECIALS_ZOMBIES) : (g_hm_specials_i - MAX_SPECIALS_HUMANS); // Native: zp_get_custom_special_count
-public native_is_escape_map() return g_escape_map; // Native: zp_is_escape_map
-public native_get_custom_extra_start() return EXTRAS_CUSTOM_STARTID;
+public native_get_extra_item_count(plugin_id, num_params) return g_extraitem_i; // Native: zp_get_extra_item_count
+public native_get_zclass_count(plugin_id, num_params) return g_zclass_i; // Native: zp_get_zclass_count
+public native_get_gamemodes_count(plugin_id, num_params) return (g_gamemodes_i - MAX_GAME_MODES); // Native: zp_get_gamemodes_count
+public native_get_custom_special_count(plugin_id, num_params) {
+	static zm; zm = get_param(1);
+	return zm ? (g_zm_specials_i - MAX_SPECIALS_ZOMBIES) : (g_hm_specials_i - MAX_SPECIALS_HUMANS); // Native: zp_get_custom_special_count
+}
+public native_is_escape_map(plugin_id, num_params) return g_escape_map; // Native: zp_is_escape_map
+public native_get_custom_extra_start(plugin_id, num_params) return EXTRAS_CUSTOM_STARTID;
 
-public native_do_random_spawn(id) { // Native: zp_do_random_spawn
+public native_do_random_spawn(plugin_id, num_params) { // Native: zp_do_random_spawn
+	static id; id = get_param(1);
 	if(!is_user_valid_alive(id)) return 0
 	if(get_pcvar_num(cvar_randspawn)) do_random_spawn(id) // random spawn (including CSDM)
 	else do_random_spawn(id, 1) // regular spawn
 	
 	return 1
 }
-public native_reload_csdm_respawn() { // Native: zp_reload_csdm_respawn
+public native_reload_csdm_respawn(plugin_id, num_params) { // Native: zp_reload_csdm_respawn
 	g_spawnCount = 0
 	g_spawnCount2 = 0
 	load_spawns()
 	return 1
 }
-public native_set_lighting(const light[]) { // Native: zp_set_lighting
-	param_convert(1)
-	formatex(custom_lighting, charsmax(custom_lighting), light)
+public native_set_lighting(plugin_id, num_params) { // Native: zp_set_lighting
+	set_string(2, custom_lighting, charsmax(custom_lighting))
 	g_custom_light = true
 	lighting_effects()
 	return 1
 }
-public native_reset_lighting() { // Native: zp_reset_lighting
+public native_reset_lighting(plugin_id, num_params) { // Native: zp_reset_lighting
 	custom_lighting[0] = 0
 	g_custom_light = false
 	lighting_effects()
 	return 1
 }
-public native_is_user_stuck(id) return is_player_stuck(id); // Native: zp_is_user_stuck
+
+public native_is_user_stuck(plugin_id, num_params) { // Native: zp_is_user_stuck
+	static id; id = get_param(1);
+	return is_player_stuck(id); 
+}
 public native_register_weapon(plugin_id, num_params) { // Native: zp_register_weapon/zpsp_register_weapon
 	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
@@ -10611,12 +10904,17 @@ public native_set_fw_param_string(plugin_id, num_params) { // Native: zp_set_mod
 	get_string(1, g_ForwardParameter, charsmax(g_ForwardParameter))
 	return 1;
 }
-public native_set_fw_param_int(int_id, value) { // Native: zp_set_fw_param_int(int_id, value)
-	g_FW_intParam[int_id+1] = value
+public native_set_fw_param_int(plugin_id, num_params) { // Native: zp_set_fw_param_int(int_id, value)
+	static int_id; int_id = get_param(1);
+	g_FW_intParam[int_id+1] = get_param(2);
 	return 1;
 }
 
-public native_is_special_class_enable(is_zm, classid) { // Native: zp_is_special_class_enable(is_zm, classid)
+public native_is_special_class_enable(plugin_id, num_params) { // Native: zp_is_special_class_enable(is_zm, classid)
+	static is_zm, classid;
+	is_zm = get_param(1);
+	classid = get_param(2);
+
 	if(classid <= 0) return 0
 
 	if(is_zm) {
@@ -10631,17 +10929,20 @@ public native_is_special_class_enable(is_zm, classid) { // Native: zp_is_special
 	}
 	return 1;
 }
-public native_is_gamemode_enable(modeid) return is_gamemode_enable(modeid); // Native: zp_is_gamemode_enable(modeid)
+public native_is_gamemode_enable(plugin_id, num_params) {
+	return is_gamemode_enable(get_param(1)); // Native: zp_is_gamemode_enable(modeid)
+}
 
-public native_drop_weapons(id, dropwhat) drop_weapons(id, dropwhat+1);
+public native_drop_weapons(plugin_id, num_params) drop_weapons(get_param(1), get_param(2)+1);
 
-public native_give_item(id, item[]) {
-	param_convert(2)
+public native_give_item(plugin_id, num_params) {
+	static id, item[32];
+	id = get_param(1);
+	get_string(2, item, charsmax(item))
 	return fm_give_item(id, item);
 }
 
-public native_strip_user_weapons(id)
-	return fm_strip_user_weapons(id);
+public native_strip_user_weapons(plugin_id, num_params) return fm_strip_user_weapons(get_param(1));
 
 /*================================================================================
  [Custom Messages]
@@ -11856,13 +12157,13 @@ public reset_user_rendering(id) {
 }
 public reset_player_models(id) {
 	if(!is_user_valid_alive(id))
-		return 0;
+		return false;
 
 	static already_has_model, UserFlags;
 	already_has_model = false
 	UserFlags = get_user_flags(id)
 
-	static Array:Arr_Model, Array:Arr_Body, Array:Arr_Skin, l_Start, l_End, l_Sub, iRand, currentmodel[32], newmodel[32], i
+	static Array:Arr_Model, Array:Arr_Body, Array:Arr_Skin, ArrSize, iRand, currentmodel[32], newmodel[32], i
 	cs_get_user_model(id, currentmodel, charsmax(currentmodel)) // Get current model for comparing it with the current one
 	if(g_zombie[id]) {
 		if(isCustomSpecialZombie(id)) {
@@ -11899,9 +12200,7 @@ public reset_player_models(id) {
 				Arr_Skin = ArrayGetCell(g_zclass_skin_handle, g_zombieclass[id]);
 			}
 		}
-		l_Start = 0;
-		l_End = ArraySize(Arr_Model);
-		l_Sub = 1;
+		ArrSize = ArraySize(Arr_Model);
 	}
 	else {
 		if(isCustomSpecialHuman(id)) { // Set the right model, after checking that we don't already have it
@@ -11946,12 +12245,10 @@ public reset_player_models(id) {
 			}
 			
 		}
-		l_Start = 0;
-		l_End = ArraySize(Arr_Model);
-		l_Sub = 1;
+		ArrSize = ArraySize(Arr_Model);
 	}
 
-	for(i = l_Start; i < l_End; i++) {
+	for(i = 0; i < ArrSize; i++) {
 		ArrayGetString(Arr_Model, i, newmodel, charsmax(newmodel))
 		if(equal(currentmodel, newmodel) /*&& (g_playerbody[id] == ArrayGetCell(Arr_Body, i)) && (g_playerskin[id] == ArrayGetCell(Arr_Skin, i))*/) {
 			already_has_model = true
@@ -11962,15 +12259,14 @@ public reset_player_models(id) {
 	if(already_has_model) {
 		set_pev(id, pev_body, g_playerbody[id]);
 		set_pev(id, pev_skin, g_playerskin[id]);
-		return 1;
+		return true;
 	}
 
 	static NewBody, NewSkin
-	iRand = random_num(l_Start, l_End - l_Sub)
+	iRand = random_num(0, ArrSize - 1)
 	NewBody = ArrayGetCell(Arr_Body, iRand)
 	NewSkin = ArrayGetCell(Arr_Skin, iRand)
 	ArrayGetString(Arr_Model, iRand, newmodel, charsmax(newmodel))
-	// log_amx("Array body: %d | Array skin: %d", ArrayGetCell(Arr_Body, iRand), ArrayGetCell(Arr_Skin, iRand))
 
 	g_ForwardParameter[0] = 0
 	g_FW_intParam[0] = -1
@@ -11978,7 +12274,7 @@ public reset_player_models(id) {
 	ExecuteForward(g_forwards[MODEL_CHANGE_PRE], g_fwDummyResult, id, newmodel, NewBody, NewSkin)
 
 	if(g_fwDummyResult >= ZP_PLUGIN_SUPERCEDE) 
-		return 0; // The game mode didnt accept some conditions
+		return false; // The game mode didnt accept some conditions
 
 	if(g_ForwardParameter[0]) 
 		formatex(newmodel, charsmax(newmodel), g_ForwardParameter) // Check if forward not changed the param
@@ -11997,12 +12293,8 @@ public reset_player_models(id) {
 	set_pev(id, pev_body, g_playerbody[id]);
 	set_pev(id, pev_skin, g_playerskin[id]);
 
-	// log_amx("Jogador: %s | Model %s | Body %d | Skin %d | pev_body: %d | pev_skin: %d", g_playername[id], g_playermodel[id], g_playerbody[id], g_playerskin[id], pev(id, pev_body), pev(id, pev_skin))
-	// client_print_color(0, print_team_grey, "^3Jogador: %s | Model %s | Body %d | Skin %d | pev_body: %d | pev_skin: %d", g_playername[id], g_playermodel[id], g_playerbody[id], g_playerskin[id], pev(id, pev_body), pev(id, pev_skin))
-	// log_amx("Arr_Model: %d | Arr_Body: %d | Arr_Skin: %d | l_Start: %d | l_End: %d | l_Sub: %d | iRand: %d", Arr_Model, Arr_Body, Arr_Skin, l_Start, l_End, l_Sub, iRand)
-
 	ExecuteForward(g_forwards[MODEL_CHANGE_POST], g_fwDummyResult, id, newmodel, NewBody, NewSkin)
-	return 1;
+	return true;
 }
 
 stock add_point(number) { 

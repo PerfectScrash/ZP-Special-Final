@@ -14,25 +14,21 @@
 ================================================================================*/
 
 #include <amxmodx>
-#include <fakemeta>
+#include <cstrike>
 #include <zombie_plague_special>
-
-native zp_register_human_class(const name[], const info[], hp, armor, speed, Float:gravity);
-native zp_get_user_human_class(id);
-native zp_get_next_human_class(id);
-native zp_set_user_human_class(id, classid);
 
 /*================================================================================
  [Plugin Customization]
 =================================================================================*/
 
 // Classic Zombie Attributes
-new const hclass_name[] = { "Humano Colete" }
-new const hclass_info[] = { "=Teste=" }
-const hclass_health = 500
-const hclass_armor = 200
-const hclass_speed = 900
-const Float:hclass_gravity = 0.3
+new const hclass_name[] = { "Sniper" }
+new const hclass_info[] = { "Free G3SG1" }
+const hclass_health = 300
+const hclass_armor = 0
+const hclass_speed = 240
+const Float:hclass_gravity = 0.5
+new const hclass_models[][] = { "vip" , "sas" , "urban" }
 
 /*============================================================================*/
 
@@ -45,8 +41,14 @@ public plugin_precache() {
 	
 	// Register all classes
 	g_classid = zp_register_human_class(hclass_name, hclass_info, hclass_health, hclass_armor, hclass_speed, hclass_gravity)
+
+	// Register models
+	for (new index = 0; index < sizeof hclass_models; index++)
+		zp_register_hclass_model(g_classid, hclass_models[index])
 }
 
+// Set attributes when spawn/disinfect
+/* 
 public zp_user_humanized_post(id) {
 	if(zp_get_user_human_class(id) == g_classid)
 		hclass_attributes(id)
@@ -54,11 +56,19 @@ public zp_user_humanized_post(id) {
 public zp_player_spawn_post(id) {
 	if(zp_get_user_human_class(id) == g_classid)
 		hclass_attributes(id)
+} 
+*/
+
+// Set Attributes after choose weapons
+public zp_weapon_selected_post(id, wpn_type) {
+	if(wpn_type == WPN_SECONDARY && zp_get_user_human_class(id) == g_classid)
+		hclass_attributes(id)
 }
 
 hclass_attributes(id) {
 	if(!is_user_alive(id))
 		return;
 
-	client_print_color(id, print_team_default, "Classe Colete Teste")
+	zp_give_item(id, "weapon_g3sg1");
+	cs_set_user_bpammo(id, CSW_G3SG1, 90);
 }

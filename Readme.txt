@@ -245,15 +245,48 @@ Bombardier (From ZP Shade), Wesker (From Zombie Apocalipse), Spy and Dragon
 
 	* 4.5:
 		- REMOVED Amx 1.8.2 SUPORT
-		- Fixed trigger_hurt when killing with bugged players.
+		- Fixed trigger_hurt when killing with bugged players (i think).
 		- Fixed chat lang bug. (Sometimes appears in [en] language not in players language)
 		- Added Native: zp_force_user_class(id, spid, zombie, attacker = 0, sillentmode = 1)
-		- Added Native: zpsp_set_user_frozen(id, set, Float:Duration = -1.0)
-		- Added Native: zpsp_set_user_burn(id, set, Float:Duration = -1.0)
-		- Added Cvars: zp_human_frags_for_disinfect, zp_human_disnfect_reward
+		- Updated Native: zp_set_user_frozen(id, set, Float:Duration = -1.0)
+		- Updated Native: zp_set_user_madness(id, set, Float:Duration = -1.0)
+		- Updated Native: zp_set_user_burn(id, set, Float:Duration = -1.0)
+		- Added Cvars: zp_human_frags_for_disinfect, zp_human_disnfect_reward, zp_green_deathmsg
 		- Removed "HANDLE MODELS ON SEPARATE ENT"
 		- Removed "MODELCHANGE DELAY"
 		- Now models system are using "cstrike" module
 		- Added Native: zpsp_override_user_model(id, const model, body=0, skin=0, modelindex=0)
 		- Added Player Submodel Support (You can add more player models using only 1 .mdl)
 		- Added Player Skin Support (You can use other textures with 1 .mdl)
+		- Added Native: zp_set_fw_param_int(int_id, value)
+		- Added Many Stocks (Check zpsp_stocks.inc)
+		- Fixed bug when you create a custom zombie special with same name with any custom human special
+		- Added Human Classes System
+		- Added Native: zp_register_human_class(const name[], const info[], hp, armor, speed, Float:gravity, use_lang=0, const name_lang_key[]="ITEM_LANG_DEFAULT_KEY", const info_lang_key[]="ITEM_LANG_DEFAULT_KEY");
+		- Added Native: zp_get_user_human_class(id);
+		- Added Native: zp_get_next_human_class(id);
+		- Added Native: zp_set_user_human_class(id, classid);
+		- Added Native: zp_register_hclass_model(classid, player_model[], body=0, skin=0)
+		- Added Native: zp_get_human_class_id(const name[])
+		- Added Native: zp_get_human_class_info(id, info[], len)
+		- Added Native: zp_get_human_class_name(id, name[], len)
+		- Added Native: zp_set_human_class_info(id, const info[])
+		- Added Native: zp_set_human_class_name(id, const name[])
+		- Added Native: zp_get_human_class_realname(id, realname[], len)
+		- Added Forward: zp_human_class_choosed_pre(id, classid)
+		- Added Forward: zp_human_class_choosed_post(id, classid)
+		- Added Native: zp_drop_weapons(id, dropwhat)
+		- Added Native: zp_give_item(id, const item[])
+		- Added Native: zp_strip_user_weapons(id)
+		- Added Native: zp_menu_textadd(const text[])
+		- Updated Native: zp_register_weapon(const name[], wpn_type, uselang=0, const langkey[] = "ITEM_LANG_DEFAULT_KEY")
+		- Added Cvar: zp_choose_hclass_instantanly
+		- Added "FLAGS" option in "zpsp_gamemodes.ini" and in "zpsp_special_classes.ini"
+		- Improved "save_custonomization" system
+		- Improved model/sound system for any external class
+		- Updated Native: zp_disinfect_user(id, silent, attacker) 
+		- Updated Native: zpsp_register_gamemode(const name[], flags, chance, allow, dm_mode, resp_limit=0, enable_in_ze=0, uselang=0, const langkey[]="ITEM_LANG_DEFAULT_KEY");
+		- Added Forward: zp_player_show_hud(id, target, SpHudType:hudtype);
+		- Added Native: zp_add_hud_text(const text[]);
+		- Added Native: zp_get_user_hud_type(id);
+		- Now all natives are using "style 0"

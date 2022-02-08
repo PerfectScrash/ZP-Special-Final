@@ -1,5 +1,5 @@
 #if defined _zombie_special_new_included
-  #endinput
+	#endinput
 #endif
 #define _zombie_special_new_included
 
@@ -156,9 +156,10 @@ native zp_infect_user(id, infector = 0, silent = 0, rewards = 0);
  *
  * @param id		Player index to be cured.
  * @param silent	If set, there will be no HUD messages or antidote sounds.
+ * @param attacker	Give rewards for possible attacker
  * @return			True on success, false otherwise.
  */
-native zp_disinfect_user(id, silent = 0);
+native zp_disinfect_user(id, silent = 0, attacker = 0);
 
 /**
  * Forces a player to become a nemesis.
@@ -589,18 +590,13 @@ native zp_get_zombie_class_id(const name[]);
  * @return				An internal game mode ID or -1 on failure
  * @error				If Game mode name alterady exists
  */
- native zpsp_register_gamemode(const name[], flags, chance, allow, dm_mode, resp_limit=0, enable_in_ze=0);
+ native zpsp_register_gamemode(const name[], flags, chance, allow, dm_mode, resp_limit=0, enable_in_ze=0, uselang=0, const langkey[]="ITEM_LANG_DEFAULT_KEY");
 
-#if AMXX_VERSION_NUM < 183
-native zp_register_game_mode(const name[], flags, chance, allow, dm_mode);
-#else
 /**
  * @deprecated This function are update your functions
  */ 
-#pragma deprecated Use zpsp_register_gamemode(const name[], flags, chance, allow, dm_mode, resp_limit=0, enable_in_ze=0) instead.
+#pragma deprecated Use zpsp_register_gamemode(const name[], flags, chance, allow, dm_mode, resp_limit=0, enable_in_ze=0, uselang=0, const langkey[]="ITEM_LANG_DEFAULT_KEY") instead.
 native zp_register_game_mode(const name[], flags, chance, allow, dm_mode);
-#endif
-
 
 /**
  * Registers a custom item which will be added to the extra items menu of ZP.
@@ -863,6 +859,26 @@ native zp_get_zombie_class_realname(class, realname[], len);
 native zp_get_zombie_class_info(class, info[], len);
 
 /**
+ * Set Zombie Class Description
+ *
+ * @param class		Zombie Class index
+ * @param newinfo	New description
+ * @return			True if sucess, false otherwise
+ * @error			If Zombie Class index are invalid
+ */
+native zp_set_zombie_class_info(class, newinfo[]);
+
+/**
+ * Set Zombie Class name
+ *
+ * @param class		Zombie Class index
+ * @param newname	New name
+ * @return			True if sucess, false otherwise
+ * @error			If Zombie Class index are invalid
+ */
+native zp_set_zombie_class_name(class, newname[]);
+
+/**
  * Get Current mode name
  *
  * @param name		Buffer to copy mode name to
@@ -878,13 +894,6 @@ native zp_get_current_mode_name(name[], len);
  */
 native zp_has_round_ended();
 
-#if AMXX_VERSION_NUM < 183
-native zp_set_extra_damage(victim, attacker, damage, weaponDescription[]); // Set User Extra Damage (Like Superhero Mod);
-native zp_set_user_frozen(id, set); // Set User Frozen
-native zp_set_user_burn(id, set); // Set User Burning
-native zp_override_user_model(id, const newmodel[], modelindex = 0);
-native zp_set_user_madness(id, set);
-#else
 /**
  * @deprecated This function are update your functions
  */ 
@@ -894,28 +903,8 @@ native zp_set_extra_damage(victim, attacker, damage, weaponDescription[]); // Se
 /**
  * @deprecated This function are update your functions
  */ 
-#pragma deprecated Use zpsp_set_user_frozen(id, set, Float:Duration = -1.0) instead.
-native zp_set_user_frozen(id, set); // Set User Frozen
-
-/**
- * @deprecated This function are update your functions
- */ 
-#pragma deprecated Use zpsp_set_user_madness(id, set, Float:Duration = -1.0) instead.
-native zp_set_user_madness(id, set);
-
-/**
- * @deprecated This function are update your functions
- */ 
-#pragma deprecated Use zpsp_set_user_burn(id, set, Float:Duration = -1.0) instead.
-native zp_set_user_burn(id, set); // Set User Burning
-
-/**
- * @deprecated This function are update your functions
- */ 
 #pragma deprecated Use zpsp_override_user_model(id, const model, body=0, skin=0, modelindex=0)
 native zp_override_user_model(id, const newmodel[], modelindex = 0);
-
-#endif
 
 /**
  * Registers a custom zombie special class which will be added to the admin menu of ZP.
@@ -1097,9 +1086,11 @@ native zp_reset_lighting();
  * 
  * @param name		Weapon Name
  * @param wpn_type	Primary or Secondary
+ * @param uselang	Use lang in weapon name
+ * @param langkey	Weapon name Lang key in .txt lang file
  * @return			True if sucess / false otherwise
  */
-native zp_register_weapon(const name[], wpn_type);
+native zp_register_weapon(const name[], wpn_type, uselang=0, const langkey[]="ITEM_LANG_DEFAULT_KEY");
 
 /**
  * Add menu text in weapon menu
@@ -1178,7 +1169,6 @@ native zp_get_random_player(const team = 0);
  * @note You can use only in 'zp_user_model_change_pre' forward only.
  * 
  * @param string 			New Model
- * @param skip_def_custom 	Count what (0 - All Weapons (of Type); | 1 - Only Custom | 2 - Only Default)
  * @return 					True
 */
 native zp_set_model_param(const string[]);
@@ -1315,7 +1305,7 @@ native zp_force_user_class(id, spid, zombie, attacker = 0, sillentmode = 1);
 * @param Duration	Frost duration, Use -1.0 for default duration
 * @return			Return true if frost or unfrost with sucess
 */
-native zpsp_set_user_frozen(id, set, Float:Duration = -1.0);
+native zp_set_user_frozen(id, set, Float:Duration = -1.0);
 
 /**
 * Set Player Burning
@@ -1325,7 +1315,7 @@ native zpsp_set_user_frozen(id, set, Float:Duration = -1.0);
 * @param Duration	Burning duration, Use -1.0 for default duration
 * @return			Return true if burn or unburn with sucess
 */
-native zpsp_set_user_burn(id, set, Float:Duration = -1.0);
+native zp_set_user_burn(id, set, Float:Duration = -1.0);
 
 /**
 * Set Player Model
@@ -1356,7 +1346,7 @@ native zp_set_fw_param_int(int_id, value);
 * @param Duration	Madness duration, Use -1.0 for default duration
 * @return			Return true if frost or unfrost with sucess
 */
-native zpsp_set_user_madness(id, set, Float:Duration = -1.0);
+native zp_set_user_madness(id, set, Float:Duration = -1.0);
 
 /**
 * Drop user weapon from X category
@@ -1385,16 +1375,140 @@ native zp_give_item(id, const item[]);
 native zp_strip_user_weapons(id);
 
 /**
- * Forces a player to become a human (can give attacker rewards).
+ * Registers a custom class which will be added to the human classes menu of ZP.
  *
- * @note Unavailable for last default/special zombie
+ * @note The returned human class ID can be later used to identify
+ * the class when calling the zp_get_user_human_class() natives.
  *
- * @param id		Player index to be cured.
- * @param silent	If set, there will be no HUD messages or antidote sounds.
- * @param attacker	Player Attacker index
+ * @param name				Caption to display on the menu.
+ * @param info				Brief description of the class.
+ * @param hp				Initial health points. (0 - Use default human health)
+ * @param armor				User armor.
+ * @param speed				Maximum speed.
+ * @param gravity			Gravity multiplier.
+ * @param uselang			Use lang in class name/description?
+ * @param name_lang_key		Class name Lang key in .txt lang file
+ * @param info_lang_key		Class Description Lang key in .txt lang file
+ * @return					Human class index.
+ * @error					If Human Class real Name Alterady Exists
+ */
+native zp_register_human_class(const name[], const info[], hp, armor, speed, Float:gravity, use_lang=0, const name_lang_key[]="ITEM_LANG_DEFAULT_KEY", const info_lang_key[]="ITEM_LANG_DEFAULT_KEY");
+
+/**
+ * Register a Human class model.
+ *
+ * @param class				Human Class index
+ * @param player_model		Human Class Model
+ * @param body				Human Class body
+ * @param skin				Human Class skin
+ * @return					True if sucess, false otherwise
+ * @error					If Human class index are invalid
+ */
+native zp_register_hclass_model(classid, player_model[], body=0, skin=0);
+
+/**
+ * Returns a player's current human class ID.
+ *
+ * @param id		Player index.
+ * @return			Internal human class ID, or -1 if not yet chosen.
+ */
+native zp_get_user_human_class(id);
+
+/**
+ * Returns a player's next human class ID (for the next spawn).
+ *
+ * @param id	Player index.
+ * @return		Internal human class ID, or -1 if not yet chosen.
+ */
+native zp_get_next_human_class(id);
+
+/**
+ * Sets a player's next human class ID (for the next spawn).
+ *
+ * @param id		Player index.
+ * @param classid	A valid human class ID.
  * @return			True on success, false otherwise.
  */
-native zpsp_disinfect_user(id, silent = 0, attacker = 0);
+native zp_set_user_human_class(id, classid);
+
+/**
+ * Returns a human class' ID.
+ *
+ * @param name	Class name to look for.
+ * @return		Internal human class ID, or -1 if not found.
+ */
+native zp_get_human_class_id(const name[]);
+
+/**
+ * Returns a hud type index.
+ *
+ * @param id	Player index.
+ * @return		Hud index if sucess, -1 otherwise.
+ */
+native SpHudType:zp_get_user_hud_type(id);
+
+/**
+ * Get Human Class Description
+ *
+ * @param class		Human Class index
+ * @param info		Buffer to copy hclass info to
+ * @param len		Maximum length of buffer
+ * @return			True if sucess, false otherwise
+ * @error			If Human Class index are invalid
+ */
+native zp_get_human_class_info(id, info[], len);
+
+/**
+ * Get Human Class name
+ *
+ * @param class		Human Class index
+ * @param name		Buffer to copy hclass name to
+ * @param len		Maximum length of buffer
+ * @return			True if sucess, false otherwise
+ * @error			If Human Class index are invalid
+ */
+native zp_get_human_class_name(id, name[], len);
+
+/**
+ * Get Human Class realname
+ *
+ * @param class		Human Class index
+ * @param realname	Buffer to copy hclass realname to
+ * @param len		Maximum length of buffer
+ * @return			True if sucess, false otherwise
+ * @error			If Human Class index are invalid
+ */
+native zp_get_human_class_realname(id, realname[], len);
+
+/**
+ * Set Human Class Description
+ *
+ * @param class		Human Class index
+ * @param newinfo	New description
+ * @return			True if sucess, false otherwise
+ * @error			If Human Class index are invalid
+ */
+native zp_set_human_class_info(class, newinfo[]);
+
+/**
+ * Set Human Class name
+ *
+ * @param class		Human Class index
+ * @param newname	New name
+ * @return			True if sucess, false otherwise
+ * @error			If Human Class index are invalid
+ */
+native zp_set_human_class_name(class, newname[]);
+
+/**
+ * Add Text On main/spec hud
+ *
+ * @note Use in 'zp_player_show_hud' forward
+ *
+ * @param text		Text to display on the hud.
+ * @return			True if sucess, false if not sucess.
+ */
+native zp_add_hud_text(const text[]);
 
 /***************************************************
 -------------------- Forwards ----------------------
@@ -1579,6 +1693,18 @@ forward zp_zombie_class_choosed_pre(id, classid);
 forward zp_zombie_class_choosed_post(id, classid);
 
 /**
+ * Called when open Human Classes menu
+ *
+ * @note Use the ZP_PLUGIN_HANDLED for block option (Like ZP 5.0)
+ * @note Use the ZP_PLUGIN_SUPERCEDE for block showing class in menu
+ *
+ * @param id		Player index.
+ * @param classid	Human Class index.
+ */
+forward zp_human_class_choosed_pre(id, classid);
+forward zp_human_class_choosed_post(id, classid);
+
+/**
  * Called when player reset render
  *
  * @note Use the ZP_PLUGIN_SUPERCEDE for block it
@@ -1652,7 +1778,19 @@ forward zp_user_unstuck_post(id);
  * 
 */
 forward zp_weapon_selected_pre(id, wpn_type, weaponid);
-forward zp_weapon_selected_post(id, wpn_type, weaponid)
+forward zp_weapon_selected_post(id, wpn_type, weaponid);
+
+/** 
+ * Called when show main/spec hud
+ * 
+ * @note Use ZP_PLUGIN_HANDLED for block show hud
+ * 
+ * @param id			Player Index
+ * @param target		Spec target index
+ * @param hudtype		Player hudtype index
+ * 
+*/
+forward zp_player_show_hud(id, target, SpHudType:hudtype);
 
 // ZP Specials Stocks
 #include <zpsp_stocks>

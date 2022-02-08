@@ -93,6 +93,17 @@ enum
 	MODE_LNJ
 }
 
+/* Enums for Native: zp_get_user_hud_type / Forward: zp_player_show_hud */
+enum SpHudType
+{
+	HUD_DEFAULT = 0,
+	HUD_CLASSIC,
+	HUD_CENTER,
+	HUD_ANTRAX_STYLE,
+	HUD_UNDER_RADAR,
+	HUD_CENTER_ANTRAX
+}
+
 /* Winner teams for zp_round_ended() */
 enum {
 	WIN_NO_ONE = 0,

@@ -7,6 +7,8 @@
 #define zp_add_user_ammopacks(%1,%2) zp_set_user_ammo_packs(%1,zp_get_user_ammo_packs(%1)+(%2))
 #define zp_remove_user_ammopacks(%1,%2) zp_set_user_ammo_packs(%1,zp_get_user_ammo_packs(%1)-(%2))
 
+#define MODE_ARMAGEDDON MODE_LNJ
+
 /**
  * Give user infection bomb
  *
