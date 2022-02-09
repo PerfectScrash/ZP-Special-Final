@@ -294,6 +294,9 @@
 			- Added Native: zp_add_hud_text(const text[]);
 			- Added Native: zp_get_user_hud_type(id);
 			- Now all natives are using "style 0"
+			- Added Native: zp_register_zclass_painsnd(classid, const sound[])
+			- Added Native: zp_register_zclass_deathsnd(classid, const sound[])
+			- Added Native: zp_register_zmspecial_deathsnd(classid, const sound[])
 
 
 ============================================================================================================================*/
@@ -1021,6 +1024,9 @@ public plugin_natives() {
 	register_native("zp_set_human_class_info", "native_set_human_class_info");
 	register_native("zp_set_human_class_name", "native_set_human_class_name");
 	register_native("zp_get_human_class_realname", "native_get_hclass_realname");
+	register_native("zp_register_zclass_painsnd", "native_register_zclass_painsnd");
+	register_native("zp_register_zclass_deathsnd", "native_register_zclass_deathsnd");
+	register_native("zp_register_zmspecial_deathsnd", "native_register_zmspecial_deathsnd");
 }
 public plugin_precache() {
 	register_plugin(PLUGIN, VERSION, AUTHOR) // Register earlier to show up in plugins list properly after plugin disable/error at loading
@@ -10644,6 +10650,72 @@ public native_register_zombie_class(plugin_id, num_params) {
 	g_zclass_i++ // Increase registered classes counter
 	return (g_zclass_i-1); // Return id under which we registered the class
 }
+
+// Native: zp_register_zclass_painsnd(classid, const sound[])
+public native_register_zclass_painsnd(plugin_id, num_params) {
+	static classid, sound[64];
+	classid = get_param(1);
+	get_string(2, sound, charsmax(sound))
+	return register_zclass_sounds(0, classid, "PAIN SOUND", g_zclass_real_name, g_zclass_use_painsnd, g_zclass_painsnd_handle, sound)
+}
+
+// Native: zp_register_zclass_deathsnd(classid, const sound[])
+public native_register_zclass_deathsnd(plugin_id, num_params) {
+	static classid, sound[64];
+	classid = get_param(1);
+	get_string(2, sound, charsmax(sound))
+	return register_zclass_sounds(0, classid, "DEATH SOUND", g_zclass_real_name, g_zclass_use_deathsnd, g_zclass_deathsnd_handle, sound)
+}
+
+// Native: zp_register_zmspecial_deathsnd(classid, const sound[])
+public native_register_zmspecial_deathsnd(plugin_id, num_params) {
+	static classid, sound[64];
+	classid = get_param(1);
+	get_string(2, sound, charsmax(sound))
+	return register_zclass_sounds(1, classid, "DEATH SOUND", g_zm_sp_realname, g_zm_sp_use_deathsnd, g_zm_sp_deathsnd_handle, sound)
+}
+
+public register_zclass_sounds(is_sp, classid, key[], Array:realname, Array:enable_array, Array:handle_array, sound[]) {
+	if(is_sp) {
+		if(classid < MAX_SPECIALS_ZOMBIES || classid >= g_zm_specials_i) {
+			log_error(AMX_ERR_NATIVE, "[ZP] Invalid Custom Special class id (%d)", classid)
+			return false;
+		}
+	}
+	else {
+		if (classid < 0 || classid >= g_zclass_i) {
+			log_error(AMX_ERR_NATIVE, "[ZP] Invalid zombie class id (%d)", classid)
+			return false;
+		}
+	}
+
+	// Sound alterady enable
+	if (ArrayGetCell(enable_array, classid))
+		return true;
+	
+	engfunc(EngFunc_PrecacheSound, sound);
+
+	static Array:ArrSoundTemp
+	ArrSoundTemp = ArrayGetCell(handle_array, classid)
+	
+	// No sounds registered
+	if (ArrSoundTemp == Invalid_Array) {
+		ArrSoundTemp = ArrayCreate(64, 1)
+		ArraySetCell(handle_array, classid, ArrSoundTemp)
+	}
+	ArrayPushString(ArrSoundTemp, sound)
+	
+	// Save models to file
+	static real_name[32]
+	ArrayGetString(realname, classid, real_name, charsmax(real_name))
+	if(is_sp)
+		amx_save_setting_string_arr(ZP_ZOMBIECLASSES_FILE, real_name, key, ArrSoundTemp)
+	else 
+		amx_save_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, fmt("Z:%s", real_name), key, ArrSoundTemp)
+
+	return true;
+}
+
 public native_get_extra_item_id(plugin_id, num_params) { // Native: zp_get_extra_item_id
 	if(!g_pluginenabled) return -1; // ZP Special disabled
 

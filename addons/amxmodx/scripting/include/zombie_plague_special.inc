@@ -1510,6 +1510,36 @@ native zp_set_human_class_name(class, newname[]);
  */
 native zp_add_hud_text(const text[]);
 
+/**
+ * Register Zombie Class custom pain sound
+ *
+ * @param classid	Zombie Class index
+ * @param sound		Pain sound
+ * @return			True if sucess, false otherwise
+ * @error			If Zombie Class index are invalid
+ */
+native zp_register_zclass_painsnd(classid, const sound[]);
+
+/**
+ * Register Zombie Class custom death sound
+ *
+ * @param classid	Zombie Class index
+ * @param sound		Death sound
+ * @return			True if sucess, false otherwise
+ * @error			If Zombie Class index are invalid
+ */
+native zp_register_zclass_deathsnd(classid, const sound[]);
+
+/**
+ * Register Custom Special Zombie custom death sound
+ *
+ * @param classid	Special Zombie Class index
+ * @param sound		Death sound
+ * @return			True if sucess, false otherwise
+ * @error			If Custom Special Zombie index are invalid
+ */
+native zp_register_zmspecial_deathsnd(classid, const sound[]);
+
 /***************************************************
 -------------------- Forwards ----------------------
 ****************************************************/
