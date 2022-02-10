@@ -7,6 +7,11 @@
 		Added "Alien Vision" on this example class
 		With Alien vision you can see Invisible Players (Like Spy and Predators)
 		Added "Dark Map" Like in Assassin Round 
+	
+	4.5 Update:
+		Natives now are using style 0
+		Death sounds are added here
+		Ambience/Round start are using zp special 4.5 natives now
 */
 
 
@@ -16,18 +21,14 @@
 #include <zombie_plague_special>
 #include <amx_settings_api>
 
-#if ZPS_INC_VERSION < 44
-	#assert Zombie Plague Special 4.4 (Final Version) or Higher Include File Required. Download Link: https://forums.alliedmods.net/showthread.php?t=260845
+#if ZPS_INC_VERSION < 45
+	#assert Zombie Plague Special 4.5 Include File Required. Download Link: https://forums.alliedmods.net/showthread.php?t=260845
 #endif
 
-new const ZP_CUSTOMIZATION_FILE[] = "zombie_plague_special.ini"
-
-new Array:g_sound_alien, g_ambience_sounds, Array:g_sound_amb_alien_dur, Array: g_sound_ambience_alien
-
-// Default Sounds
-new const sound_alien[][] = { "zombie_plague/nemesis1.wav" }
-new const ambience_alien_sound[][] = { "zombie_plague/ambience.wav" } 
-new const ambience_alien_dur[][] = { "17" }
+/*-------------------------------------
+--> Class Configs
+--------------------------------------*/
+#define Make_Acess ADMIN_IMMUNITY 	// Flag Acess make
 
 new const sp_name[] = "Alien"
 new const sp_model[] = "zombie_source"
@@ -39,31 +40,57 @@ new const Float:sp_gravity = 0.5
 new const sp_aura_size = 10
 new const Float:sp_knockback = 0.25
 new const sp_allow_glow = 1
-new const sp_color_r =  100
-new const sp_color_g = 0
-new const sp_color_b = 200
-new const default_flag_access[] = "a"
+new sp_color_rgb[3] = { 100, 0, 200 }
 
-// Variables
-new g_gameid, g_msg_sync, cvar_minplayers, cvar_alien_damage, g_speciald, acess_flags[2]
-new const g_chance = 90
+new const sp_death_sounds[][] = {
+	"zombie_plague/zombie_die1.wav", 
+	"zombie_plague/zombie_die2.wav", 
+	"zombie_plague/zombie_die3.wav", 
+	"zombie_plague/zombie_die4.wav", 
+	"zombie_plague/zombie_die5.wav"
+}
+/*-------------------------------------
+--> Gamemode Config
+--------------------------------------*/
+new const g_chance = 90						// Gamemode chance
+#define Start_Mode_Acess ADMIN_IMMUNITY
+
+new const Alien_Lighting[] = "a" // Default Alien Light
+
+/*-------------------------------------
+--> Ambience/Round Sound Config
+--------------------------------------*/
+// Ambience enums
+enum _handler { AmbiencePrecache[64], Float:AmbienceDuration }
 
 // Enable Ambience?
-#define AMBIENCE_ENABLE 0
+const ambience_enable = 1
 
-// Default Alien Light
-#define ALIEN_LIGHTING "a"
+// Ambience sounds
+new const gamemode_ambiences[][_handler] = {	
+	// Sounds					// Duration
+	{ "zombie_plague/ambience.wav", 17.0 }
+}
 
-// Ambience sounds task
-#define TASK_AMB 3256
+// Round start sounds
+new const gamemode_round_start_snd[][] = { 
+	"zombie_plague/nemesis1.wav"
+}
 
-#define GetUserAlien(%1) (zp_get_zombie_special_class(%1) == g_speciald) 
+/*-------------------------------------
+--> Variables/Defines
+--------------------------------------*/
+new g_gameid, g_msg_sync, cvar_minplayers, cvar_alien_damage, g_special_id
+
+#define GetUserAlien(%1) (zp_get_zombie_special_class(%1) == g_special_id) 
 #define IsAlienMode() (zp_get_current_mode() == g_gameid)
 
+/*-------------------------------------
+--> Plugin registeration.
+--------------------------------------*/
 public plugin_init()
 {
-	// Plugin registeration.
-	register_plugin("[ZP] Class Alien","1.3", "[P]erfec[T] [S]cr[@]s[H]")
+	register_plugin("[ZPSp] Special Class: Alien", "1.4", "[P]erfec[T] [S]cr[@]s[H]")
 	
 	cvar_minplayers = register_cvar("zp_alien_minplayers", "2")
 	cvar_alien_damage = register_cvar("zp_alien_damage", "500")
@@ -73,89 +100,57 @@ public plugin_init()
 	g_msg_sync = CreateHudSyncObj()
 }
 
-// Game modes MUST be registered in plugin precache ONLY
-public plugin_precache()
-{
-	// Read the access flag
-	static user_access[40], buffer[250], i
-	if(!amx_load_setting_string(ZP_CUSTOMIZATION_FILE, "Access Flags", "START MODE ALIEN", user_access, charsmax(user_access))) {
-		amx_save_setting_string(ZP_CUSTOMIZATION_FILE, "Access Flags", "START MODE ALIEN", default_flag_access)
-		formatex(user_access, charsmax(user_access), default_flag_access)
-	}
-	acess_flags[0] = read_flags(user_access)
-	
-	if(!amx_load_setting_string(ZP_CUSTOMIZATION_FILE, "Access Flags", "MAKE ALIEN", user_access, charsmax(user_access))) {
-		amx_save_setting_string(ZP_CUSTOMIZATION_FILE, "Access Flags", "MAKE ALIEN", default_flag_access)
-		formatex(user_access, charsmax(user_access), default_flag_access)
-	}
-	acess_flags[1] = read_flags(user_access)
-
-	g_sound_alien = ArrayCreate(64, 1)
-	g_sound_ambience_alien = ArrayCreate(64, 1)
-	g_sound_amb_alien_dur = ArrayCreate(64, 1)
-	
-	// Load from external file
-	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Sounds", "ROUND ALIEN", g_sound_alien)
-	
-	// Precache the play sounds
-	if(ArraySize(g_sound_alien) == 0) {
-		for (i = 0; i < sizeof sound_alien; i++)
-			ArrayPushString(g_sound_alien, sound_alien[i])
-		
-		// Save to external file
-		amx_save_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Sounds", "ROUND ALIEN", g_sound_alien)
-	}
-	
-	// Precache sounds
-	for (i = 0; i < ArraySize(g_sound_alien); i++) {
-		ArrayGetString(g_sound_alien, i, buffer, charsmax(buffer))
-		precache_ambience(buffer)
-	}
-	
-	// Ambience Sounds
-	g_ambience_sounds = AMBIENCE_ENABLE
-	if(!amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "ALIEN ENABLE", g_ambience_sounds))
-		amx_save_setting_int(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "ALIEN ENABLE", g_ambience_sounds)
-	
-	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "ALIEN SOUNDS", g_sound_ambience_alien)
-	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "ALIEN DURATIONS", g_sound_amb_alien_dur)
-	
-	
-	// Save to external file
-	if(ArraySize(g_sound_ambience_alien) == 0) {
-		for (i = 0; i < sizeof ambience_alien_sound; i++)
-			ArrayPushString(g_sound_ambience_alien, ambience_alien_sound[i])
-		
-		amx_save_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "ALIEN SOUNDS", g_sound_ambience_alien)
-	}
-	if(ArraySize(g_sound_amb_alien_dur) == 0) {
-		for (i = 0; i < sizeof ambience_alien_dur; i++)
-			ArrayPushString(g_sound_amb_alien_dur, ambience_alien_dur[i])
-		
-		amx_save_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "ALIEN DURATIONS", g_sound_amb_alien_dur)
-	}
-	
-	// Ambience Sounds 
-	if(g_ambience_sounds) {
-		for (i = 0; i < ArraySize(g_sound_ambience_alien); i++) {
-			ArrayGetString(g_sound_ambience_alien, i, buffer, charsmax(buffer))
-			precache_ambience(buffer)
-		}
-	}
-	
+/*-------------------------------------
+--> Plugin Precache
+--------------------------------------*/
+public plugin_precache() {
 	// Register Special Class and Game mod
-	g_gameid = zpsp_register_gamemode(sp_name, acess_flags[0], g_chance, 0, 0)
-	g_speciald = zp_register_zombie_special(sp_name, sp_model, sp_knifemodel, sp_painsound, sp_hp, sp_speed, sp_gravity, acess_flags[1], sp_knockback, sp_aura_size, sp_allow_glow, sp_color_r, sp_color_g, sp_color_b)
+	g_gameid = zpsp_register_gamemode(sp_name, Start_Mode_Acess, g_chance, 0, 0)
+	g_special_id = zp_register_zombie_special(sp_name, sp_model, sp_knifemodel, sp_painsound, sp_hp, sp_speed, sp_gravity, Make_Acess, sp_knockback, sp_aura_size, sp_allow_glow, sp_color_rgb[0], sp_color_rgb[1], sp_color_rgb[2])
+
+	static i
+	// Register round start sound
+	for(i = 0; i < sizeof gamemode_round_start_snd; i++)
+		zp_register_start_gamemode_snd(g_gameid, gamemode_round_start_snd[i])
+
+	// Register ambience sounds
+	for (i = 0; i < sizeof gamemode_ambiences; i++)
+		zp_register_gamemode_ambience(g_gameid, gamemode_ambiences[i][AmbiencePrecache], gamemode_ambiences[i][AmbienceDuration], ambience_enable)
+
+	// Register Class Death sound
+	for (i = 0; i < sizeof sp_death_sounds; i++)
+		zp_register_zmspecial_deathsnd(g_special_id, sp_death_sounds[i])
 }
 
+/*-------------------------------------
+--> Natives
+--------------------------------------*/
 public plugin_natives() {
-	// Register Natives
-	register_native("zp_get_user_alien", "native_get_user_alien", 1)
-	register_native("zp_make_user_alien", "native_make_user_alien", 1)
-	register_native("zp_get_alien_count", "native_get_alien_count", 1)
-	register_native("zp_is_alien_round", "native_is_alien_round", 1)
+	register_native("zp_get_user_alien", "native_get_user_alien")
+	register_native("zp_make_user_alien", "native_make_user_alien")
+	register_native("zp_get_alien_count", "native_get_alien_count")
+	register_native("zp_is_alien_round", "native_is_alien_round")
 }
 
+// Native: zp_get_user_alien(id)
+public native_get_user_alien(plugin_id, num_params) 
+	return GetUserAlien(get_param(1));
+
+// Native: zp_make_user_alien(id)
+public native_make_user_alien(plugin_id, num_params) 
+	return (zp_make_user_special(get_param(1), g_special_id, GET_ZOMBIE));
+
+// Native: zp_get_alien_count()
+public native_get_alien_count(plugin_id, num_params)
+	return zp_get_special_count(GET_ZOMBIE, g_special_id);
+
+// Native: zp_is_alien_round()
+public native_is_alien_round(plugin_id, num_params)
+	return IsAlienMode();
+
+/*-------------------------------------
+--> Class Functions
+--------------------------------------*/
 // Attack Damage
 public fw_TakeDamage(victim, inflictor, attacker, Float:damage, damage_type) {
 	if(!is_user_connected(victim) || !is_user_connected(attacker))
@@ -167,109 +162,7 @@ public fw_TakeDamage(victim, inflictor, attacker, Float:damage, damage_type) {
 	return HAM_IGNORED
 }
 
-// Player spawn post
-public zp_player_spawn_post(id) {
-	if(IsAlienMode() && zp_get_user_zombie(id)) // Check for current mode
-		zp_disinfect_user(id)
-}
-
-public zp_round_started_pre(game) {
-	// Check if it is our game mode
-	if(game != g_gameid)
-		return PLUGIN_CONTINUE
-	
-	// Check for min players
-	if(zp_get_alive_players() < get_pcvar_num(cvar_minplayers))
-		return ZP_PLUGIN_HANDLED
-
-	// Start our new mode
-	start_alien_mode()
-
-	return PLUGIN_CONTINUE
-}
-
-public zp_round_started(game, id) {
-	// Check if it is our game mode
-	if(game != g_gameid)
-		return
-	
-	// Play the starting sound
-	static sound[100]
-	ArrayGetString(g_sound_alien, random_num(0, ArraySize(g_sound_alien) - 1), sound, charsmax(sound))
-	zp_play_sound(0, sound)
-	
-	// Remove ambience task affects
-	remove_task(TASK_AMB)
-	
-	// Set task to start ambience sounds
-	set_task(2.0, "start_ambience_sounds", TASK_AMB)
-}
-
-public zp_game_mode_selected(gameid, id) {
-	// Check if our game mode was called
-	if(gameid == g_gameid)
-		start_alien_mode()
-	
-	// Make the compiler happy again =)
-	return PLUGIN_CONTINUE
-}
-
-// This function contains the whole code behind this game mode
-start_alien_mode() {
-	static id, i, has_alien
-	has_alien = false
-	for (i = 1; i <= MaxClients; i++) {
-		if(!is_user_alive(i))
-			continue
-	
-		if(!GetUserAlien(i))
-			continue
-		
-		id = i	// Get Alien Index
-		has_alien = true
-		break;
-	}
-
-	if(!has_alien) {
-		id = zp_get_random_player()
-		zp_make_user_special(id, g_speciald, 1)
-	}
-	
-	static name[32]; get_user_name(id, name, charsmax(name));
-	set_hudmessage(sp_color_r, sp_color_g, sp_color_b, -1.0, 0.17, 1, 0.0, 5.0, 1.0, 1.0, -1)
-	ShowSyncHudMsg(0, g_msg_sync, "%s is an %s", name, sp_name)
-
-	zp_set_lighting(ALIEN_LIGHTING)
-		
-	// Turn the remaining players into zombies
-	for (id = 1; id <= MaxClients; id++) {
-		if(is_user_alive(id)) // Is alive
-			ScreenFade(id, 5, sp_color_r, sp_color_g, sp_color_b, 255)
-	}
-}
-
-public start_ambience_sounds() {
-	if(!g_ambience_sounds)
-		return;
-	
-	// Variables
-	static amb_sound[64], sound,  str_dur[20]
-	
-	// Select our ambience sound
-	sound = random_num(0, ArraySize(g_sound_ambience_alien)-1)
-
-	ArrayGetString(g_sound_ambience_alien, sound, amb_sound, charsmax(amb_sound))
-	ArrayGetString(g_sound_amb_alien_dur, sound, str_dur, charsmax(str_dur))
-	
-	zp_play_sound(0, amb_sound)
-	
-	// Start the ambience sounds
-	set_task(str_to_float(str_dur), "start_ambience_sounds", TASK_AMB)
-}
-public zp_round_ended() {
-	remove_task(TASK_AMB)
-}
-
+// When turn into alien
 public zp_user_infected_post(id) {
 	if(!GetUserAlien(id)) 
 		return;
@@ -279,8 +172,7 @@ public zp_user_infected_post(id) {
 }
 
 // Alien Vision
-public fw_AddToFullPack(es_handle, e, entity, host, hostflags, player, pSet)
-{
+public fw_AddToFullPack(es_handle, e, entity, host, hostflags, player, pSet) {
 	if(!is_user_alive(host) || !pev_valid(entity))
 		return FMRES_IGNORED;
 
@@ -315,49 +207,84 @@ public fw_AddToFullPack(es_handle, e, entity, host, hostflags, player, pSet)
 	return FMRES_IGNORED;
 }
 
-stock ScreenFade(id, Timer, r, g ,b, Alpha) {	
-	if(!is_user_connected(id)) 
-		return;
+/*-------------------------------------
+--> Gamemode functions
+--------------------------------------*/
+// Player spawn post
+public zp_player_spawn_post(id) {
+	if(IsAlienMode() && zp_get_user_zombie(id)) // Check for current mode
+		zp_disinfect_user(id)
+}
+
+public zp_round_started_pre(game) {
+	// Check if it is our game mode
+	if(game != g_gameid)
+		return PLUGIN_CONTINUE
 	
-	message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), _, id);
+	// Check for min players
+	if(zp_get_alive_players() < get_pcvar_num(cvar_minplayers))
+		return ZP_PLUGIN_HANDLED
+
+	// Start our new mode
+	start_alien_mode()
+
+	return PLUGIN_CONTINUE
+}
+
+public zp_game_mode_selected(gameid, id) {
+	// Check if our game mode was called
+	if(gameid == g_gameid)
+		start_alien_mode()
+	
+	// Make the compiler happy again =)
+	return PLUGIN_CONTINUE
+}
+
+// This function contains the whole code behind this game mode
+start_alien_mode() {
+	static id, i, has_alien
+	has_alien = false
+	for (i = 1; i <= MaxClients; i++) {
+		if(!is_user_alive(i))
+			continue
+	
+		if(!GetUserAlien(i))
+			continue
+		
+		id = i	// Get Alien Index
+		has_alien = true
+		break;
+	}
+
+	if(!has_alien) {
+		id = zp_get_random_player()
+		zp_make_user_special(id, g_special_id, GET_ZOMBIE)
+	}
+	
+	static name[32]; get_user_name(id, name, charsmax(name));
+	set_hudmessage(sp_color_rgb[0], sp_color_rgb[1], sp_color_rgb[2], -1.0, 0.17, 1, 0.0, 5.0, 1.0, 1.0, -1)
+	ShowSyncHudMsg(0, g_msg_sync, "%s is an %s", name, sp_name)
+
+	zp_set_lighting(Alien_Lighting)
+		
+	ScreenFade(0, 5, sp_color_rgb, 255)
+}
+
+
+/*-------------------------------------
+--> Stocks
+--------------------------------------*/
+stock ScreenFade(id, Timer, Colors[3], Alpha) {
+	if(!is_user_connected(id) && id)
+		return;
+
+	message_begin(id ? MSG_ONE_UNRELIABLE : MSG_BROADCAST, get_user_msgid("ScreenFade"), _, id);
 	write_short((1<<12) * Timer)
 	write_short(1<<12)
 	write_short(0)
-	write_byte(r)
-	write_byte(g)
-	write_byte(b)
+	write_byte(Colors[0])
+	write_byte(Colors[1])
+	write_byte(Colors[2])
 	write_byte(Alpha)
 	message_end()
-}
-
-public native_get_user_alien(id)
-	return GetUserAlien(id);
-	
-public native_make_user_alien(id)
-	return (zp_make_user_special(id, g_speciald, 1));
-	
-public native_get_alien_count()
-	return zp_get_special_count(1, g_speciald);
-	
-public native_is_alien_round()
-	return IsAlienMode();
-
-precache_ambience(sound[]) {
-	static buffer[150]
-	if(equal(sound[strlen(sound)-4], ".mp3")) {
-		if(!equal(sound, "sound/", 6) && !file_exists(sound) && !equal(sound, "media/", 6))
-			format(buffer, charsmax(buffer), "sound/%s", sound)
-		else
-			format(buffer, charsmax(buffer), "%s", sound)
-		
-		precache_generic(buffer)
-	}
-	else  {
-		if(equal(sound, "sound/", 6))
-			format(buffer, charsmax(buffer), "%s", sound[6])
-		else
-			format(buffer, charsmax(buffer), "%s", sound)
-		
-		precache_sound(buffer)
-	}
-}
+} 

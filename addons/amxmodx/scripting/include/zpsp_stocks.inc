@@ -3,11 +3,39 @@
 #endif
 #define _zpsp_stocks_included
 
-#define zp_get_user_burning(%1) zp_get_user_burn(%1);
-#define zp_add_user_ammopacks(%1,%2) zp_set_user_ammo_packs(%1,zp_get_user_ammo_packs(%1)+(%2))
-#define zp_remove_user_ammopacks(%1,%2) zp_set_user_ammo_packs(%1,zp_get_user_ammo_packs(%1)-(%2))
-
 #define MODE_ARMAGEDDON MODE_LNJ
+
+// Same thing with 'zp_get_user_burn'
+#define zp_get_user_burning(%1) zp_get_user_burn(%1)
+
+/**
+ * Reset user gravity
+ *
+ * @param id		Player Index
+ * @return			True if sucess, false otherwise.
+ */
+stock zp_reset_user_gravity(id)
+	return zp_set_user_gravity(id, -1.0);
+
+/**
+ * Give user ammo packs
+ *
+ * @param id		Player Index
+ * @param amount	Ammo pack quantity for give
+ * @return			True if sucess, false otherwise.
+ */
+stock zp_add_user_ammopacks(id, amount) 
+	return zp_set_user_ammo_packs(id, zp_get_user_ammo_packs(id)+(amount));
+
+/**
+ * Remove user ammo packs
+ *
+ * @param id		Player Index
+ * @param amount	Ammo pack quantity for remove
+ * @return			True if sucess, false otherwise.
+ */
+stock zp_remove_user_ammopacks(id, amount)
+	return zp_set_user_ammo_packs(id, zp_get_user_ammo_packs(id)-(amount));
 
 /**
  * Give user infection bomb
@@ -98,7 +126,7 @@ stock zp_get_alive_players() {
  *
  * @param id		Player index to play sound (Use 0 for everyone)
  * @param sound		Sound to play
- * @return		True on success, false otherwise.
+ * @return			True on success, false otherwise.
  */
 stock zp_play_sound(id, const sound[]) {
 	static buffer[150]
@@ -109,7 +137,6 @@ stock zp_play_sound(id, const sound[]) {
 			format(buffer, charsmax(buffer), "%s", sound)
 	
 		client_cmd(id > 0 ? id : 0, "mp3 play ^"%s^"", buffer)
-		return 1;
 
 	}
 	else {
@@ -119,9 +146,8 @@ stock zp_play_sound(id, const sound[]) {
 			format(buffer, charsmax(buffer), "%s", sound)
 			
 		client_cmd(id > 0 ? id : 0, "spk ^"%s^"", buffer)
-		return 1;
 	}
-	return 0;
+	return 1;
 }
 
 /**

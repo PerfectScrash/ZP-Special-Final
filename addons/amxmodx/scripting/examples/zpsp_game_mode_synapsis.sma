@@ -35,38 +35,51 @@
 #include <zombie_plague_special>
 #include <amx_settings_api>
 
-#if ZPS_INC_VERSION < 44
-	#assert Zombie Plague Special 4.4 (Final Version) Include File Required. Download Link: https://forums.alliedmods.net/showthread.php?t=260845
+#if ZPS_INC_VERSION < 45
+	#assert Zombie Plague Special 4.5 Include File Required. Download Link: https://forums.alliedmods.net/showthread.php?t=260845
 #endif
 
-new const ZP_CUSTOMIZATION_FILE[] = "zombie_plague_special.ini"
-
-new Array:g_sound_synapsis, g_ambience_sounds, Array:g_sound_amb_synapsis_duration, Array: g_sound_ambience_synapsis
-
-// Default Sounds
-new const sound_synapsis[][] = { "zombie_plague/nemesis1.wav", "zombie_plague/survivor1.wav" }
-new const ambience_synapsis_sound[][] = { "zombie_plague/ambience.wav" } 
-new const ambience_synapsis_dur[][] = { "17" }
-
-new const default_flag_access[] = "a" // Flag Acess
-new const g_chance = 90 // Chance in 1 on X
-
-// Variables
-new g_gameid, cvar_minplayers, cvar_ratio, cvar_weskerhp, cvar_alienhp, g_msg_sync, g_alien_id
+/*-------------------------------------
+--> Sound Config
+--------------------------------------*/
+// Ambience enums
+enum _handler { AmbiencePrecache[64], Float:AmbienceDuration }
 
 // Enable Ambience?
-#define AMBIENCE_ENABLE 0
+const ambience_enable = 1
 
-// Ambience sounds task
-#define TASK_AMB 3256
+// Ambience sounds
+new const gamemode_ambiences[][_handler] = {	
+	// Sounds					// Duration
+	{ "zombie_plague/ambience.wav", 17.0 }
+}
 
-// Make/Get User Alien
+// Round start sounds
+new const gamemode_round_start_snd[][] = { 
+	"zombie_plague/nemesis1.wav", 
+	"zombie_plague/survivor1.wav" 
+}
+
+/*-------------------------------------
+--> Gamemode Config
+--------------------------------------*/
+new const g_chance = 90						// Gamemode chance
+#define DEFAULT_FLAG_ACESS ADMIN_IMMUNITY 	// Flag Acess mode
+
+/*-------------------------------------
+--> Variables/Defines
+--------------------------------------*/
+new g_gameid, cvar_minplayers, cvar_ratio, cvar_weskerhp, cvar_alienhp, g_msg_sync, g_alien_id
+
+// Make/Get User Alien (Without use include)
 #define zp_make_user_alien(%1) zp_make_user_special(%1, g_alien_id, GET_ZOMBIE)
 #define zp_get_user_alien(%1) (zp_get_zombie_special_class(%1) == g_alien_id)
 
+/*-------------------------------------
+--> Plugin Register
+--------------------------------------*/
 public plugin_init() {
-	// Plugin registeration.
-	register_plugin("[ZP] Synapsis Mode","1.2", "@bdul! | [P]erfec[T] [S]cr[@]s[H]")
+	register_plugin("[ZP] Synapsis Mode","1.3", "@bdul! | [P]erfec[T] [S]cr[@]s[H]")
 	
 	// Register some cvars
 	cvar_minplayers = register_cvar("zp_synapsis_minplayers", "2")
@@ -78,83 +91,42 @@ public plugin_init() {
 	g_alien_id = zp_get_special_class_id(GET_ZOMBIE, "Alien") // Alien Index
 }
 
-// Game modes MUST be registered in plugin precache ONLY
+/*-------------------------------------
+--> Plugin precache
+--------------------------------------*/
 public plugin_precache()
 {
 	if(!zp_is_special_class_enable(GET_ZOMBIE, zp_get_special_class_id(GET_ZOMBIE, "Alien")) || !zp_is_special_class_enable(GET_HUMAN, WESKER)) {
 		set_fail_state("[ZPSp Synapsis] Some special class (Alien/Wesker) are disable")
 		return;
 	}
-
-	static user_access[40], access_flag, buffer[250], i
-	// Read the access flag
-	if(!amx_load_setting_string(ZP_CUSTOMIZATION_FILE, "Access Flags", "START MODE SYNAPSIS", user_access, charsmax(user_access))) {
-		amx_save_setting_string(ZP_CUSTOMIZATION_FILE, "Access Flags", "START MODE SYNAPSIS", default_flag_access)
-		formatex(user_access, charsmax(user_access), default_flag_access)
-	}
-	access_flag = read_flags(user_access)
-	
-	g_sound_synapsis = ArrayCreate(64, 1)
-	g_sound_ambience_synapsis = ArrayCreate(64, 1)
-	g_sound_amb_synapsis_duration = ArrayCreate(64, 1)
-	
-	// Load from external file
-	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Sounds", "ROUND SYNAPSIS", g_sound_synapsis)
-	
-	// Precache the play sounds
-	if(ArraySize(g_sound_synapsis) == 0) {
-		for (i = 0; i < sizeof sound_synapsis; i++)
-			ArrayPushString(g_sound_synapsis, sound_synapsis[i])
-		
-		// Save to external file
-		amx_save_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Sounds", "ROUND SYNAPSIS", g_sound_synapsis)
-	}
-	
-	// Precache sounds
-	for (i = 0; i < ArraySize(g_sound_synapsis); i++) {
-		ArrayGetString(g_sound_synapsis, i, buffer, charsmax(buffer))
-		precache_ambience(buffer)
-	}
-	
-	// Ambience Sounds
-	g_ambience_sounds = AMBIENCE_ENABLE
-	if(!amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "SYNAPSIS ENABLE", g_ambience_sounds))
-		amx_save_setting_int(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "SYNAPSIS ENABLE", g_ambience_sounds)
-	
-	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "SYNAPSIS SOUNDS", g_sound_ambience_synapsis)
-	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "SYNAPSIS DURATIONS", g_sound_amb_synapsis_duration)
-	
-	// Save to external file
-	if(ArraySize(g_sound_ambience_synapsis) == 0) {
-		for (i = 0; i < sizeof ambience_synapsis_sound; i++)
-			ArrayPushString(g_sound_ambience_synapsis, ambience_synapsis_sound[i])
-		
-		amx_save_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "SYNAPSIS SOUNDS", g_sound_ambience_synapsis)
-	}
-	
-	if(ArraySize(g_sound_amb_synapsis_duration) == 0) {
-		for (i = 0; i < sizeof ambience_synapsis_dur; i++)
-			ArrayPushString(g_sound_amb_synapsis_duration, ambience_synapsis_dur[i])
-		
-		amx_save_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "SYNAPSIS DURATIONS", g_sound_amb_synapsis_duration)
-	}
-	
-	// Ambience Sounds
-	if(g_ambience_sounds) {
-		for (i = 0; i < ArraySize(g_sound_ambience_synapsis); i++) {
-			ArrayGetString(g_sound_ambience_synapsis, i, buffer, charsmax(buffer))
-			precache_ambience(buffer)
-		}
-	}
 	
 	// Register our game mode
-	g_gameid = zpsp_register_gamemode("Synapsis", access_flag, g_chance, 0, ZP_DM_BALANCE)
+	g_gameid = zpsp_register_gamemode("Synapsis", DEFAULT_FLAG_ACESS, g_chance, 0, ZP_DM_BALANCE)
+
+	static i
+	// Register round start sound
+	for(i = 0; i < sizeof gamemode_round_start_snd; i++)
+		zp_register_start_gamemode_snd(g_gameid, gamemode_round_start_snd[i])
+
+	// Register ambience sounds
+	for (i = 0; i < sizeof gamemode_ambiences; i++)
+		zp_register_gamemode_ambience(g_gameid, gamemode_ambiences[i][AmbiencePrecache], gamemode_ambiences[i][AmbienceDuration], ambience_enable)
 }
 
+/*-------------------------------------
+--> Natives
+--------------------------------------*/
 public plugin_natives() {
-	register_native("zp_is_synapsis_round", "native_is_synapsis_round", 1)
+	register_native("zp_is_synapsis_round", "native_is_synapsis_round")
+}
+public native_is_synapsis_round(plugin_id, num_params) {
+	return (zp_get_current_mode() == g_gameid)
 }
 
+/*-------------------------------------
+--> Gamemode functions
+--------------------------------------*/
 // Player spawn post
 public zp_player_spawn_post(id) {
 	// Check for current mode
@@ -163,7 +135,6 @@ public zp_player_spawn_post(id) {
 	
 	// Check if the player is a zombie
 	if(zp_get_user_zombie(id)) {
-		
 		zp_make_user_alien(id) // Make him an alien instead
 		set_user_health(id, floatround(get_user_health(id) * get_pcvar_float(cvar_alienhp))) // Set his health
 	}
@@ -172,7 +143,6 @@ public zp_player_spawn_post(id) {
 		set_user_health(id, floatround(get_user_health(id) * get_pcvar_float(cvar_weskerhp))) // Set his health
 	}
 }
-
 public zp_game_mode_selected_pre(id, game) {
 	if(game != g_gameid)
 		return PLUGIN_CONTINUE;
@@ -210,17 +180,6 @@ public zp_round_started(game, id) {
 	// Show HUD notice
 	set_hudmessage(221, 156, 21, -1.0, 0.17, 1, 0.0, 5.0, 1.0, 1.0, -1)
 	ShowSyncHudMsg(0, g_msg_sync, "Synapsis Mode !!!")
-	
-	// Play the starting sound
-	static sound[100]
-	ArrayGetString(g_sound_synapsis, random_num(0, ArraySize(g_sound_synapsis) - 1), sound, charsmax(sound))
-	zp_play_sound(0, sound)
-	
-	// Remove ambience task affects
-	remove_task(TASK_AMB)
-	
-	// Set task to start ambience sounds
-	set_task(2.0, "start_ambience_sounds", TASK_AMB)
 }
 
 public zp_game_mode_selected(gameid, id) {
@@ -247,13 +206,11 @@ start_synapsis_mode() {
 	while (i_aliens < i_max_aliens) {
 		// Keep looping through all players
 		if((++id) > MaxClients) id = 1
-		
-		// Dead
+
 		if(!is_user_alive(id))
 			continue;
 		
-		// Random chance
-		if(random_num(1, 5) != 1) 
+		if(random_num(1, 5) != 1 || zp_get_user_alien(id)) 
 			continue;
 
 		zp_make_user_alien(id) // Make user alien
@@ -271,51 +228,5 @@ start_synapsis_mode() {
 
 		zp_make_user_wesker(id) // Turn into a wesker
 		set_user_health(id, floatround(get_user_health(id) * get_pcvar_float(cvar_weskerhp))) // Set his health
-	}
-}
-public start_ambience_sounds() {
-	if(!g_ambience_sounds)
-		return;
-	
-	// Variables
-	static amb_sound[64], sound, str_dur[20]
-	
-	// Select our ambience sound
-	sound = random_num(0, ArraySize(g_sound_ambience_synapsis)-1)
-
-	ArrayGetString(g_sound_ambience_synapsis, sound, amb_sound, charsmax(amb_sound))
-	ArrayGetString(g_sound_amb_synapsis_duration, sound, str_dur, charsmax(str_dur))
-	
-	zp_play_sound(0, amb_sound)
-	
-	// Start the ambience sounds
-	set_task(str_to_float(str_dur), "start_ambience_sounds", TASK_AMB)
-}
-public zp_round_ended(winteam) {
-	remove_task(TASK_AMB) // Stop ambience sounds on round end
-}
-
-public native_is_synapsis_round() {
-	return (zp_get_current_mode() == g_gameid)
-}
-
-precache_ambience(sound[]) {
-	static buffer[150]
-	if(equal(sound[strlen(sound)-4], ".mp3")) {
-		if(!equal(sound, "sound/", 6) && !file_exists(sound) && !equal(sound, "media/", 6))
-			format(buffer, charsmax(buffer), "sound/%s", sound)
-		else
-			format(buffer, charsmax(buffer), "%s", sound)
-		
-		precache_generic(buffer)
-	}
-	else {
-		if(equal(sound, "sound/", 6))
-			format(buffer, charsmax(buffer), "%s", sound[6])
-		else
-			format(buffer, charsmax(buffer), "%s", sound)
-		
-		
-		precache_sound(buffer)
 	}
 }

@@ -7,7 +7,35 @@
 #include <zombie_plague_special>
 #endif
 
-native zp_get_user_morpheus(id)
-native zp_make_user_morpheus(id)
-native zp_get_morpheus_count()
-native zp_is_morpheus_round()
+
+/**
+ * Returns whether a player is a morpheus.
+ *
+ * @param id	Player index.
+ * @return		True if it is, false otherwise.
+ */
+native zp_get_user_morpheus(id);
+
+/**
+ * Forces a player to become a morpheus.
+ *
+ * @note Unavailable for last default/special human
+ *
+ * @param id	Player index to turn into morpheus.
+ * @return		True on success, false otherwise.
+ */
+native zp_make_user_morpheus(id);
+
+/**
+ * Returns number of alive morpheus.
+ *
+ * @return		morpheus count.
+ */
+native zp_get_morpheus_count();
+
+/**
+ * Returns whether the current round is a morpheus round.
+ *
+ * @return		True if it is, false otherwise.
+ */
+native zp_is_morpheus_round();

@@ -907,6 +907,12 @@ native zp_set_extra_damage(victim, attacker, damage, weaponDescription[]); // Se
 native zp_override_user_model(id, const newmodel[], modelindex = 0);
 
 /**
+ * @deprecated This function are update your functions
+ */ 
+#pragma deprecated Use zp_set_param_string(const string[])
+native zp_set_model_param(const string[]);
+
+/**
  * Registers a custom zombie special class which will be added to the admin menu of ZP.
  *
  * @note The returned special class ID can be later used to identify
@@ -1163,15 +1169,15 @@ native zp_weapon_count(wpn_type, skip_def_custom);
 native zp_get_random_player(const team = 0);
 
 /**
- * Set Model forward param string.
+ * Set string parameter.
  *
- * @note Can't change param when the some plugin use native 'zp_override_user_model'.
- * @note You can use only in 'zp_user_model_change_pre' forward only.
+ * @note Can't change param when the some plugin use native 'zp_override_user_model' (only in 'zp_user_model_change_pre' forward).
+ * @note You can use only in 'zp_user_model_change_pre' and 'zp_fw_sound_play' forwards only.
  * 
- * @param string 			New Model
+ * @param string 			String
  * @return 					True
 */
-native zp_set_model_param(const string[]);
+native zp_set_param_string(const string[]);
 
 /**
  * Start a Game mode
@@ -1540,6 +1546,55 @@ native zp_register_zclass_deathsnd(classid, const sound[]);
  */
 native zp_register_zmspecial_deathsnd(classid, const sound[]);
 
+/**
+ * Register Custom Gamemode ambience sound
+ *
+ * @param gamemode	Gamemode index
+ * @param sound		Ambience sound
+ * @param Duration	Ambience duration
+ * @param enable	Enable by default?
+ * @return			True if sucess, false otherwise
+ * @error			If gamemode index are invalid
+ */
+native zp_register_gamemode_ambience(gamemode, const sound[], Float:Duration, enable=1);
+
+/**
+ * Register Custom Gamemode round start sound
+ *
+ * @param gamemode	Gamemode index
+ * @param sound		Round start sound
+ * @return			True if sucess, false otherwise
+ * @error			If gamemode index are invalid
+ */
+native zp_register_start_gamemode_snd(gamemode, const sound[]);
+
+/**
+ * Get user current default gravity
+ *
+ * @param id	Player index
+ * @return		User default gravity
+ */
+native Float:zp_get_user_default_gravity(id);
+
+/**
+ * Change user gravity
+ *
+ * @param id		Player index
+ * @param Gravity	New Gravity (-1.0 to reset a default gravity)
+ * @return			True if sucess, false otherwise
+ */
+native zp_set_user_gravity(id, Float:Gravity);
+
+/**
+ * Returns the default maximum health of a current class.
+ *
+ * @note Takes into account first zombie's HP multiplier, base health from special classes.
+ *
+ * @param id	Player index.
+ * @return		Maximum amount of health points, or -1 otherwise
+ */
+native zp_get_user_maxhealth(id);
+
 /***************************************************
 -------------------- Forwards ----------------------
 ****************************************************/
@@ -1821,6 +1876,28 @@ forward zp_weapon_selected_post(id, wpn_type, weaponid);
  * 
 */
 forward zp_player_show_hud(id, target, SpHudType:hudtype);
+
+/** 
+ * Called when plays any ambience sound
+ * 
+ * @note Works only with zp sounds
+ * @note Use ZP_PLUGIN_HANDLED for block it
+ * @note You can use 'zp_set_param_string'
+ * 
+ * @param sound			Sound to play
+ * @param is_mp3		Is sound an mp3?
+ * 
+*/
+forward zp_fw_sound_play(sound[], is_mp3);
+
+/** 
+ * Called when stop all sounds
+ * 
+ * @note Works only with zp sounds
+ * @note Use ZP_PLUGIN_HANDLED for block it
+ * 
+*/
+forward zp_fw_sound_stop();
 
 // ZP Specials Stocks
 #include <zpsp_stocks>

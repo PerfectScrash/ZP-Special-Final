@@ -43,34 +43,47 @@
 #include <zombie_plague_special>
 #include <amx_settings_api>
 
-#if ZPS_INC_VERSION < 44
-	#assert Zombie Plague Special 4.4 (Final Version) Include File Required. Download Link: https://forums.alliedmods.net/showthread.php?t=260845
+#if ZPS_INC_VERSION < 45
+	#assert Zombie Plague Special 4.5 Include File Required. Download Link: https://forums.alliedmods.net/showthread.php?t=260845
 #endif
 
-new const ZP_CUSTOMIZATION_FILE[] = "zombie_plague_special.ini"
-
-new Array:g_sound_night, g_ambience_sounds, Array:g_sound_amb_night_dur, Array: g_sound_amb_night
-
-// Default Sounds
-new const sound_nightmare[][] = { "zombie_plague/nemesis1.wav", "zombie_plague/survivor1.wav" }
-new const ambience_night_sound[][] = { "zombie_plague/ambience.wav" } 
-new const ambience_night_dur[][] = { "17" }
-
-// Variables
-new g_gameid, cvar_minplayers, cvar_ratio, cvar_sniperhp, cvar_assahp, g_msg_sync, cvar_nemhp, cvar_survhp
-
-new const default_flag_access[] = "a"
-new const g_chance = 90
+/*-------------------------------------
+--> Sound Config
+--------------------------------------*/
+// Ambience enums
+enum _handler { AmbiencePrecache[64], Float:AmbienceDuration }
 
 // Enable Ambience?
-#define AMBIENCE_ENABLE 0
+const ambience_enable = 1
 
-// Ambience sounds task
-#define TASK_AMB 3256
+// Ambience sounds
+new const gamemode_ambiences[][_handler] = {	
+	// Sounds					// Duration
+	{ "zombie_plague/ambience.wav", 17.0 }
+}
 
+// Round start sounds
+new const gamemode_round_start_snd[][] = { 
+	"zombie_plague/nemesis1.wav", 
+	"zombie_plague/survivor1.wav" 
+}
+
+/*-------------------------------------
+--> Gamemode Config
+--------------------------------------*/
+new const g_chance = 90						// Gamemode chance
+#define DEFAULT_FLAG_ACESS ADMIN_IMMUNITY 	// Flag Acess mode
+
+/*-------------------------------------
+--> Variables
+--------------------------------------*/
+new g_gameid, cvar_minplayers, cvar_ratio, cvar_sniperhp, cvar_assahp, g_msg_sync, cvar_nemhp, cvar_survhp
+
+/*-------------------------------------
+--> Plugin Register
+--------------------------------------*/
 public plugin_init() {
-	// Plugin registeration.
-	register_plugin("[ZP] Nightmare Mode","1.2", "@bdul! | [P]erfec[T] [S]cr[@]s[H]")
+	register_plugin("[ZP] Nightmare Mode","1.3", "@bdul! | [P]erfec[T] [S]cr[@]s[H]")
 	
 	// Register some cvars
 	cvar_minplayers = register_cvar("zp_night_minplayers", "2")
@@ -84,83 +97,44 @@ public plugin_init() {
 	g_msg_sync = CreateHudSyncObj()
 }
 
-// Game modes MUST be registered in plugin precache ONLY
+/*-------------------------------------
+--> Plugin Precache
+--------------------------------------*/
 public plugin_precache() {
 	if(!zp_is_special_class_enable(GET_ZOMBIE, NEMESIS) || !zp_is_special_class_enable(GET_ZOMBIE, ASSASSIN)
 	|| !zp_is_special_class_enable(GET_HUMAN, SURVIVOR) || !zp_is_special_class_enable(GET_HUMAN, SNIPER)) {
 		set_fail_state("[ZPSp Nightmare mode] Some special class (Nemesis/Survivor/Sniper/Assassin) are disable")
 		return;
 	}
-
-	// Read the access flag
-	static user_access[40], buffer[250], i, access_flag
-	if(!amx_load_setting_string(ZP_CUSTOMIZATION_FILE, "Access Flags", "START MODE NIGHTMARE", user_access, charsmax(user_access))) {
-		amx_save_setting_string(ZP_CUSTOMIZATION_FILE, "Access Flags", "START MODE NIGHTMARE", default_flag_access)
-		formatex(user_access, charsmax(user_access), default_flag_access)
-	}
-	
-	access_flag = read_flags(user_access)
-	
-	g_sound_night = ArrayCreate(64, 1)
-	g_sound_amb_night = ArrayCreate(64, 1)
-	g_sound_amb_night_dur = ArrayCreate(64, 1)
-	
-	// Load from external file
-	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Sounds", "ROUND NIGHTMARE", g_sound_night)
-	
-	// Precache the play sounds
-	if (ArraySize(g_sound_night) == 0) {
-		for (i = 0; i < sizeof sound_nightmare; i++)
-			ArrayPushString(g_sound_night, sound_nightmare[i])
-		
-		// Save to external file
-		amx_save_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Sounds", "ROUND NIGHTMARE", g_sound_night)
-	}
-	
-	// Precache sounds
-	for (i = 0; i < ArraySize(g_sound_night); i++) {
-		ArrayGetString(g_sound_night, i, buffer, charsmax(buffer))
-		precache_ambience(buffer)
-	}
-	
-	// Ambience Sounds
-	g_ambience_sounds = AMBIENCE_ENABLE
-	if(!amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "NIGHTMARE ENABLE", g_ambience_sounds))
-		amx_save_setting_int(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "NIGHTMARE ENABLE", g_ambience_sounds)
-	
-	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "NIGHTMARE SOUNDS", g_sound_amb_night)
-	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "NIGHTMARE DURATIONS", g_sound_amb_night_dur)
-	
-	// Save to external file
-	if (ArraySize(g_sound_amb_night) == 0) {
-		for (i = 0; i < sizeof ambience_night_sound; i++)
-			ArrayPushString(g_sound_amb_night, ambience_night_sound[i])
-		
-		amx_save_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "NIGHTMARE SOUNDS", g_sound_amb_night)
-	}
-	if (ArraySize(g_sound_amb_night_dur) == 0) {
-		for (i = 0; i < sizeof ambience_night_dur; i++)
-			ArrayPushString(g_sound_amb_night_dur, ambience_night_dur[i])
-		
-		amx_save_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "NIGHTMARE DURATIONS", g_sound_amb_night_dur)
-	}
-	
-	// Ambience Sounds
-	if (g_ambience_sounds) {
-		for (i = 0; i < ArraySize(g_sound_amb_night); i++) {
-			ArrayGetString(g_sound_amb_night, i, buffer, charsmax(buffer))
-			precache_ambience(buffer)
-		}
-	}
 	
 	// Register our game mode
-	g_gameid = zpsp_register_gamemode("Nightmare", access_flag, g_chance, 0, ZP_DM_BALANCE)
+	g_gameid = zpsp_register_gamemode("Nightmare", DEFAULT_FLAG_ACESS, g_chance, 0, ZP_DM_BALANCE)
+
+	static i
+	// Register round start sound
+	for(i = 0; i < sizeof gamemode_round_start_snd; i++)
+		zp_register_start_gamemode_snd(g_gameid, gamemode_round_start_snd[i])
+
+	// Register ambience sounds
+	for (i = 0; i < sizeof gamemode_ambiences; i++)
+		zp_register_gamemode_ambience(g_gameid, gamemode_ambiences[i][AmbiencePrecache], gamemode_ambiences[i][AmbienceDuration], ambience_enable)
 }
 
+/*-------------------------------------
+--> Natives
+--------------------------------------*/
 public plugin_natives() {
-	register_native("zp_is_nightmare_round", "native_is_nightmare_round", 1)
+	register_native("zp_is_nightmare_round", "native_is_nightmare_round")
 }
 
+// Native: zp_is_nightmare_round()
+public native_is_nightmare_round(plugin_id, num_params) {
+	return (zp_get_current_mode() == g_gameid);
+}
+
+/*-------------------------------------
+--> Gamemode functions
+--------------------------------------*/
 // Player spawn post
 public zp_player_spawn_post(id) {
 	// Check for current mode
@@ -221,17 +195,6 @@ public zp_round_started(game, id) {
 	// Show HUD notice
 	set_hudmessage(255, 0, 100, -1.0, 0.17, 1, 0.0, 5.0, 1.0, 1.0, -1)
 	ShowSyncHudMsg(0, g_msg_sync, "Nightmare Mode !!!")
-	
-	// Play the starting sound
-	static sound[100]
-	ArrayGetString(g_sound_night, random_num(0, ArraySize(g_sound_night) - 1), sound, charsmax(sound))
-	zp_play_sound(0, sound)
-	
-	// Remove ambience task affects
-	remove_task(TASK_AMB)
-	
-	// Set task to start ambience sounds
-	set_task(2.0, "start_ambience_sounds", TASK_AMB)
 }
 
 public zp_game_mode_selected(gameid, id) {
@@ -285,28 +248,9 @@ start_nightmare_mode() {
 	}
 }
 
-public start_ambience_sounds() {
-	if (!g_ambience_sounds)
-		return;
-	
-	// Variables
-	static amb_sound[64], sound,  str_dur[20]
-	
-	// Select our ambience sound
-	sound = random_num(0, ArraySize(g_sound_amb_night)-1)
-
-	ArrayGetString(g_sound_amb_night, sound, amb_sound, charsmax(amb_sound))
-	ArrayGetString(g_sound_amb_night_dur, sound, str_dur, charsmax(str_dur))
-	
-	zp_play_sound(0, amb_sound)
-	
-	// Start the ambience sounds
-	set_task(str_to_float(str_dur), "start_ambience_sounds", TASK_AMB)
-}
-public zp_round_ended(winteam) {
-	remove_task(TASK_AMB) // Stop ambience sounds on round end
-}
-
+/*-------------------------------------
+--> Stocks
+--------------------------------------*/
 stock zp_get_alive_specials(user_class) {
 	static special, id
 	special = 0
@@ -317,28 +261,4 @@ stock zp_get_alive_specials(user_class) {
 			special++
 	}
 	return special;
-}
-
-public native_is_nightmare_round() {
-	return (zp_get_current_mode() == g_gameid)
-}
-
-precache_ambience(sound[]) {
-	static buffer[150]
-	if(equal(sound[strlen(sound)-4], ".mp3")) {
-		if(!equal(sound, "sound/", 6) && !file_exists(sound) && !equal(sound, "media/", 6))
-			format(buffer, charsmax(buffer), "sound/%s", sound)
-		else
-			format(buffer, charsmax(buffer), "%s", sound)
-		
-		precache_generic(buffer)
-	}
-	else  {
-		if(equal(sound, "sound/", 6))
-			format(buffer, charsmax(buffer), "%s", sound[6])
-		else
-			format(buffer, charsmax(buffer), "%s", sound)
-		
-		precache_sound(buffer)
-	}
 }

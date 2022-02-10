@@ -285,7 +285,6 @@
 			- Added Native: zp_menu_textadd(const text[])
 			- Updated Native: zp_register_weapon(const name[], wpn_type, uselang=0, const langkey[] = "ITEM_LANG_DEFAULT_KEY")
 			- Added Cvar: zp_choose_hclass_instantanly
-			- Added "FLAGS" option in "zpsp_gamemodes.ini" and in "zpsp_special_classes.ini"
 			- Improved "save_custonomization" system
 			- Improved model/sound system for any external class
 			- Updated Native: zp_disinfect_user(id, silent, attacker) 
@@ -297,7 +296,12 @@
 			- Added Native: zp_register_zclass_painsnd(classid, const sound[])
 			- Added Native: zp_register_zclass_deathsnd(classid, const sound[])
 			- Added Native: zp_register_zmspecial_deathsnd(classid, const sound[])
-
+			- Added Native: zp_register_gamemode_ambience(gamemode, const sound[], Float:Duration, enable=1)
+			- Added Native: zp_get_user_default_gravity(id)
+			- Added Native: zp_set_user_gravity(id, Float:Gravity)
+			- Added Native: zp_set_param_string(const string[])
+			- Added Native: zp_get_user_maxhealth(id)
+			- Added Native: zp_register_start_gamemode_snd(id, const sound[])
 
 ============================================================================================================================*/
 
@@ -625,20 +629,22 @@ const KEYSMENU = MENU_KEY_1|MENU_KEY_2|MENU_KEY_3|MENU_KEY_4|MENU_KEY_5|MENU_KEY
 enum { // Ambience Sounds
 	AMBIENCE_SOUNDS_INFECTION = 0,
 	AMBIENCE_SOUNDS_NEMESIS,
-	AMBIENCE_SOUNDS_SURVIVOR,
-	AMBIENCE_SOUNDS_SWARM,
-	AMBIENCE_SOUNDS_LNJ,
-	AMBIENCE_SOUNDS_PLAGUE,
-	AMBIENCE_SOUNDS_SNIPER,
 	AMBIENCE_SOUNDS_ASSASSIN,
-	AMBIENCE_SOUNDS_BERSERKER,
 	AMBIENCE_SOUNDS_PREDATOR,
-	AMBIENCE_SOUNDS_WESKER,
-	AMBIENCE_SOUNDS_SPY,
 	AMBIENCE_SOUNDS_BOMBARDIER,
 	AMBIENCE_SOUNDS_DRAGON,
+	AMBIENCE_SOUNDS_SURVIVOR,
+	AMBIENCE_SOUNDS_SNIPER,
+	AMBIENCE_SOUNDS_BERSERKER,
+	AMBIENCE_SOUNDS_WESKER,
+	AMBIENCE_SOUNDS_SPY,
+	AMBIENCE_SOUNDS_SWARM,
+	AMBIENCE_SOUNDS_MULTI,
+	AMBIENCE_SOUNDS_PLAGUE,
+	AMBIENCE_SOUNDS_LNJ,
 	MAX_AMBIENCE_SOUNDS
 };
+
 enum { // Admin menu actions
 	ACTION_ZOMBIEFY_HUMANIZE = 0,
 	ACTION_MAKE_NEMESIS,
@@ -746,6 +752,8 @@ enum { // Forward Enum
 	H_CLASS_CHOOSED_PRE,
 	H_CLASS_CHOOSED_POST,
 	PLAYER_SHOW_HUD,
+	PLAY_SOUND,
+	STOP_SOUND,
 	MAX_FORWARDS_NUM
 };
 new g_forwards[MAX_FORWARDS_NUM], g_fwDummyResult;
@@ -759,6 +767,7 @@ new db_name[MAX_STATS_SAVED][32], db_ammopacks[MAX_STATS_SAVED], db_zombieclass[
 
 // Custom Game Modes vars
 new Array:g_gm_realname, Array:g_gm_name, Array:g_gm_enable, Array:g_gm_enable_on_ze_map, Array:g_gm_flag, Array:g_gm_chance, Array:g_gm_allow, Array:g_gm_dm, Array:g_gm_respawn_limit, Array:g_gm_name_by_lang, Array:g_gm_lang_key, g_gamemodes_i = MAX_GAME_MODES;
+new Array:g_gm_use_amb, Array:g_gm_amb_enable, Array:g_gm_amb_sound_handle, Array:g_gm_amb_duration_handle, Array:g_gm_rstart_snd_handler, Array:g_gm_use_rstart_snd
 #define isCustomMode() (g_currentmode >= MAX_GAME_MODES)
 
 // Extra Items vars
@@ -846,7 +855,7 @@ public plugin_natives() {
 	register_native("zp_set_user_zombie_class", "native_set_user_zombie_class");
 	register_native("zp_get_user_ammo_packs", "native_get_user_ammo_packs");
 	register_native("zp_set_user_ammo_packs", "native_set_user_ammo_packs");
-	register_native("zp_get_zombie_maxhealth", "native_get_zombie_maxhealth");
+	register_native("zp_get_zombie_maxhealth", "native_get_user_maxhealth");
 	register_native("zp_get_user_batteries", "native_get_user_batteries");
 	register_native("zp_set_user_batteries", "native_set_user_batteries");
 	register_native("zp_get_user_nightvision", "native_get_user_nightvision");
@@ -1027,6 +1036,13 @@ public plugin_natives() {
 	register_native("zp_register_zclass_painsnd", "native_register_zclass_painsnd");
 	register_native("zp_register_zclass_deathsnd", "native_register_zclass_deathsnd");
 	register_native("zp_register_zmspecial_deathsnd", "native_register_zmspecial_deathsnd");
+	register_native("zp_register_gamemode_ambience", "native_register_gamemode_ambience");
+	register_native("zp_get_user_default_gravity", "native_get_user_default_gravity");
+	register_native("zp_set_user_gravity", "native_set_user_gravity");
+	register_native("zp_set_param_string", "native_set_fw_param_string");
+	register_native("zp_get_user_maxhealth", "native_get_user_maxhealth");
+	register_native("zp_register_start_gamemode_snd", "native_register_start_gamemode_snd");
+
 }
 public plugin_precache() {
 	register_plugin(PLUGIN, VERSION, AUTHOR) // Register earlier to show up in plugins list properly after plugin disable/error at loading
@@ -1056,7 +1072,7 @@ public plugin_precache() {
 	}
 	for(i = 0; i < MAX_AMBIENCE_SOUNDS; i++) {
 		sound_ambience[i] = ArrayCreate(64, 1)
-		sound_ambience_duration[i] = ArrayCreate(64, 1)
+		sound_ambience_duration[i] = ArrayCreate(1, 1)
 	}
 	for(i = 2; i < MAX_GAME_MODES; i++) sound_mod[i] = ArrayCreate(64, 1);
 	for(i = 0; i < MAX_ARRAY_SOUNDS; i++) ar_sound[i] = ArrayCreate(64, 1);
@@ -1099,6 +1115,12 @@ public plugin_precache() {
 	g_gm_enable = ArrayCreate(1, 1);
 	g_gm_enable_on_ze_map = ArrayCreate(1, 1);
 	g_gm_respawn_limit = ArrayCreate(1, 1);
+	g_gm_use_amb = ArrayCreate(1, 1);
+	g_gm_amb_enable = ArrayCreate(1, 1);
+	g_gm_amb_sound_handle = ArrayCreate(1, 1);
+	g_gm_amb_duration_handle = ArrayCreate(1, 1);
+	g_gm_rstart_snd_handler = ArrayCreate(1, 1);
+	g_gm_use_rstart_snd = ArrayCreate(1, 1);
 	g_extraitem_name = ArrayCreate(32, 1);
 	g_extraitem_realname = ArrayCreate(32, 1);
 	g_extraitem_name_by_lang = ArrayCreate(1, 1);
@@ -2093,6 +2115,8 @@ public plugin_init() {
 	g_forwards[H_CLASS_CHOOSED_PRE] = CreateMultiForward("zp_human_class_choosed_pre", ET_CONTINUE, FP_CELL, FP_CELL)
 	g_forwards[H_CLASS_CHOOSED_POST] = CreateMultiForward("zp_human_class_choosed_post", ET_IGNORE, FP_CELL, FP_CELL)
 	g_forwards[PLAYER_SHOW_HUD] = CreateMultiForward("zp_player_show_hud", ET_CONTINUE, FP_CELL, FP_CELL, FP_CELL)
+	g_forwards[PLAY_SOUND] = CreateMultiForward("zp_fw_sound_play", ET_CONTINUE, FP_STRING, FP_CELL);
+	g_forwards[STOP_SOUND] = CreateMultiForward("zp_fw_sound_stop", ET_CONTINUE);
 
 	load_spawns() // Collect random spawn points
 	
@@ -2199,7 +2223,6 @@ public logevent_round_end() { // Log Event Round End
 	
 	remove_task(TASK_WELCOMEMSG)
 	remove_task(TASK_MAKEZOMBIE) // Stop old tasks (if any)
-	remove_task(TASK_AMBIENCESOUNDS)
 	ambience_sound_stop()
 	
 	// Show HUD notice, play win sound, update team scores...
@@ -5890,7 +5913,7 @@ start_multi_mode(id, mode) { // Start multiple infection mode
 		set_hudmessage(200, 50, 0, HUD_EVENT_X, HUD_EVENT_Y, 1, 0.0, 5.0, 1.0, 1.0, -1)
 		ShowSyncHudMsg(0, g_MsgSync[0], "%L", LANG_PLAYER, "NOTICE_MULTI")
 		
-		if(g_ambience_sounds[AMBIENCE_SOUNDS_INFECTION]) { // Start ambience sounds
+		if(g_ambience_sounds[AMBIENCE_SOUNDS_MULTI]) { // Start ambience sounds
 			remove_task(TASK_AMBIENCESOUNDS)
 			set_task(2.0, "ambience_sound_effects", TASK_AMBIENCESOUNDS)
 		}
@@ -6219,27 +6242,7 @@ start_custom_mode() { // Start custom game mode
 				continue; // Give other game modes a chance
 			
 			else { // Game mode has accepted the conditions
-				// Current game mode and last game mode are equal to the game mode id
-				g_currentmode = game
-				g_lastmode = game
-
-				g_allowinfection = (ArrayGetCell(g_gm_allow, (game - MAX_GAME_MODES)) == 1) ? true : false // Check whether or not to allow infection during this game mode
-				g_deathmatchmode = ArrayGetCell(g_gm_dm, (game - MAX_GAME_MODES)) // Check the death match mode required by the game mode
-				g_modestarted = true // Our custom game mode has fully started
-				
-				ExecuteForward(g_forwards[ROUND_START], g_fwDummyResult, game, 0) // Execute our round start forward with the game mode id
-				
-				
-				static id // Turn the remaining players into humans [BUGFIX]
-				for(id = 1; id <= MaxPlayers; id++) {
-					update_team(id) // Only those of them who arent zombies or survivor
-
-					if(g_zombie[id] && g_escape_map) { // Escape Map Support
-						if(get_pcvar_num(cvar_randspawn)) do_random_spawn(id) // random spawn (including CSDM)
-						else do_random_spawn(id, 1) // regular spawn
-					}
-				}
-				remove_task(TASK_MAKEZOMBIE) // Fix Bug
+				command_custom_game(game, 0) // Start Custom mode
 				break; // Stop the loop and prevent other game modes from being given a chance [BUGFIX]
 			}
 		}
@@ -7010,13 +7013,13 @@ load_customization_from_files() {
 	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "End Round Sound", "WIN NO ONE", sound_win_no_one)
 
 	// Ambience Sounds
-	new ambience_snd_names[MAX_AMBIENCE_SOUNDS][] = { "INFECTION", "NEMESIS", "SURVIVOR", "SWARM", "LNJ", "PLAGUE", "SNIPER", "ASSASSIN",
-	"BERSERKER", "PREDATOR", "WESKER", "SPY", "BOMBARDIER", "DRAGON" }
+	new ambience_snd_names[MAX_AMBIENCE_SOUNDS][] = { "INFECTION", "NEMESIS", "ASSASSIN", "PREDATOR", "BOMBARDIER", "DRAGON", "SURVIVOR", "SNIPER", "BERSERKER", "WESKER", "SPY", "SWARM", "MULTI", "PLAGUE", "LNJ" }
+
 	for(i = 0; i < MAX_AMBIENCE_SOUNDS; i++) {
 		amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s ENABLE", ambience_snd_names[i]), g_ambience_sounds[i])
 		if(g_ambience_sounds[i]) {
 			amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s SOUNDS", ambience_snd_names[i]), sound_ambience[i])
-			amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s DURATIONS", ambience_snd_names[i]), sound_ambience_duration[i])
+			amx_load_setting_float_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s DURATIONS", ambience_snd_names[i]), sound_ambience_duration[i])
 		}
 	}
 
@@ -7114,7 +7117,6 @@ load_customization_from_files() {
 			ArrayPushCell(g_zm_sp_use_deathsnd, false)
 		}
 	}
-	ArrayDestroy(ArrDeathSnd)
 }
 
 public register_ham_czbots(id) { // Register Ham Forwards for CZ bots
@@ -7347,36 +7349,34 @@ public thunderclap() { // Thunderclap task
 	else if(!task_exists(TASK_THUNDER)) set_task(0.1, "thunderclap", TASK_THUNDER, _, _, "b") // Lighting cycle start?
 }
 public ambience_sound_effects(taskid) { // Ambience Sound Effects Task
-	static sound[64], iRand, duration, str_dur[32], ambience_id // Play a random sound depending on the round
+	static sound[64], iRand, Float:duration// Play a random sound depending on the round
+	static Array:ArrDuration, Array:ArrSound
 
-	switch (g_currentmode) { // Check for current game mode
-		case MODE_INFECTION: ambience_id = AMBIENCE_SOUNDS_INFECTION
-		case MODE_NEMESIS: ambience_id = AMBIENCE_SOUNDS_NEMESIS
-		case MODE_ASSASSIN: ambience_id = AMBIENCE_SOUNDS_ASSASSIN
-		case MODE_PREDATOR: ambience_id = AMBIENCE_SOUNDS_PREDATOR
-		case MODE_BOMBARDIER: ambience_id = AMBIENCE_SOUNDS_BOMBARDIER
-		case MODE_SURVIVOR: ambience_id = AMBIENCE_SOUNDS_SURVIVOR
-		case MODE_SNIPER: ambience_id = AMBIENCE_SOUNDS_SNIPER
-		case MODE_BERSERKER: ambience_id = AMBIENCE_SOUNDS_BERSERKER
-		case MODE_WESKER: ambience_id = AMBIENCE_SOUNDS_WESKER
-		case MODE_SPY: ambience_id = AMBIENCE_SOUNDS_SPY
-		case MODE_DRAGON: ambience_id = AMBIENCE_SOUNDS_DRAGON
-		case MODE_SWARM: ambience_id = AMBIENCE_SOUNDS_SWARM
-		case MODE_MULTI: ambience_id = AMBIENCE_SOUNDS_INFECTION
-		case MODE_PLAGUE: ambience_id = AMBIENCE_SOUNDS_PLAGUE
-		case MODE_LNJ: ambience_id = AMBIENCE_SOUNDS_LNJ
+	if(g_currentmode < MAX_GAME_MODES) {
+		ArrSound = sound_ambience[g_currentmode-1];
+		ArrDuration = sound_ambience_duration[g_currentmode-1];
+	}
+	else {
+		ArrSound = ArrayGetCell(g_gm_amb_sound_handle, g_currentmode-MAX_GAME_MODES)
+		ArrDuration = ArrayGetCell(g_gm_amb_duration_handle, g_currentmode-MAX_GAME_MODES)
 	}
 
-	iRand = random_num(0, ArraySize(sound_ambience[ambience_id]) - 1)
-	ArrayGetString(sound_ambience[ambience_id], iRand, sound, charsmax(sound))
-	ArrayGetString(sound_ambience_duration[ambience_id], iRand, str_dur, charsmax(str_dur))
-	duration = str_to_num(str_dur)
+	iRand = random_num(0, ArraySize(ArrSound) - 1)
+	ArrayGetString(ArrSound, iRand, sound, charsmax(sound))
+	duration = Float:ArrayGetCell(ArrDuration, iRand);
 
 	PlaySound(sound) // Play it on clients
-	set_task(float(duration), "ambience_sound_effects", TASK_AMBIENCESOUNDS) // Set the task for when the sound is done playing
+	set_task(duration, "ambience_sound_effects", TASK_AMBIENCESOUNDS) // Set the task for when the sound is done playing
 }
 
-ambience_sound_stop() client_cmd(0, "mp3 stop; stopsound"); // Ambience Sounds Stop Task
+public ambience_sound_stop() {
+	ExecuteForward(g_forwards[STOP_SOUND], g_fwDummyResult); // Sound Stop pre
+	if(g_fwDummyResult >= ZP_PLUGIN_HANDLED)
+		return;
+
+	remove_task(TASK_AMBIENCESOUNDS)
+	client_cmd(0, "mp3 stop; stopsound"); // Ambience Sounds Stop Task
+}
 
 public flashlight_charge(taskid) { // Flashlight Charge Task
 	// Drain or charge?
@@ -8362,14 +8362,14 @@ command_custom_game(gameid, id) { // Admin command for a custom game mode
 	static buffer[32], gm_id, i; 
 
 	gm_id = (gameid - MAX_GAME_MODES)
-
-	if(ArrayGetCell(g_gm_name_by_lang, gm_id)) {
-		ArrayGetString(g_gm_lang_key, gm_id, buffer, charsmax(buffer)) // Retrieve the game mode's name
-		formatex(buffer, charsmax(buffer), "%L", LANG_PLAYER, buffer)
-	}
-	else ArrayGetString(g_gm_name, gm_id, buffer, charsmax(buffer)) // Retrieve the game mode's name
 	
 	if(id != 0) {
+		if(ArrayGetCell(g_gm_name_by_lang, gm_id)) {
+			ArrayGetString(g_gm_lang_key, gm_id, buffer, charsmax(buffer)) // Retrieve the game mode's name
+			formatex(buffer, charsmax(buffer), "%L", LANG_PLAYER, buffer)
+		}
+		else ArrayGetString(g_gm_name, gm_id, buffer, charsmax(buffer)) // Retrieve the game mode's name
+
 		switch (get_pcvar_num(cvar_showactivity)) { // Show activity?
 			case 1: client_print_color(0, print_team_default, "^3*ADMIN*^1 - %L %s", LANG_PLAYER, "MENU_ADMIN2_CUSTOM", buffer)
 			case 2: client_print_color(0, print_team_default, "^4*ADMIN*^1 %s ^3- %L %s", g_playername[id], LANG_PLAYER, "MENU_ADMIN2_CUSTOM", buffer)
@@ -8388,17 +8388,32 @@ command_custom_game(gameid, id) { // Admin command for a custom game mode
 			log_to_file(filename, logdata)
 		}
 	}
-	
+
 	
 	remove_task(TASK_MAKEZOMBIE) // Remove make a zombie task
 	g_newround = false // No more a new round
 	g_currentmode = gameid // Current game mode and last game mode are equal to the game mode id
 	g_lastmode = gameid
-	g_allowinfection = (ArrayGetCell(g_gm_allow, (gameid - MAX_GAME_MODES)) == 1) ? true : false // Check whether or not to allow infection during this game mode	
-	g_deathmatchmode = ArrayGetCell(g_gm_dm, (gameid - MAX_GAME_MODES)) // Check the death match mode required by the game mode
+	g_allowinfection = (ArrayGetCell(g_gm_allow, gm_id) == 1) ? true : false // Check whether or not to allow infection during this game mode	
+	g_deathmatchmode = ArrayGetCell(g_gm_dm, gm_id) // Check the death match mode required by the game mode
 	g_modestarted = true // Our custom game mode has fully started
+
+	if(ArrayGetCell(g_gm_use_rstart_snd, gm_id)) {
+		static Array:ArrSound, szSound[64];
+		ArrSound = ArrayGetCell(g_gm_rstart_snd_handler, gm_id)
+		ArrayGetString(ArrSound, random_num(0, ArraySize(ArrSound)-1), szSound, charsmax(szSound))
+		PlaySound(szSound)
+	}
+
+	if(ArrayGetCell(g_gm_amb_enable, gm_id) > 0) { // Start ambience sounds
+		remove_task(TASK_AMBIENCESOUNDS)
+		set_task(2.0, "ambience_sound_effects", TASK_AMBIENCESOUNDS)
+	}
+
 	ExecuteForward(g_forwards[ROUND_START], g_fwDummyResult, gameid, 0) // Execute our round start forward with the game mode id [BUGFIX]
-	ExecuteForward(g_forwards[GAME_MODE_SELECTED], g_fwDummyResult, gameid, id) // Execute our game mode selected forward
+	
+	if(id != 0)
+		ExecuteForward(g_forwards[GAME_MODE_SELECTED], g_fwDummyResult, gameid, id) // Execute our game mode selected forward
 	
 	for(i = 1; i <= MaxPlayers; i++) {
 		update_team(i)	// Fix Team Change
@@ -8496,6 +8511,49 @@ public native_get_user_next_class(plugin_id, num_params) { // Native: zp_get_use
 	if(!is_user_valid(id)) return -1;
 	return g_zombieclassnext[id];
 }
+// Native: zp_get_user_default_gravity(id)
+public Float:native_get_user_default_gravity(plugin_id, num_params) {
+	static id; id = get_param(1);
+	return get_gravity_default(id);
+}
+// Native: zp_set_user_gravity(id, Float:Gravity)
+public native_set_user_gravity(plugin_id, num_params) {
+	static id, Float:Gravity;
+	id = get_param(1);
+	Gravity = get_param_f(2);
+	if(!is_user_valid(id)) return false;
+	if(!g_isalive[id]) return false;
+
+	if(Gravity < 0.0) // Reset if Gravity are less than 0
+		Gravity = get_gravity_default(id);
+
+	set_pev(id, pev_gravity, Gravity)
+
+	return true;
+}
+public Float:get_gravity_default(id) {
+	if(!is_user_valid(id)) return -1.0;
+	if(!g_isalive[id]) return -1.0;
+
+	if(g_zombie[id]) {
+		if(isCustomSpecialZombie(id))
+			return Float:ArrayGetCell(g_zm_sp_gravity, g_zm_special[id]-MAX_SPECIALS_ZOMBIES)
+		else if(isDefaultSpecialZombie(id))
+			return get_pcvar_float(cvar_zmgravity[g_zm_special[id]])
+		else if(g_zombieclass[id] != NULL_CLASS)
+			return Float:ArrayGetCell(g_zclass_grav, g_zombieclass[id])
+	}
+	else {
+		if(isCustomSpecialHuman(id))
+			return Float:ArrayGetCell(g_hm_sp_gravity, g_hm_special[id]-MAX_SPECIALS_HUMANS)
+		else if(isDefaultSpecialHuman(id) || g_hm_special[id] == 0 && !g_hclass_i)
+			return get_pcvar_float(cvar_zmgravity[g_zm_special[id]])
+		else if(g_user_hclass[id] != NULL_CLASS)
+			return Float:ArrayGetCell(g_hclass_gravity, g_user_hclass[id])
+	}
+	return 1.0;
+}
+
 public native_set_user_zombie_class(plugin_id, num_params) { // Native: zp_set_user_zombie_class
 	static id, classid;
 	id = get_param(1);
@@ -8564,19 +8622,64 @@ public native_get_user_infectnade(plugin_id, num_params) { // Native: zp_get_use
 	if(!is_user_valid(id)) return -1;
 	return (g_zombie[id] && g_zm_special[id] <= 0 && user_has_weapon(id, CSW_HEGRENADE));
 }
-public native_get_zombie_maxhealth(plugin_id, num_params) { // Native: zp_get_zombie_maxhealth
+
+public native_get_user_maxhealth(plugin_id, num_params) { // Native: zp_get_user_maxhealth/zp_get_zombie_maxhealth
 	static id; id = get_param(1)
 	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!is_user_valid(id)) return -1;
-
-	if(!g_zombie[id] || g_zm_special[id] > 0) {
-		log_error(AMX_ERR_NATIVE, "[ZP] Player not a normal zombie (%d)", id)
-		return -1;
-	}
+	if(!g_isalive[id]) return -1;
 	
-	if(g_zombie[id] && g_zm_special[id] <= 0) {
-		if(g_firstzombie[id]) return floatround(float(ArrayGetCell(g_zclass_hp, g_zombieclass[id])) * get_pcvar_float(cvar_zm_health[0]))
-		else return ArrayGetCell(g_zclass_hp, g_zombieclass[id])
+	static basehealth, health
+	if(g_zombie[id]) {	
+		if(isCustomSpecialZombie(id)) {
+			health = ArrayGetCell(g_zm_sp_health, g_zm_special[id]-MAX_SPECIALS_ZOMBIES)
+			if(health == 0) 
+				return (get_pcvar_num(cvar_zm_health[0]) * fnGetAlive())
+			else 
+				return health
+		}
+
+		else if(isDefaultSpecialZombie(id)) {
+			basehealth = get_pcvar_num(cvar_zm_basehp[g_zm_special[id]])
+			if(get_pcvar_num(cvar_zm_health[g_zm_special[id]]) == 0) {
+				if(basehealth == 0)
+					return (ArrayGetCell(g_zclass_hp, 0) * fnGetAlive())
+				else 
+					return (basehealth * fnGetAlive())
+			}
+			else return get_pcvar_num(cvar_zm_health[g_zm_special[id]]);
+		}
+
+		else if(isDefaultZombie(id)) {
+			if(g_firstzombie[id]) return floatround(float(ArrayGetCell(g_zclass_hp, g_zombieclass[id])) * get_pcvar_float(cvar_zm_health[0]))
+			else return ArrayGetCell(g_zclass_hp, g_zombieclass[id])
+		}
+	}
+	else {
+		if(isCustomSpecialHuman(id)) {
+			health = ArrayGetCell(g_hm_sp_health, g_hm_special[id]-MAX_SPECIALS_HUMANS)
+			if(health == 0) 
+				return (get_pcvar_num(cvar_hm_health[0]) * fnGetAlive())
+			else 
+				return health
+		}
+		else if(isDefaultSpecialHuman(id)) {
+			basehealth = get_pcvar_num(cvar_hm_basehp[g_hm_special[id]])
+			if(get_pcvar_num(cvar_hm_health[g_hm_special[id]]) == 0) {
+				if(basehealth == 0)
+					return (get_pcvar_num(cvar_hm_health[0]) * fnGetAlive())
+				else 
+					return (basehealth * fnGetAlive())
+			}
+			else return get_pcvar_num(cvar_hm_health[g_hm_special[id]]);
+		}
+		else if(!g_hclass_i || g_user_hclass[id] == NULL_CLASS) {
+			return get_pcvar_num(cvar_hm_health[0])
+		}
+		else {
+			health = ArrayGetCell(g_hclass_hp, g_user_hclass[id])
+			return (health > 0) ? health : get_pcvar_num(cvar_hm_health[0])
+		}
 	}
 	return -1;
 }
@@ -9760,12 +9863,6 @@ public native_register_human_special(plugin_id, num_params) {
 		ArrayPushCell(g_hm_sp_enable, 1)
 		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ENABLE", 1)
 	}
-	if(!amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "FLAGS", szValue, charsmax(szValue))) {
-		get_flags(flags, szValue, charsmax(szValue));
-		amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "FLAGS", szValue);
-		ArrayPushCell(g_hm_sp_flags, flags);
-	}
-	else ArrayPushCell(g_hm_sp_flags, read_flags(szValue))
 
 	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", value)) {
 		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", 0)
@@ -9779,10 +9876,18 @@ public native_register_human_special(plugin_id, num_params) {
 	}
 	else ArrayPushString(g_hm_sp_lang_key, szValue)
 
-	ArrayPushCell(ZP_TEAM_INDEX, ArraySize(ZP_TEAM_NAMES))
-	ArrayPushCell(iTeamIndexHm, ArraySize(ZP_TEAM_NAMES))
+	// Save make acess in zp main configs
 	formatex(sp_name, charsmax(sp_name), name)
 	strtoupper(sp_name)
+	if(!amx_load_setting_string(ZP_CUSTOMIZATION_FILE, "Access Flags", fmt("MAKE %s", sp_name), szValue, charsmax(szValue))) {
+		get_flags(flags, szValue, charsmax(szValue));
+		amx_save_setting_string(ZP_CUSTOMIZATION_FILE, "Access Flags", fmt("MAKE %s", sp_name), szValue);
+		ArrayPushCell(g_hm_sp_flags, flags);
+	}
+	else ArrayPushCell(g_hm_sp_flags, read_flags(szValue))
+
+	ArrayPushCell(ZP_TEAM_INDEX, ArraySize(ZP_TEAM_NAMES))
+	ArrayPushCell(iTeamIndexHm, ArraySize(ZP_TEAM_NAMES))
 	ArrayPushString(ZP_TEAM_NAMES, sp_name)
 	
 	g_hm_specials_i++ // Increase registered special humans counter
@@ -10011,12 +10116,6 @@ public native_register_zombie_special(plugin_id, num_params) {
 		ArrayPushCell(g_zm_sp_enable, 1)
 		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ENABLE", 1)
 	}
-	if(!amx_load_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "FLAGS", szValue, charsmax(szValue))) {
-		get_flags(flags, szValue, charsmax(szValue));
-		amx_save_setting_string(ZP_SPECIAL_CLASSES_FILE, section, "FLAGS", szValue);
-		ArrayPushCell(g_zm_sp_flags, flags);
-	}
-	else ArrayPushCell(g_zm_sp_flags, read_flags(szValue))
 
 	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", value)) {
 		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", 0)
@@ -10030,10 +10129,18 @@ public native_register_zombie_special(plugin_id, num_params) {
 	}
 	else ArrayPushString(g_zm_sp_lang_key, szValue)
 
-	ArrayPushCell(ZP_TEAM_INDEX, ArraySize(ZP_TEAM_NAMES))
-	ArrayPushCell(iTeamIndexZm, ArraySize(ZP_TEAM_NAMES))
+	// Save make acess in zp main configs
 	formatex(sp_name, charsmax(sp_name), name)
 	strtoupper(sp_name)
+	if(!amx_load_setting_string(ZP_CUSTOMIZATION_FILE, "Access Flags", fmt("MAKE %s", sp_name), szValue, charsmax(szValue))) {
+		get_flags(flags, szValue, charsmax(szValue));
+		amx_save_setting_string(ZP_CUSTOMIZATION_FILE, "Access Flags", fmt("MAKE %s", sp_name), szValue);
+		ArrayPushCell(g_zm_sp_flags, flags);
+	}
+	else ArrayPushCell(g_zm_sp_flags, read_flags(szValue))
+
+	ArrayPushCell(ZP_TEAM_INDEX, ArraySize(ZP_TEAM_NAMES))
+	ArrayPushCell(iTeamIndexZm, ArraySize(ZP_TEAM_NAMES))
 	ArrayPushString(ZP_TEAM_NAMES, sp_name)
 
 	g_zm_specials_i++ // Increase registered special humans counter
@@ -10106,13 +10213,6 @@ public native_register_gamemode(plugin_id, num_params) { // Native: zp_register_
 		amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE ENABLE ON ESCAPE MAP", enable_in_ze)
 	ArrayPushCell(g_gm_enable_on_ze_map, enable_in_ze)
 
-	if(!amx_load_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE FLAGS", szValue, charsmax(szValue))) {
-		get_flags(flags, szValue, charsmax(szValue));
-		amx_save_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE FLAGS", szValue);
-		ArrayPushCell(g_gm_flag, flags);
-	}
-	else ArrayPushCell(g_gm_flag, read_flags(szValue))
-
 	if(!amx_load_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE CHANCE", chance)) 
 		amx_save_setting_int(ZP_CUSTOM_GM_FILE, section, "GAMEMODE CHANCE", chance)
 	ArrayPushCell(g_gm_chance, chance);
@@ -10133,9 +10233,154 @@ public native_register_gamemode(plugin_id, num_params) { // Native: zp_register_
 		amx_save_setting_string(ZP_CUSTOM_GM_FILE, section, "GAMEMODE LANG KEY", langkey) 
 	ArrayPushString(g_gm_lang_key, langkey)
 
+	strtoupper(section)
+	
+	// Save acess mode in zp main configs
+	if(!amx_load_setting_string(ZP_CUSTOMIZATION_FILE, "Access Flags", fmt("START MODE %s", section), szValue, charsmax(szValue))) {
+		get_flags(flags, szValue, charsmax(szValue));
+		amx_save_setting_string(ZP_CUSTOMIZATION_FILE, "Access Flags", fmt("START MODE %s", section), szValue);
+		ArrayPushCell(g_gm_flag, flags);
+	}
+	else ArrayPushCell(g_gm_flag, read_flags(szValue))
+
+	static Array:ArrSound, Array:ArrDuration, enable, i, szPrecache[64]
+	ArrSound = ArrayCreate(64, 1)
+	ArrDuration = ArrayCreate(1, 1)
+	enable = 0
+	ArrayPushCell(g_gm_amb_sound_handle, ArrSound)
+	ArrayPushCell(g_gm_amb_duration_handle, ArrDuration)
+
+	amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s ENABLE", section), enable)
+	ArrayPushCell(g_gm_amb_enable, enable)
+
+	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s SOUNDS", section), ArrSound)
+	amx_load_setting_float_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s DURATION", section), ArrDuration)
+
+	if(ArraySize(ArrSound) > 0) {
+		ArrayPushCell(g_gm_use_amb, true)
+		if(enable > 0) {
+			for(i = 0; i < ArraySize(ArrSound); i++) {
+				ArrayGetString(ArrSound, i, szPrecache, charsmax(szPrecache))
+				precache_ambience(szPrecache) // Precache Ambience Sound
+			}
+		}
+	}
+	else { 
+		amx_save_setting_string(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s ENABLE", section), "-1")
+		amx_save_setting_string(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s SOUNDS", section), "")
+		amx_save_setting_string(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s DURATION", section), "")
+		ArrayPushCell(g_gm_use_amb, false)
+	}
+
+	ArrSound = ArrayCreate(64, 1)
+	ArrayPushCell(g_gm_rstart_snd_handler, ArrSound)
+	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Sounds", fmt("ROUND %s", section), ArrSound)
+
+	if(ArraySize(ArrSound) > 0) {
+		ArrayPushCell(g_gm_use_rstart_snd, true)
+		for(i = 0; i < ArraySize(ArrSound); i++) {
+			ArrayGetString(ArrSound, i, szPrecache, charsmax(szPrecache))
+			precache_ambience(szPrecache) // Precache Ambience Sound
+		}
+	}
+	else { 
+		amx_save_setting_string(ZP_CUSTOMIZATION_FILE, "Sounds", fmt("ROUND %s", section), "")
+		ArrayPushCell(g_gm_use_rstart_snd, false)
+	}
+
 	g_gamemodes_i++ // Increase registered game modes counter
 	return (g_gamemodes_i-1); // Return id under which we registered the game mode
 }
+
+// Native: zp_register_gamemode_ambience(gamemode, const sound[], Float:Duration, enable=1)
+public native_register_gamemode_ambience(plugin_id, num_params)
+{
+	static gmid, sound[64], Float:Duration, enable;
+	gmid = get_param(1);
+	get_string(2, sound, charsmax(sound))
+	Duration = get_param_f(3);
+
+	if (gmid < MAX_GAME_MODES || gmid >= g_gamemodes_i) {
+		log_error(AMX_ERR_NATIVE, "[ZP] Invalid gamemode id (%d)", gmid)
+		return false;
+	}
+	gmid -= MAX_GAME_MODES
+
+	if(ArrayGetCell(g_gm_use_amb, gmid))
+		return true;
+
+	static upper_real_name[32], load
+	ArrayGetString(g_gm_realname, gmid, upper_real_name, charsmax(upper_real_name))
+	strtoupper(upper_real_name)
+	
+	load = amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s ENABLE", upper_real_name), enable)
+	if(enable == -1 || !load) {
+		enable = get_param(4);
+		amx_save_setting_int(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s ENABLE", upper_real_name), enable)
+	}
+	
+	ArraySetCell(g_gm_amb_enable, gmid, enable)
+
+	if(enable)
+		precache_ambience(sound)
+	
+	static Array:ArrSound, Array:ArrDuration
+	ArrSound = ArrayGetCell(g_gm_amb_sound_handle, gmid)
+	ArrDuration = ArrayGetCell(g_gm_amb_duration_handle, gmid)
+
+	// No models registered yet?
+	if (ArrSound == Invalid_Array) {
+		ArrSound = ArrayCreate(64, 1)
+		ArrDuration = ArrayCreate(1, 1)
+		ArraySetCell(g_gm_amb_sound_handle, gmid, ArrSound)
+		ArraySetCell(g_gm_amb_duration_handle, gmid, ArrDuration)
+	}
+	ArrayPushString(ArrSound, sound)
+	ArrayPushCell(ArrDuration, Duration)
+
+	amx_save_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s SOUNDS", upper_real_name), ArrSound)
+	amx_save_setting_float_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s DURATION", upper_real_name), ArrDuration)
+
+	return true;
+}
+
+// Native: zp_register_start_gamemode_snd(gamemode, const sound[])
+public native_register_start_gamemode_snd(plugin_id, num_params)
+{
+	static gmid, sound[64];
+	gmid = get_param(1);
+	get_string(2, sound, charsmax(sound))
+
+	if (gmid < MAX_GAME_MODES || gmid >= g_gamemodes_i) {
+		log_error(AMX_ERR_NATIVE, "[ZP] Invalid gamemode id (%d)", gmid)
+		return false;
+	}
+	gmid -= MAX_GAME_MODES
+
+	if(ArrayGetCell(g_gm_use_rstart_snd, gmid))
+		return true;
+
+	static upper_real_name[32]
+	ArrayGetString(g_gm_realname, gmid, upper_real_name, charsmax(upper_real_name))
+	strtoupper(upper_real_name)
+
+	precache_ambience(sound)
+	
+	static Array:ArrSound
+	ArrSound = ArrayGetCell(g_gm_rstart_snd_handler, gmid)
+
+	// No models registered yet?
+	if (ArrSound == Invalid_Array) {
+		ArrSound = ArrayCreate(64, 1)
+		ArraySetCell(g_gm_rstart_snd_handler, gmid, ArrSound)
+	}
+	ArrayPushString(ArrSound, sound)
+
+	amx_save_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Sounds", fmt("ROUND %s", upper_real_name), ArrSound)
+
+	return true;
+}
+
 // Native: zp_zombie_class_textadd / zp_extra_item_textadd / zp_weapon_menu_textadd / zp_menu_textadd
 public native_menu_textadd(plugin_id, num_params) {
 	get_string(1, g_AdditionalMenuText, charsmax(g_AdditionalMenuText))
@@ -10951,8 +11196,8 @@ public native_register_weapon(plugin_id, num_params) { // Native: zp_register_we
 		amx_save_setting_string(ZP_WEAPONS_FILE, section, "NAME", name)
 	ArrayPushString(g_wpn_name[secondary], name)
 
-	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", uselang)) 
-		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "NAME BY LANG", uselang)
+	if(!amx_load_setting_int(ZP_WEAPONS_FILE, section, "NAME BY LANG", uselang)) 
+		amx_save_setting_int(ZP_WEAPONS_FILE, section, "NAME BY LANG", uselang)
 	ArrayPushCell(g_wpn_name_by_lang[secondary], uselang)
 
 	if(!amx_load_setting_string(ZP_WEAPONS_FILE, section, "LANG KEY", langkey, charsmax(langkey))) 
@@ -10972,7 +11217,7 @@ public native_get_random_player(plugin_id, num_params) { // Native: zp_get_rando
 	if(team) return fnGetRandomAliveByTeam(team);
 	return fnGetRandomAlive(random_num(1, iPlayersnum))
 }
-public native_set_fw_param_string(plugin_id, num_params) { // Native: zp_set_model_param(string[])
+public native_set_fw_param_string(plugin_id, num_params) { // Native: zp_set_param_string(string[])
 	get_string(1, g_ForwardParameter, charsmax(g_ForwardParameter))
 	return 1;
 }
@@ -11584,17 +11829,31 @@ precache_ambience(sound[]) {
 		engfunc(EngFunc_PrecacheSound, buffer)
 	}
 }
-stock PlaySound(const sound[]) { // Plays a sound on clients
+stock PlaySound(const snd[]) { // Plays a sound on clients
+	static is_mp3;
+	is_mp3 = (equal(snd[strlen(snd)-4], ".mp3")) ? 1 : 0;
+	
+	g_ForwardParameter[0] = 0
+	ExecuteForward(g_forwards[PLAY_SOUND], g_fwDummyResult, snd, is_mp3);
+	if(g_fwDummyResult >= ZP_PLUGIN_HANDLED)
+		return;
+
+	static sound[150]
+	if(g_ForwardParameter[0]) 
+		formatex(sound, charsmax(sound), g_ForwardParameter)
+	else
+		copy(sound, charsmax(sound), snd)
+	
 	static buffer[150]
-	if(equal(sound[strlen(sound)-4], ".mp3")) {
+	if(is_mp3) {
 		if(!equal(sound, "sound/", 6) && !file_exists(sound) && !equal(sound, "media/", 6)) format(buffer, charsmax(buffer), "sound/%s", sound)
-		else format(buffer, charsmax(buffer), "%s", sound)
+		else formatex(buffer, charsmax(buffer), "%s", sound)
 
 		client_cmd(0, "mp3 play ^"%s^"", buffer)
 	}
 	else {
 		if(equal(sound, "sound/", 6)) format(buffer, charsmax(buffer), "%s", sound[6])
-		else format(buffer, charsmax(buffer), "%s", sound)
+		else formatex(buffer, charsmax(buffer), "%s", sound)
 
 		client_cmd(0, "spk ^"%s^"", buffer)
 	}

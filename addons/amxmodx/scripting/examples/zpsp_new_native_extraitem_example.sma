@@ -1,8 +1,7 @@
 #include <amxmodx>
-#include <fun>
 #include <zombie_plague_special>
 
-#if ZPS_INC_VERSION < 44
+#if ZPS_INC_VERSION < 45
 	#assert Zombie Plague Special 4.4 Include File Required. Download Link: https://forums.alliedmods.net/showthread.php?t=260845
 #endif
 
@@ -23,6 +22,6 @@ public zp_extra_item_selected(id, itemid) {
 	if(g_itemid != itemid)
 		return;
 
-	give_item(id, "weapon_hegrenade")
-	give_item(id, "weapon_g3sg1")
+	zp_give_item(id, "weapon_hegrenade")
+	zp_give_item(id, "weapon_g3sg1")
 }

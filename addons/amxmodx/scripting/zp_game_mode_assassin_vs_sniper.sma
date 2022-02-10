@@ -36,31 +36,45 @@
 #include <zombie_plague_special>
 #include <amx_settings_api>
 
-#if ZPS_INC_VERSION < 44
-	#assert Zombie Plague Special 4.4 (Final Version) Include File Required. Download Link: https://forums.alliedmods.net/showthread.php?t=260845
+#if ZPS_INC_VERSION < 45
+	#assert Zombie Plague Special 4.5 Include File Required. Download Link: https://forums.alliedmods.net/showthread.php?t=260845
 #endif
 
-new const ZP_CUSTOMIZATION_FILE[] = "zombie_plague_special.ini"
-
-new Array:g_sound_avs, g_ambience_sounds, Array:g_sound_amb_avs_duration, Array: g_sound_ambience_avs
-
-// Default Sounds
-new const sound_avs[][] = { "zombie_plague/nemesis1.wav", "zombie_plague/survivor1.wav" }
-new const ambience_avs_sound[][] = { "zombie_plague/ambience.wav" } 
-new const ambience_avs_dur[][] = { "17" }
-
-// Variables
-new g_gameid, cvar_minplayers, cvar_ratio, cvar_sniperhp, cvar_assahp, g_msg_sync
-
-new const default_flag_access[] = "a"
-new const g_chance = 90
+/*-------------------------------------
+--> Sound Config
+--------------------------------------*/
+// Ambience enums
+enum _handler { AmbiencePrecache[64], Float:AmbienceDuration }
 
 // Enable Ambience?
-#define AMBIENCE_ENABLE 0
+const ambience_enable = 1
 
-// Ambience sounds task
-#define TASK_AMB 3256
+// Ambience sounds
+new const gamemode_ambiences[][_handler] = {	
+	// Sounds					// Duration
+	{ "zombie_plague/ambience.wav", 17.0 }
+}
 
+// Round start sounds
+new const gamemode_round_start_snd[][] = { 
+	"zombie_plague/nemesis1.wav", 
+	"zombie_plague/survivor1.wav" 
+}
+
+/*-------------------------------------
+--> Gamemode Config
+--------------------------------------*/
+new const g_chance = 90						// Gamemode chance
+#define DEFAULT_FLAG_ACESS ADMIN_IMMUNITY 	// Flag Acess mode
+
+/*-------------------------------------
+--> Variables
+--------------------------------------*/
+new g_gameid, cvar_minplayers, cvar_ratio, cvar_sniperhp, cvar_assahp, g_msg_sync
+
+/*-------------------------------------
+--> Plugin Registration
+--------------------------------------*/
 public plugin_init()
 {
 	// Plugin registeration.
@@ -76,84 +90,44 @@ public plugin_init()
 	g_msg_sync = CreateHudSyncObj()
 }
 
-public plugin_natives() {
-	register_native("zp_is_avs_round", "native_is_avs_round", 1)
-}
-
-// Game modes MUST be registered in plugin precache ONLY
+/*-------------------------------------
+--> Plugin Precache
+--------------------------------------*/
 public plugin_precache()
 {
 	if(!zp_is_special_class_enable(GET_ZOMBIE, ASSASSIN) || !zp_is_special_class_enable(GET_HUMAN, SNIPER)) {
 		set_fail_state("[ZPSp Assassin vs Sniper] Some special class (Sniper/Assassin) are disable")
 		return;
 	}
-
-	// Read the access flag
-	static user_access[40], access_flag, i, buffer[250]
-	if(!amx_load_setting_string(ZP_CUSTOMIZATION_FILE, "Access Flags", "START MODE AVS", user_access, charsmax(user_access))) {
-		amx_save_setting_string(ZP_CUSTOMIZATION_FILE, "Access Flags", "START MODE AVS", default_flag_access)
-		formatex(user_access, charsmax(user_access), default_flag_access)
-	}
-
-	access_flag = read_flags(user_access)
-	g_sound_avs = ArrayCreate(64, 1)
-	g_sound_ambience_avs = ArrayCreate(64, 1)
-	g_sound_amb_avs_duration = ArrayCreate(64, 1)
-	
-	// Load from external file
-	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Sounds", "ROUND AVS", g_sound_avs)
-	
-	// Precache the play sounds
-	if (ArraySize(g_sound_avs) == 0) {
-		for (i = 0; i < sizeof sound_avs; i++)
-			ArrayPushString(g_sound_avs, sound_avs[i])
-		
-		// Save to external file
-		amx_save_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Sounds", "ROUND AVS", g_sound_avs)
-	}
-	
-	// Precache sounds
-	for (i = 0; i < ArraySize(g_sound_avs); i++) {
-		ArrayGetString(g_sound_avs, i, buffer, charsmax(buffer))
-		precache_ambience(buffer)
-	}
-	
-	// Ambience Sounds
-	g_ambience_sounds = AMBIENCE_ENABLE
-	if(!amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "AVS ENABLE", g_ambience_sounds))
-		amx_save_setting_int(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "AVS ENABLE", g_ambience_sounds)
-	
-	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "AVS SOUNDS", g_sound_ambience_avs)
-	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "AVS DURATIONS", g_sound_amb_avs_duration)
-	
-	
-	// Save to external file
-	if (ArraySize(g_sound_ambience_avs) == 0) {
-		for (i = 0; i < sizeof ambience_avs_sound; i++)
-			ArrayPushString(g_sound_ambience_avs, ambience_avs_sound[i])
-		
-		amx_save_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "AVS SOUNDS", g_sound_ambience_avs)
-	}
-	
-	if (ArraySize(g_sound_amb_avs_duration) == 0) {
-		for (i = 0; i < sizeof ambience_avs_dur; i++)
-			ArrayPushString(g_sound_amb_avs_duration, ambience_avs_dur[i])
-		
-		amx_save_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", "AVS DURATIONS", g_sound_amb_avs_duration)
-	}
-	
-	// Ambience Sounds
-	if (g_ambience_sounds) {
-		for (i = 0; i < ArraySize(g_sound_ambience_avs); i++) {
-			ArrayGetString(g_sound_ambience_avs, i, buffer, charsmax(buffer))
-			precache_ambience(buffer)
-		}
-	}
 	
 	// Register our game mode
-	g_gameid = zpsp_register_gamemode("Assassin vs Snipers", access_flag, g_chance, 0, ZP_DM_BALANCE)
+	g_gameid = zpsp_register_gamemode("Assassin vs Snipers", DEFAULT_FLAG_ACESS, g_chance, 0, ZP_DM_BALANCE)
+
+	static i
+
+	// Register round start sound
+	for(i = 0; i < sizeof gamemode_round_start_snd; i++)
+		zp_register_start_gamemode_snd(g_gameid, gamemode_round_start_snd[i])
+
+	// Register ambience sounds
+	for (i = 0; i < sizeof gamemode_ambiences; i++)
+		zp_register_gamemode_ambience(g_gameid, gamemode_ambiences[i][AmbiencePrecache], gamemode_ambiences[i][AmbienceDuration], ambience_enable)
 }
 
+/*-------------------------------------
+--> Gamemode Natives
+--------------------------------------*/
+public plugin_natives() {
+	register_native("zp_is_avs_round", "native_is_avs_round")
+}
+
+public native_is_avs_round(plugin_id, num_params) {
+	return (zp_get_current_mode() == g_gameid)
+}
+
+/*-------------------------------------
+--> Gamemode functions
+--------------------------------------*/
 // Player spawn post
 public zp_player_spawn_post(id)
 {
@@ -209,14 +183,6 @@ public zp_round_started(game, id) {
 	// Show HUD notice
 	set_hudmessage(221, 156, 21, -1.0, 0.17, 1, 0.0, 5.0, 1.0, 1.0, -1)
 	ShowSyncHudMsg(0, g_msg_sync, "Assassins vs Snipers Mode !!!")
-	
-	// Play the starting sound
-	static sound[100]
-	ArrayGetString(g_sound_avs, random_num(0, ArraySize(g_sound_avs) - 1), sound, charsmax(sound))
-	zp_play_sound(0, sound)
-
-	remove_task(TASK_AMB) // Remove ambience task affects
-	set_task(2.0, "start_ambience_sounds", TASK_AMB) // Set task to start ambience sounds
 }
 
 public zp_game_mode_selected(gameid, id) {
@@ -267,52 +233,5 @@ start_avs_mode() {
 		
 		zp_make_user_sniper(id) // Turn into a sniper
 		set_user_health(id, floatround(get_user_health(id) * get_pcvar_float(cvar_sniperhp))) // Set his health
-	}
-}
-
-public start_ambience_sounds()
-{
-	if (!g_ambience_sounds)
-		return;
-	
-	// Variables
-	static amb_sound[64], sound,  str_dur[20]
-	
-	// Select our ambience sound
-	sound = random_num(0, ArraySize(g_sound_ambience_avs)-1)
-
-	ArrayGetString(g_sound_ambience_avs, sound, amb_sound, charsmax(amb_sound))
-	ArrayGetString(g_sound_amb_avs_duration, sound, str_dur, charsmax(str_dur))
-	
-	zp_play_sound(0, amb_sound)
-	
-	// Start the ambience sounds
-	set_task(str_to_float(str_dur), "start_ambience_sounds", TASK_AMB)
-}
-public zp_round_ended(winteam) {
-	remove_task(TASK_AMB) // Stop ambience sounds on round end
-}
-
-public native_is_avs_round() {
-	return (zp_get_current_mode() == g_gameid)
-}
-precache_ambience(sound[]) {
-	static buffer[150]
-	if(equal(sound[strlen(sound)-4], ".mp3")) {
-		if(!equal(sound, "sound/", 6) && !file_exists(sound) && !equal(sound, "media/", 6))
-			format(buffer, charsmax(buffer), "sound/%s", sound)
-		else
-			format(buffer, charsmax(buffer), "%s", sound)
-		
-		precache_generic(buffer)
-	}
-	else  {
-		if(equal(sound, "sound/", 6))
-			format(buffer, charsmax(buffer), "%s", sound[6])
-		else
-			format(buffer, charsmax(buffer), "%s", sound)
-		
-		
-		precache_sound(buffer)
 	}
 }
