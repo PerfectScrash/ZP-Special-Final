@@ -6,15 +6,23 @@
 	
 	- API to load/save settings in a Key+Value format that resembles
 	   Windows INI files (http://en.wikipedia.org/wiki/INI_file)
+
+	- 1.0: Original Version
+	- 1.1: Fixed bug when some section contain [ or ] chars
+	- 1.2: 
+		- Expanded buffer size for save/load
+		- Added Directory Support
 	
 ================================================================================*/
 
 #include <amxmodx>
 #include <amxmisc>
 
+#define MAX_BUFFER_SIZE 200
+
 public plugin_init()
 {
-	register_plugin("[AMXX] Settings API", "1.0", "MeRcyLeZZ")
+	register_plugin("[AMXX] Settings API", "1.2", "MeRcyLeZZ | Perf. Scrash")
 }
 
 public plugin_natives()
@@ -37,12 +45,12 @@ public plugin_natives()
 public native_load_setting_int(plugin_id, num_params)
 {
 	// Retrieve and check params
-	new filename[32], setting_section[64], setting_key[64]
+	new filename[MAX_BUFFER_SIZE], setting_section[MAX_BUFFER_SIZE], setting_key[MAX_BUFFER_SIZE]
 	if (!RetrieveParams(filename, charsmax(filename), setting_section, charsmax(setting_section), setting_key, charsmax(setting_key)))
 		return false;
 	
 	// Open file for read
-	new path[64], file
+	new path[MAX_BUFFER_SIZE], file
 	if (!OpenCustomFileRead(path, charsmax(path), filename, file))
 		return false;
 	
@@ -74,12 +82,12 @@ public native_load_setting_int(plugin_id, num_params)
 public native_load_setting_float(plugin_id, num_params)
 {
 	// Retrieve and check params
-	new filename[32], setting_section[64], setting_key[64]
+	new filename[MAX_BUFFER_SIZE], setting_section[MAX_BUFFER_SIZE], setting_key[MAX_BUFFER_SIZE]
 	if (!RetrieveParams(filename, charsmax(filename), setting_section, charsmax(setting_section), setting_key, charsmax(setting_key)))
 		return false;
 	
 	// Open file for read
-	new path[64], file
+	new path[MAX_BUFFER_SIZE], file
 	if (!OpenCustomFileRead(path, charsmax(path), filename, file))
 		return false;
 	
@@ -111,12 +119,12 @@ public native_load_setting_float(plugin_id, num_params)
 public native_load_setting_string(plugin_id, num_params)
 {
 	// Retrieve and check params
-	new filename[32], setting_section[64], setting_key[64]
+	new filename[MAX_BUFFER_SIZE], setting_section[MAX_BUFFER_SIZE], setting_key[MAX_BUFFER_SIZE]
 	if (!RetrieveParams(filename, charsmax(filename), setting_section, charsmax(setting_section), setting_key, charsmax(setting_key)))
 		return false;
 	
 	// Open file for read
-	new path[64], file
+	new path[MAX_BUFFER_SIZE], file
 	if (!OpenCustomFileRead(path, charsmax(path), filename, file))
 		return false;
 	
@@ -148,7 +156,7 @@ public native_load_setting_string(plugin_id, num_params)
 public native_save_setting_int(plugin_id, num_params)
 {
 	// Retrieve and check params
-	new filename[32], setting_section[64], setting_key[64]
+	new filename[MAX_BUFFER_SIZE], setting_section[MAX_BUFFER_SIZE], setting_key[MAX_BUFFER_SIZE]
 	if (!RetrieveParams(filename, charsmax(filename), setting_section, charsmax(setting_section), setting_key, charsmax(setting_key)))
 		return false;
 	
@@ -156,7 +164,7 @@ public native_save_setting_int(plugin_id, num_params)
 	new value = get_param(4)
 	
 	// Open file for read
-	new path[64], file
+	new path[MAX_BUFFER_SIZE], file
 	if (!OpenCustomFileRead(path, charsmax(path), filename, file, true))
 		return false;
 	
@@ -189,7 +197,7 @@ public native_save_setting_int(plugin_id, num_params)
 	}
 	
 	// We have to use a second file (tempfile) to add data at an arbitrary position
-	new temppath[64], tempfile
+	new temppath[MAX_BUFFER_SIZE], tempfile
 	if (!OpenTempFileWrite(temppath, charsmax(temppath), tempfile))
 	{
 		fclose(file)
@@ -214,7 +222,7 @@ public native_save_setting_int(plugin_id, num_params)
 public native_save_setting_float(plugin_id, num_params)
 {
 	// Retrieve and check params
-	new filename[32], setting_section[64], setting_key[64]
+	new filename[MAX_BUFFER_SIZE], setting_section[MAX_BUFFER_SIZE], setting_key[MAX_BUFFER_SIZE]
 	if (!RetrieveParams(filename, charsmax(filename), setting_section, charsmax(setting_section), setting_key, charsmax(setting_key)))
 		return false;
 	
@@ -222,7 +230,7 @@ public native_save_setting_float(plugin_id, num_params)
 	new Float:value = get_param_f(4)
 	
 	// Open file for read
-	new path[64], file
+	new path[MAX_BUFFER_SIZE], file
 	if (!OpenCustomFileRead(path, charsmax(path), filename, file, true))
 		return false;
 	
@@ -255,7 +263,7 @@ public native_save_setting_float(plugin_id, num_params)
 	}
 	
 	// We have to use a second file (tempfile) to add data at an arbitrary position
-	new temppath[64], tempfile
+	new temppath[MAX_BUFFER_SIZE], tempfile
 	if (!OpenTempFileWrite(temppath, charsmax(temppath), tempfile))
 	{
 		fclose(file)
@@ -279,7 +287,7 @@ public native_save_setting_float(plugin_id, num_params)
 public native_save_setting_string(plugin_id, num_params)
 {
 	// Retrieve and check params
-	new filename[32], setting_section[64], setting_key[64]
+	new filename[MAX_BUFFER_SIZE], setting_section[MAX_BUFFER_SIZE], setting_key[MAX_BUFFER_SIZE]
 	if (!RetrieveParams(filename, charsmax(filename), setting_section, charsmax(setting_section), setting_key, charsmax(setting_key)))
 		return false;
 	
@@ -288,7 +296,7 @@ public native_save_setting_string(plugin_id, num_params)
 	get_string(4, string, charsmax(string))
 	
 	// Open file for read
-	new path[64], file
+	new path[MAX_BUFFER_SIZE], file
 	if (!OpenCustomFileRead(path, charsmax(path), filename, file, true))
 		return false;
 	
@@ -321,7 +329,7 @@ public native_save_setting_string(plugin_id, num_params)
 	}
 	
 	// We have to use a second file (tempfile) to add data at an arbitrary position
-	new temppath[64], tempfile
+	new temppath[MAX_BUFFER_SIZE], tempfile
 	if (!OpenTempFileWrite(temppath, charsmax(temppath), tempfile))
 	{
 		fclose(file)
@@ -346,7 +354,7 @@ public native_save_setting_string(plugin_id, num_params)
 public native_load_setting_int_arr(plugin_id, num_params)
 {
 	// Retrieve and check params
-	new filename[32], setting_section[64], setting_key[64]
+	new filename[MAX_BUFFER_SIZE], setting_section[MAX_BUFFER_SIZE], setting_key[MAX_BUFFER_SIZE]
 	if (!RetrieveParams(filename, charsmax(filename), setting_section, charsmax(setting_section), setting_key, charsmax(setting_key)))
 		return false;
 	
@@ -355,7 +363,7 @@ public native_load_setting_int_arr(plugin_id, num_params)
 		return false;
 	
 	// Open file for read
-	new path[64], file
+	new path[MAX_BUFFER_SIZE], file
 	if (!OpenCustomFileRead(path, charsmax(path), filename, file))
 		return false;
 	
@@ -387,7 +395,7 @@ public native_load_setting_int_arr(plugin_id, num_params)
 public native_load_setting_float_arr(plugin_id, num_params)
 {
 	// Retrieve and check params
-	new filename[32], setting_section[64], setting_key[64]
+	new filename[MAX_BUFFER_SIZE], setting_section[MAX_BUFFER_SIZE], setting_key[MAX_BUFFER_SIZE]
 	if (!RetrieveParams(filename, charsmax(filename), setting_section, charsmax(setting_section), setting_key, charsmax(setting_key)))
 		return false;
 	
@@ -396,7 +404,7 @@ public native_load_setting_float_arr(plugin_id, num_params)
 		return false;
 	
 	// Open file for read
-	new path[64], file
+	new path[MAX_BUFFER_SIZE], file
 	if (!OpenCustomFileRead(path, charsmax(path), filename, file))
 		return false;
 	
@@ -428,7 +436,7 @@ public native_load_setting_float_arr(plugin_id, num_params)
 public native_load_setting_string_arr(plugin_id, num_params)
 {
 	// Retrieve and check params
-	new filename[32], setting_section[64], setting_key[64]
+	new filename[MAX_BUFFER_SIZE], setting_section[MAX_BUFFER_SIZE], setting_key[MAX_BUFFER_SIZE]
 	if (!RetrieveParams(filename, charsmax(filename), setting_section, charsmax(setting_section), setting_key, charsmax(setting_key)))
 		return false;
 	
@@ -437,7 +445,7 @@ public native_load_setting_string_arr(plugin_id, num_params)
 		return false;
 	
 	// Open file for read
-	new path[64], file
+	new path[MAX_BUFFER_SIZE], file
 	if (!OpenCustomFileRead(path, charsmax(path), filename, file))
 		return false;
 	
@@ -469,7 +477,7 @@ public native_load_setting_string_arr(plugin_id, num_params)
 public native_save_setting_int_arr(plugin_id, num_params)
 {
 	// Retrieve and check params
-	new filename[32], setting_section[64], setting_key[64]
+	new filename[MAX_BUFFER_SIZE], setting_section[MAX_BUFFER_SIZE], setting_key[MAX_BUFFER_SIZE]
 	if (!RetrieveParams(filename, charsmax(filename), setting_section, charsmax(setting_section), setting_key, charsmax(setting_key)))
 		return false;
 	
@@ -478,7 +486,7 @@ public native_save_setting_int_arr(plugin_id, num_params)
 		return false;
 	
 	// Open file for read
-	new path[64], file
+	new path[MAX_BUFFER_SIZE], file
 	if (!OpenCustomFileRead(path, charsmax(path), filename, file, true))
 		return false;
 	
@@ -511,7 +519,7 @@ public native_save_setting_int_arr(plugin_id, num_params)
 	}
 	
 	// We have to use a second file (tempfile) to add data at an arbitrary position
-	new temppath[64], tempfile
+	new temppath[MAX_BUFFER_SIZE], tempfile
 	if (!OpenTempFileWrite(temppath, charsmax(temppath), tempfile))
 	{
 		fclose(file)
@@ -536,7 +544,7 @@ public native_save_setting_int_arr(plugin_id, num_params)
 public native_save_setting_float_arr(plugin_id, num_params)
 {
 	// Retrieve and check params
-	new filename[32], setting_section[64], setting_key[64]
+	new filename[MAX_BUFFER_SIZE], setting_section[MAX_BUFFER_SIZE], setting_key[MAX_BUFFER_SIZE]
 	if (!RetrieveParams(filename, charsmax(filename), setting_section, charsmax(setting_section), setting_key, charsmax(setting_key)))
 		return false;
 	
@@ -545,7 +553,7 @@ public native_save_setting_float_arr(plugin_id, num_params)
 		return false;
 	
 	// Open file for read
-	new path[64], file
+	new path[MAX_BUFFER_SIZE], file
 	if (!OpenCustomFileRead(path, charsmax(path), filename, file, true))
 		return false;
 	
@@ -578,7 +586,7 @@ public native_save_setting_float_arr(plugin_id, num_params)
 	}
 	
 	// We have to use a second file (tempfile) to add data at an arbitrary position
-	new temppath[64], tempfile
+	new temppath[MAX_BUFFER_SIZE], tempfile
 	if (!OpenTempFileWrite(temppath, charsmax(temppath), tempfile))
 	{
 		fclose(file)
@@ -603,7 +611,7 @@ public native_save_setting_float_arr(plugin_id, num_params)
 public native_save_setting_string_arr(plugin_id, num_params)
 {
 	// Retrieve and check params
-	new filename[32], setting_section[64], setting_key[64]
+	new filename[MAX_BUFFER_SIZE], setting_section[MAX_BUFFER_SIZE], setting_key[MAX_BUFFER_SIZE]
 	if (!RetrieveParams(filename, charsmax(filename), setting_section, charsmax(setting_section), setting_key, charsmax(setting_key)))
 		return false;
 	
@@ -612,7 +620,7 @@ public native_save_setting_string_arr(plugin_id, num_params)
 		return false;
 	
 	// Open file for read
-	new path[64], file
+	new path[MAX_BUFFER_SIZE], file
 	if (!OpenCustomFileRead(path, charsmax(path), filename, file, true))
 		return false;
 	
@@ -645,7 +653,7 @@ public native_save_setting_string_arr(plugin_id, num_params)
 	}
 	
 	// We have to use a second file (tempfile) to add data at an arbitrary position
-	new temppath[64], tempfile
+	new temppath[MAX_BUFFER_SIZE], tempfile
 	if (!OpenTempFileWrite(temppath, charsmax(temppath), tempfile))
 	{
 		fclose(file)
@@ -706,6 +714,24 @@ OpenCustomFileRead(path[], len1, filename[], &file, create = false)
 {	
 	// Build customization file path
 	get_configsdir(path, len1)
+
+	//---------------------------------------------------
+	// Multi-directory support
+	//---------------------------------------------------
+	// In Brazil we call it 'gambiarra'
+	static find, cfgdir[MAX_BUFFER_SIZE];
+	static pathname[MAX_BUFFER_SIZE], filename2[MAX_BUFFER_SIZE];
+	find = 0
+	copy(filename2, charsmax(filename2), filename)
+	copy(cfgdir, charsmax(cfgdir), path)
+	while((find = contain(filename2, "/")) != -1) {
+		copy(pathname, find, filename2)
+		format(cfgdir, charsmax(cfgdir), "%s/%s", cfgdir, pathname)
+		format(filename2, charsmax(filename2), "%s", filename2[find+1])
+		if(!dir_exists(cfgdir)) mkdir(cfgdir)
+	} 
+	//----------------------------------------
+
 	format(path, len1, "%s/%s", path, filename)
 	
 	// File not present, create new file?
@@ -764,7 +790,7 @@ OpenTempFileWrite(temppath[], len1, &tempfile)
 SectionExists(file, setting_section[])
 {
 	// Seek to setting's section
-	new linedata[96], section[64]	
+	new linedata[96], section[MAX_BUFFER_SIZE]	
 	while (!feof(file))
 	{
 		// Read one line at a time
@@ -790,7 +816,7 @@ SectionExists(file, setting_section[])
 KeyExists(file, setting_key[], &keypos_start, &keypos_end)
 {
 	// Seek to setting's key
-	new linedata[96], key[64]
+	new linedata[96], key[MAX_BUFFER_SIZE]
 	while (!feof(file))
 	{
 		// Read one line at a time
@@ -958,7 +984,7 @@ FormatKeyValueArrayInt(linedata[], len1, setting_key[], Array:array_handle)
 	
 	// Successive values, append to linedata with commas (start on index = 1 to skip first value)
 	for (index = 1; index < ArraySize(array_handle); index++)
-		format(linedata, len1, "%s , %d", linedata, ArrayGetCell(array_handle, index))
+		format(linedata, len1, "%s, %d", linedata, ArrayGetCell(array_handle, index))
 }
 
 WriteKeyValueArrayFloat(file, setting_key[], Array:array_handle)
@@ -981,7 +1007,7 @@ FormatKeyValueArrayFloat(linedata[], len1, setting_key[], Array:array_handle)
 	
 	// Successive values, append to linedata with commas (start on index = 1 to skip first value)
 	for (index = 1; index < ArraySize(array_handle); index++)
-		format(linedata, len1, "%s , %.2f", linedata, ArrayGetCell(array_handle, index))
+		format(linedata, len1, "%s, %.2f", linedata, ArrayGetCell(array_handle, index))
 }
 
 WriteKeyValueArrayString(file, setting_key[], Array:array_handle)
@@ -1007,14 +1033,14 @@ FormatKeyValueArrayString(linedata[], len1, setting_key[], Array:array_handle)
 	for (index = 1; index < ArraySize(array_handle); index++)
 	{
 		ArrayGetString(array_handle, index, current_value, charsmax(current_value))
-		format(linedata, len1, "%s , %s", linedata, current_value)
+		format(linedata, len1, "%s, %s", linedata, current_value)
 	}
 }
 
 SeekReturnValues(file, keypos_start, values[], len1)
 {
 	// Seek to key and parse it
-	new linedata[1024], key[64]
+	new linedata[1024], key[MAX_BUFFER_SIZE]
 	fseek(file, keypos_start, SEEK_SET)
 	fgets(file, linedata, charsmax(linedata))
 	

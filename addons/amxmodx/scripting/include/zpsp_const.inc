@@ -3,6 +3,15 @@
 #endif
 #define _zpsp_const_included
 
+#define ZP_CUSTOMIZATION_FILE "zpsp_configs/zombie_plague_special.ini"
+#define ZP_ZOMBIECLASSES_FILE "zpsp_configs/zpsp_zombieclasses.ini"
+#define ZP_EXTRAITEMS_FILE "zpsp_configs/zpsp_extraitems.ini"
+#define ZP_CUSTOM_GM_FILE "zpsp_configs/zpsp_gamemodes.ini"
+#define ZP_SPECIAL_CLASSES_FILE "zpsp_configs/zpsp_special_classes.ini"
+#define ZP_WEAPONS_FILE "zpsp_configs/zpsp_custom_weapons.ini"
+#define ZP_HUMANCLASSES_FILE "zpsp_configs/zpsp_humanclasses.ini"
+#define ZP_CFG_FILE "zpsp_configs/zombie_plague_special.cfg"
+
 #define ZPS_INC_VERSION 45 // Include Version
 
 /* Teams for zp_register_extra_item() */

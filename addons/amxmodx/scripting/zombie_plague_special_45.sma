@@ -302,6 +302,10 @@
 			- Added Native: zp_set_param_string(const string[])
 			- Added Native: zp_get_user_maxhealth(id)
 			- Added Native: zp_register_start_gamemode_snd(id, const sound[])
+			- ZP main configs are now in a exclusive path (configs/zpsp_configs/...)
+			- On amx settings api: 
+				- Expanded buffer size on filenames
+				- Added Directory Support on filenames
 
 ============================================================================================================================*/
 
@@ -315,13 +319,13 @@
 /*================================================================================
  [Plugin Customization]
 =================================================================================*/
-new const ZP_CUSTOMIZATION_FILE[] = "zombie_plague_special.ini";
-new const ZP_ZOMBIECLASSES_FILE[] = "zpsp_zombieclasses.ini";
-new const ZP_EXTRAITEMS_FILE[] = "zpsp_extraitems.ini";
-new const ZP_CUSTOM_GM_FILE[] = "zpsp_gamemodes.ini";
-new const ZP_SPECIAL_CLASSES_FILE[] = "zpsp_special_classes.ini";
-new const ZP_WEAPONS_FILE[] = "zpsp_custom_weapons.ini";
-new const ZP_HUMANCLASSES_FILE[] = "zpsp_humanclasses.ini"
+new const ZP_CUSTOMIZATION_FILE[] = "zpsp_configs/zombie_plague_special.ini";
+new const ZP_ZOMBIECLASSES_FILE[] = "zpsp_configs/zpsp_zombieclasses.ini";
+new const ZP_EXTRAITEMS_FILE[] = "zpsp_configs/zpsp_extraitems.ini";
+new const ZP_CUSTOM_GM_FILE[] = "zpsp_configs/zpsp_gamemodes.ini";
+new const ZP_SPECIAL_CLASSES_FILE[] = "zpsp_configs/zpsp_special_classes.ini";
+new const ZP_WEAPONS_FILE[] = "zpsp_configs/zpsp_custom_weapons.ini";
+new const ZP_HUMANCLASSES_FILE[] = "zpsp_configs/zpsp_humanclasses.ini"
 
 // Limiters for stuff not worth making dynamic arrays out of (increase if needed)
 const MAX_CSDM_SPAWNS = 128;
@@ -2145,7 +2149,7 @@ public plugin_cfg() {
 	if(!g_pluginenabled) return; // Plugin disabled?
 	
 	static cfgdir[32]; get_configsdir(cfgdir, charsmax(cfgdir)) // Get configs dir
-	server_cmd("exec %s/zombie_plague_special.cfg", cfgdir) // Execute config file (zombie_plague_special.cfg)
+	server_cmd("exec %s/zpsp_configs/zombie_plague_special.cfg", cfgdir) // Execute config file (zombie_plague_special.cfg)
 
 	g_arrays_created = false // Prevent any more stuff from registering
 
@@ -6976,6 +6980,7 @@ load_customization_from_files() {
 		amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "Grenade Sprites", fmt("ENABLE %s GIB", grenade_type_str[i]), enable_gib[i])
 		amx_load_setting_string(ZP_CUSTOMIZATION_FILE, "Grenade Sprites", fmt("%s GIB", grenade_type_str[i]), sprite_grenade_gib[i], charsmax(sprite_grenade_gib[]))
 		amx_load_setting_string(ZP_CUSTOMIZATION_FILE, "Grenade Sprites", fmt("%s GRENADE RGB", grenade_type_str[i]), rgb_str, charsmax(rgb_str))
+
 
 		parse(rgb_str, rgb[0], charsmax(rgb[]), rgb[1], charsmax(rgb[]), rgb[2], charsmax(rgb[]))
 		for(x = 0; x < 3; x++) grenade_rgb[i][x] = str_to_num(rgb[x])

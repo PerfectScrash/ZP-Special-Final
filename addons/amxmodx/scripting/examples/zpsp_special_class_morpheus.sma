@@ -16,8 +16,6 @@
 	#assert Zombie Plague Special 4.5 Include File Required. Download Link: https://forums.alliedmods.net/showthread.php?t=260845
 #endif
 
-new const ZP_CUSTOMIZATION_FILE[] = "zombie_plague_special.ini";
-
 /*-------------------------------------
 --> Class Configs
 --------------------------------------*/

@@ -151,6 +151,21 @@ stock zp_play_sound(id, const sound[]) {
 }
 
 /**
+ * Retrieves the full path of zombie_plague_specia.cfg.
+ *
+ * @param name  Buffer to copy path to
+ * @param len   Maximum buffer size
+ *
+ * @return      Number of cells written to buffer
+ */
+stock zp_get_main_cfg_file(name[], len)
+{
+	static cfgdir[64]
+	get_localinfo("amxx_configsdir", cfgdir, charsmax(cfgdir));
+	return formatex(name, len, "%s/%s", cfgdir, ZP_CFG_FILE)
+}
+
+/**
  * Prints a colored message
  *
  * @param id		Player index to print a colored message to target (use 0 for everyone)
