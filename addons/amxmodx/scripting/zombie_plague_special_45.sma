@@ -306,6 +306,7 @@
 			- On amx settings api: 
 				- Expanded buffer size on filenames
 				- Added Directory Support on filenames
+			- Added Native: zp_get_hclass_count()
 
 ============================================================================================================================*/
 
@@ -1047,6 +1048,7 @@ public plugin_natives() {
 	register_native("zp_set_param_string", "native_set_fw_param_string");
 	register_native("zp_get_user_maxhealth", "native_get_user_maxhealth");
 	register_native("zp_register_start_gamemode_snd", "native_register_start_gamemode_snd");
+	register_native("zp_get_hclass_count", "native_get_hclass_count");
 
 }
 public plugin_precache() {
@@ -11123,6 +11125,7 @@ public native_reset_player_model(plugin_id, num_params) { // Native: zp_reset_pl
 }
 public native_get_extra_item_count(plugin_id, num_params) return g_extraitem_i; // Native: zp_get_extra_item_count
 public native_get_zclass_count(plugin_id, num_params) return g_zclass_i; // Native: zp_get_zclass_count
+public native_get_hclass_count(plugin_id, num_params) return g_hclass_i; // Native: zp_get_hclass_count
 public native_get_gamemodes_count(plugin_id, num_params) return (g_gamemodes_i - MAX_GAME_MODES); // Native: zp_get_gamemodes_count
 public native_get_custom_special_count(plugin_id, num_params) {
 	static zm; zm = get_param(1);

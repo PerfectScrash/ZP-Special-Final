@@ -302,3 +302,4 @@ Bombardier (From ZP Shade), Wesker (From Zombie Apocalipse), Spy and Dragon
 		- On amx settings api: 
 			- Expanded buffer size on filenames
 			- Added Directory Support on filenames
+		- Added Native: zp_get_hclass_count()

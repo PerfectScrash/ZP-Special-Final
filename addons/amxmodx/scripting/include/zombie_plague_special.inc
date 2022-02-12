@@ -1595,6 +1595,14 @@ native zp_set_user_gravity(id, Float:Gravity);
  */
 native zp_get_user_maxhealth(id);
 
+/**
+ * Get total of instaled human classes
+ * 
+ * @return				Total of instaled hclasses 
+ */
+native zp_get_hclass_count();
+
+
 /***************************************************
 -------------------- Forwards ----------------------
 ****************************************************/
