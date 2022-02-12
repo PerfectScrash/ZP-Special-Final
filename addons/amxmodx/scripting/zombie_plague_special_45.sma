@@ -326,6 +326,7 @@ new const ZP_CUSTOM_GM_FILE[] = "zpsp_configs/zpsp_gamemodes.ini";
 new const ZP_SPECIAL_CLASSES_FILE[] = "zpsp_configs/zpsp_special_classes.ini";
 new const ZP_WEAPONS_FILE[] = "zpsp_configs/zpsp_custom_weapons.ini";
 new const ZP_HUMANCLASSES_FILE[] = "zpsp_configs/zpsp_humanclasses.ini"
+new const ZP_CFG_FILE[] = "zpsp_configs/zombie_plague_special.cfg"
 
 // Limiters for stuff not worth making dynamic arrays out of (increase if needed)
 const MAX_CSDM_SPAWNS = 128;
@@ -2149,7 +2150,7 @@ public plugin_cfg() {
 	if(!g_pluginenabled) return; // Plugin disabled?
 	
 	static cfgdir[32]; get_configsdir(cfgdir, charsmax(cfgdir)) // Get configs dir
-	server_cmd("exec %s/zpsp_configs/zombie_plague_special.cfg", cfgdir) // Execute config file (zombie_plague_special.cfg)
+	server_cmd("exec %s/%s", cfgdir, ZP_CFG_FILE) // Execute .cfg config file
 
 	g_arrays_created = false // Prevent any more stuff from registering
 
@@ -10921,18 +10922,17 @@ public native_register_zclass_deathsnd(plugin_id, num_params) {
 public native_register_zmspecial_deathsnd(plugin_id, num_params) {
 	static classid, sound[64];
 	classid = get_param(1);
+	if(classid < MAX_SPECIALS_ZOMBIES || classid >= g_zm_specials_i) {
+		log_error(AMX_ERR_NATIVE, "[ZP] Invalid Custom Special class id (%d)", classid)
+		return false;
+	}
+
 	get_string(2, sound, charsmax(sound))
-	return register_zclass_sounds(1, classid, "DEATH SOUND", g_zm_sp_realname, g_zm_sp_use_deathsnd, g_zm_sp_deathsnd_handle, sound)
+	return register_zclass_sounds(1, classid-1, "DEATH SOUND", g_zm_sp_realname, g_zm_sp_use_deathsnd, g_zm_sp_deathsnd_handle, sound)
 }
 
 public register_zclass_sounds(is_sp, classid, key[], Array:realname, Array:enable_array, Array:handle_array, sound[]) {
-	if(is_sp) {
-		if(classid < MAX_SPECIALS_ZOMBIES || classid >= g_zm_specials_i) {
-			log_error(AMX_ERR_NATIVE, "[ZP] Invalid Custom Special class id (%d)", classid)
-			return false;
-		}
-	}
-	else {
+	if(!is_sp) {
 		if (classid < 0 || classid >= g_zclass_i) {
 			log_error(AMX_ERR_NATIVE, "[ZP] Invalid zombie class id (%d)", classid)
 			return false;

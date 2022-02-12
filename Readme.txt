@@ -281,7 +281,6 @@ Bombardier (From ZP Shade), Wesker (From Zombie Apocalipse), Spy and Dragon
 		- Added Native: zp_menu_textadd(const text[])
 		- Updated Native: zp_register_weapon(const name[], wpn_type, uselang=0, const langkey[] = "ITEM_LANG_DEFAULT_KEY")
 		- Added Cvar: zp_choose_hclass_instantanly
-		- Added "FLAGS" option in "zpsp_gamemodes.ini" and in "zpsp_special_classes.ini"
 		- Improved "save_custonomization" system
 		- Improved model/sound system for any external class
 		- Updated Native: zp_disinfect_user(id, silent, attacker) 
@@ -290,3 +289,16 @@ Bombardier (From ZP Shade), Wesker (From Zombie Apocalipse), Spy and Dragon
 		- Added Native: zp_add_hud_text(const text[]);
 		- Added Native: zp_get_user_hud_type(id);
 		- Now all natives are using "style 0"
+		- Added Native: zp_register_zclass_painsnd(classid, const sound[])
+		- Added Native: zp_register_zclass_deathsnd(classid, const sound[])
+		- Added Native: zp_register_zmspecial_deathsnd(classid, const sound[])
+		- Added Native: zp_register_gamemode_ambience(gamemode, const sound[], Float:Duration, enable=1)
+		- Added Native: zp_get_user_default_gravity(id)
+		- Added Native: zp_set_user_gravity(id, Float:Gravity)
+		- Added Native: zp_set_param_string(const string[])
+		- Added Native: zp_get_user_maxhealth(id)
+		- Added Native: zp_register_start_gamemode_snd(id, const sound[])
+		- ZP main configs are now in a exclusive path (configs/zpsp_configs/...)
+		- On amx settings api: 
+			- Expanded buffer size on filenames
+			- Added Directory Support on filenames

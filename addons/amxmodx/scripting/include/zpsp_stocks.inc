@@ -62,7 +62,7 @@ stock zp_remove_user_infbomb(id)
  * @return		True if sucess, false otherwise.
  */
 stock zp_give_user_madness(id, Float:Duration = -1.0) 
-	return zpsp_set_user_madness(id, 1, Duration);
+	return zp_set_user_madness(id, 1, Duration);
 
 /**
  * Remove user Zombie Madness
@@ -71,7 +71,7 @@ stock zp_give_user_madness(id, Float:Duration = -1.0)
  * @return		True if sucess, false otherwise.
  */
 stock zp_remove_user_madness(id) 
-	return zpsp_set_user_madness(id, 0);
+	return zp_set_user_madness(id, 0);
 
 /**
  * Returns whether the current round is a infection mode.
