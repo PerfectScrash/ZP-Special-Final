@@ -11231,7 +11231,7 @@ public native_set_fw_param_string(plugin_id, num_params) { // Native: zp_set_par
 }
 public native_set_fw_param_int(plugin_id, num_params) { // Native: zp_set_fw_param_int(int_id, value)
 	static int_id; int_id = get_param(1);
-	g_FW_intParam[int_id+1] = get_param(2);
+	g_FW_intParam[int_id] = get_param(2);
 	return 1;
 }
 
