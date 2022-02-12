@@ -1602,6 +1602,14 @@ native zp_get_user_maxhealth(id);
  */
 native zp_get_hclass_count();
 
+/**
+ * Add Text On menu (Like ZP 5.0)
+ *
+ * @param text		Text to display on the zombie class name.
+ * @return			True if sucess, false if not sucess.
+ */
+native zp_menu_textadd(const text[]);
+
 
 /***************************************************
 -------------------- Forwards ----------------------
