@@ -196,19 +196,12 @@ public zp_round_started_pre(game) {
 	if(zp_get_alive_players() < get_pcvar_num(cvar_minplayers))
 		return ZP_PLUGIN_HANDLED
 
-	// Start our new mode
-	start_morpheus_mode()
-
 	return PLUGIN_CONTINUE
 }
 
-public zp_game_mode_selected(gameid, id) {
-	// Check if our game mode was called
-	if(gameid == g_gameid)
+public zp_round_started(gameid) {
+	if(gameid == g_gameid) // Check if our game mode was called
 		start_morpheus_mode()
-	
-	// Make the compiler happy again =)
-	return PLUGIN_CONTINUE
 }
 
 // This function contains the whole code behind this game mode
