@@ -180,34 +180,20 @@ public zp_round_started_pre(game) {
 	|| !zp_is_special_class_enable(GET_HUMAN, SURVIVOR) || !zp_is_special_class_enable(GET_HUMAN, SNIPER))
 		return ZP_PLUGIN_HANDLED;
 
-	// Start our new mode
-	start_nightmare_mode()
-
 	// Make the compiler happy =)
 	return PLUGIN_CONTINUE
 }
-
 public zp_round_started(game, id) {
-	// Check if it is our game mode
-	if(game != g_gameid)
-		return
-	
-	// Show HUD notice
-	set_hudmessage(255, 0, 100, -1.0, 0.17, 1, 0.0, 5.0, 1.0, 1.0, -1)
-	ShowSyncHudMsg(0, g_msg_sync, "Nightmare Mode !!!")
-}
-
-public zp_game_mode_selected(gameid, id) {
-	// Check if our game mode was called
-	if(gameid == g_gameid)
+	if(game == g_gameid)
 		start_nightmare_mode()
-	
-	// Make the compiler happy again =)
-	return PLUGIN_CONTINUE
 }
 
 // This function contains the whole code behind this game mode
 start_nightmare_mode() {
+	// Show HUD notice
+	set_hudmessage(255, 0, 100, -1.0, 0.17, 1, 0.0, 5.0, 1.0, 1.0, -1)
+	ShowSyncHudMsg(0, g_msg_sync, "Nightmare Mode !!!")
+
 	// Create and initialize some important vars
 	static i_max_sp_zombies, id, i_alive, g_random
 	i_alive = zp_get_alive_players()
@@ -225,7 +211,7 @@ start_nightmare_mode() {
 		if (!is_user_alive(id))
 			continue;
 		
-		if(random_num(1, 5) != 1)
+		if(random_num(1, 5) != 1 || zp_get_zombie_special_class(id))
 			continue;
 
 		g_random = random_num(0, 1) // Randonize

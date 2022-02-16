@@ -1368,9 +1368,10 @@ native zp_drop_weapons(id, dropwhat = WPN_PRIMARY);
 * 
 * @param id		Player Index
 * @param item	Item name (Not Extra Item)
+* @param ammo	Give ammunation
 * @return		true if sucess / false otherwise
 */
-native zp_give_item(id, const item[]);
+native zp_give_item(id, const item[], ammo=0);
 
 /**
 * Strip all user weapons
@@ -1610,6 +1611,54 @@ native zp_get_hclass_count();
  */
 native zp_menu_textadd(const text[]);
 
+/**
+ * User have an unlimited ammo mode.
+ *
+ * @return			Unlimited ammo mode (0 - Not have | 1 - Unlimited reloads | 2 - Unlimited clip)
+ */
+native zp_get_user_unlimited_ammo(id);
+
+/**
+ * Sets a player's unlimited ammo.
+ *
+ * @param id		Affected player's index.
+ * @param set		0 off
+ * 					1 unlimited reloads
+ * 					2 unlimited clip
+ *
+ * @return			True if sucess, false otherwise
+ */
+native zp_set_user_unlimited_ammo(id, set);
+
+/**
+ * Reset user clip mode
+ *
+ * @return			True if sucess, false otherwise
+ */
+native zp_reset_user_unlimited_ammo(id);
+
+/**
+ * Get user knockback value
+ *
+ * @return			Knockback value
+ */
+native Float:zp_get_user_knockback(id);
+
+/**
+ * Sets a player's unlimited ammo.
+ *
+ * @param id		Affected player's index.
+ * @param amount	New knockback value
+ * @return			True if sucess, false otherwise
+ */
+native zp_set_user_knockback(id, Float:amount);
+
+/**
+ * Reset user knockback value
+ *
+ * @return			Knockback value
+ */
+native zp_reset_user_knockback(id);
 
 /***************************************************
 -------------------- Forwards ----------------------
@@ -1914,6 +1963,14 @@ forward zp_fw_sound_play(sound[], is_mp3);
  * 
 */
 forward zp_fw_sound_stop();
+
+/** 
+ * Called when user deploy an weapon
+ * 
+ * @note Use ZP_PLUGIN_HANDLED for allow zombie to use this weapon
+ * 
+*/
+forward zp_fw_deploy_weapon(id, weaponid);
 
 // ZP Specials Stocks
 #include <zpsp_stocks>

@@ -165,34 +165,22 @@ public zp_round_started_pre(game) {
 	if(!zp_is_special_class_enable(GET_ZOMBIE, g_alien_id) || !zp_is_special_class_enable(GET_HUMAN, WESKER))
 		return ZP_PLUGIN_HANDLED
 
-	// Start our new mode
-	start_synapsis_mode()
-
 	// Make the compiler happy =)
 	return PLUGIN_CONTINUE
 }
 
-public zp_round_started(game, id) {
-	// Check if it is our game mode
-	if(game != g_gameid)
-		return;
-	
-	// Show HUD notice
-	set_hudmessage(221, 156, 21, -1.0, 0.17, 1, 0.0, 5.0, 1.0, 1.0, -1)
-	ShowSyncHudMsg(0, g_msg_sync, "Synapsis Mode !!!")
-}
-
-public zp_game_mode_selected(gameid, id) {
+public zp_round_started(gameid, id) {
 	// Check if our game mode was called
 	if(gameid == g_gameid)
 		start_synapsis_mode()
-	
-	// Make the compiler happy again =)
-	return PLUGIN_CONTINUE
 }
 
 // This function contains the whole code behind this game mode
 start_synapsis_mode() {
+	// Show HUD notice
+	set_hudmessage(221, 156, 21, -1.0, 0.17, 1, 0.0, 5.0, 1.0, 1.0, -1)
+	ShowSyncHudMsg(0, g_msg_sync, "Synapsis Mode !!!")
+
 	// Create and initialize some important vars
 	static i_aliens, i_max_aliens, id, i_alive
 	i_alive = zp_get_alive_players()

@@ -1,5 +1,4 @@
 #include <amxmodx>
-#include <cstrike>
 #include <zombie_plague_special>
 
 #if ZPS_INC_VERSION < 45
@@ -20,11 +19,9 @@ public plugin_init() {
 }
 public zp_weapon_selected_post(id, wpn_type, weaponid) {
 	if(wpn_type == WPN_PRIMARY && weaponid == wpn_id[0]) {	
-		zp_give_item(id, "weapon_g3sg1")
-		cs_set_user_bpammo(id, CSW_G3SG1, 90)
+		zp_give_item(id, "weapon_g3sg1", 1)
 	}
 	else if(wpn_type == WPN_SECONDARY && weaponid == wpn_id[1]) {	
-		zp_give_item(id, "weapon_deagle")
-		cs_set_user_bpammo(id, CSW_DEAGLE, 35)
+		zp_give_item(id, "weapon_deagle", 1)
 	}
 }

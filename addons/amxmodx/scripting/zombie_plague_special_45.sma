@@ -280,7 +280,7 @@
 			- Added Forward: zp_human_class_choosed_pre(id, classid)
 			- Added Forward: zp_human_class_choosed_post(id, classid)
 			- Added Native: zp_drop_weapons(id, dropwhat)
-			- Added Native: zp_give_item(id, const item[])
+			- Added Native: zp_give_item(id, const item[], ammo=0)
 			- Added Native: zp_strip_user_weapons(id)
 			- Added Native: zp_menu_textadd(const text[])
 			- Updated Native: zp_register_weapon(const name[], wpn_type, uselang=0, const langkey[] = "ITEM_LANG_DEFAULT_KEY")
@@ -307,6 +307,14 @@
 				- Expanded buffer size on filenames
 				- Added Directory Support on filenames
 			- Added Native: zp_get_hclass_count()
+			- Added Native: zp_get_user_unlimited_ammo(id)
+			- Added Native: zp_set_user_unlimited_ammo(id, set)
+			- Added Native: zp_reset_user_unlimited_ammo(id)
+			- Added Native: zp_get_user_knockback(id)
+			- Added Native: zp_set_user_knockback(id, Float:amount)
+			- Added Native: zp_reset_user_knockback(id)
+			- Added Forward: zp_fw_deploy_weapon(id, weaponid)
+
 
 ============================================================================================================================*/
 
@@ -677,7 +685,7 @@ enum { NEMESIS = 1, ASSASSIN, PREDATOR, BOMBARDIER, DRAGON, MAX_SPECIALS_ZOMBIES
 enum { SURVIVOR = 1, SNIPER, BERSERKER, WESKER, SPY, MAX_SPECIALS_HUMANS };
 
 // Special Class Vars
-new Array:g_hm_sp_realname, Array:g_hm_sp_name, Array:g_hm_sp_health, Array:g_hm_sp_speed, Array:g_hm_sp_uclip,
+new Array:g_hm_sp_realname, Array:g_hm_sp_name, Array:g_hm_sp_health, Array:g_hm_sp_speed, Array:g_hm_sp_cliptype,
 Array:g_hm_sp_gravity, Array:g_hm_sp_leap, Array:g_hm_sp_leap_f, Array:g_hm_sp_ignorefrag, Array:g_hm_sp_ignoreammo, Array:g_hm_sp_flags,
 Array:g_hm_sp_leap_h, Array:g_hm_sp_leap_c, Array:g_hm_sp_respawn, Array:g_hm_sp_painfree,
 Array:g_hm_sp_aurarad, Array:g_hm_sp_glow, Array:g_hm_sp_r, Array:g_hm_sp_g, Array:g_hm_sp_b, Array:g_hm_sp_enable, Array:g_hm_sp_nvision,
@@ -702,7 +710,7 @@ new g_hud_type[33], g_hud_color[2][33], g_flashlight_color[33], g_flashlight_rgb
 new g_zombie[33], g_firstzombie[33], g_lastzombie[33], g_lasthuman[33], g_frozen[33], g_nodamage[33], g_respawn_as_zombie[33], Float:g_frozen_gravity[33], Float:g_buytime[33];
 new g_nvision[33], g_nvisionenabled[33], g_nvg_enabled_mode[33], g_zombieclass[33], g_zombieclassnext[33], g_flashlight[33], g_flashbattery[33] = { 100, ... };
 new g_canbuy[33], g_ammopacks[33], g_damagedealt[33], how_many_rewards, Float:g_lastleaptime[33], Float:g_lastflashtime[33], g_playermodel[33][32], g_playerbody[33], g_playerskin[33], g_bot_extra_count[33];
-new g_menu_data[33][15], g_burning_dur[33], Float:g_current_maxspeed[33], g_user_custom_speed[33];
+new g_menu_data[33][15], g_burning_dur[33], Float:g_current_maxspeed[33], g_user_custom_speed[33], g_infammo[33];
 
 // Game vars;
 new g_pluginenabled, g_newround, g_endround, g_modestarted, g_allowinfection, g_deathmatchmode, g_currentmode, g_lastmode, g_nextmode;
@@ -760,6 +768,7 @@ enum { // Forward Enum
 	PLAYER_SHOW_HUD,
 	PLAY_SOUND,
 	STOP_SOUND,
+	DEPLOY_WEAPON,
 	MAX_FORWARDS_NUM
 };
 new g_forwards[MAX_FORWARDS_NUM], g_fwDummyResult;
@@ -1049,13 +1058,22 @@ public plugin_natives() {
 	register_native("zp_get_user_maxhealth", "native_get_user_maxhealth");
 	register_native("zp_register_start_gamemode_snd", "native_register_start_gamemode_snd");
 	register_native("zp_get_hclass_count", "native_get_hclass_count");
+	register_native("zp_get_user_unlimited_ammo", "native_get_user_unlimited_ammo");
+	register_native("zp_set_user_unlimited_ammo", "native_set_user_unlimited_ammo");
+	register_native("zp_reset_user_unlimited_ammo", "native_reset_user_unlimited_ammo");
+	register_native("zp_get_user_knockback", "native_get_user_knockback");
+	register_native("zp_set_user_knockback", "native_set_user_knockback");
+	register_native("zp_reset_user_knockback", "native_reset_user_knockback");
 
 }
 public plugin_precache() {
 	register_plugin(PLUGIN, VERSION, AUTHOR) // Register earlier to show up in plugins list properly after plugin disable/error at loading
 
 	cvar_toggle = register_cvar("zp_on", "1") // To switch plugin on/off
-	if(!get_pcvar_num(cvar_toggle)) return; // Plugin disabled?
+	if(!get_pcvar_num(cvar_toggle)) {
+		pause("a");
+		return; // Plugin disabled?
+	}
 	g_pluginenabled = true
 	
 	new i, x, buffer[150], buffer2[150]
@@ -1168,7 +1186,7 @@ public plugin_precache() {
 	g_hm_sp_leap_f = ArrayCreate(1, 1);
 	g_hm_sp_leap_h = ArrayCreate(1, 1);
 	g_hm_sp_leap_c = ArrayCreate(1, 1);
-	g_hm_sp_uclip = ArrayCreate(1, 1);
+	g_hm_sp_cliptype = ArrayCreate(1, 1);
 	g_hm_sp_ignorefrag = ArrayCreate(1, 1);
 	g_hm_sp_ignoreammo = ArrayCreate(1, 1);
 	g_hm_sp_respawn = ArrayCreate(1, 1);
@@ -2124,6 +2142,7 @@ public plugin_init() {
 	g_forwards[PLAYER_SHOW_HUD] = CreateMultiForward("zp_player_show_hud", ET_CONTINUE, FP_CELL, FP_CELL, FP_CELL)
 	g_forwards[PLAY_SOUND] = CreateMultiForward("zp_fw_sound_play", ET_CONTINUE, FP_STRING, FP_CELL);
 	g_forwards[STOP_SOUND] = CreateMultiForward("zp_fw_sound_stop", ET_CONTINUE);
+	g_forwards[DEPLOY_WEAPON] = CreateMultiForward("zp_fw_deploy_weapon", ET_CONTINUE, FP_CELL, FP_CELL);
 
 	load_spawns() // Collect random spawn points
 	
@@ -2291,7 +2310,7 @@ public event_ammo_x(id) { // BP Ammo update
 	if(!is_user_valid_connected(id)) 
 		return;
 
-	if(g_zombie[id] || g_hm_special[id] == BERSERKER) 
+	if(g_zombie[id]) 
 		return; // Humans only
 
 	static type; type = read_data(1) // Get ammo type
@@ -2302,12 +2321,7 @@ public event_ammo_x(id) { // BP Ammo update
 
 	static amount; amount = read_data(2) // Get ammo amount
 	
-	static update; update = false
-	if(g_hm_special[id] < MAX_SPECIALS_HUMANS) update = get_pcvar_num(cvar_hm_infammo[g_hm_special[id]]) ? true : false
-	else update = (ArrayGetCell(g_hm_sp_uclip, g_hm_special[id]-MAX_SPECIALS_HUMANS) > 0) ? true : false
-	
-
-	if(update) { // Unlimited BP Ammo?
+	if(g_infammo[id]) { // Unlimited BP Ammo?
 		if(amount < MAXBPAMMO[weapon]) {
 			static args[1]; args[0] = weapon
 			set_task(0.1, "refill_bpammo", id, args, sizeof args)
@@ -2391,6 +2405,7 @@ public fw_PlayerSpawn_Post(id) { // Ham Player Spawn Post Forward
 	else {
 		fm_set_user_health(id, get_pcvar_num(cvar_hm_health[g_hm_special[id]]))
 		set_pev(id, pev_gravity, get_pcvar_float(cvar_hmgravity[g_hm_special[id]]))
+		g_infammo[id] = get_pcvar_num(cvar_hm_infammo[0])
 
 		if(get_pcvar_num(cvar_buycustom) && !g_hm_special[id]) 
 			set_task(0.2, "menu_buy_show", id+TASK_SPAWN)
@@ -2798,11 +2813,7 @@ public fw_TraceAttack(victim, attacker, Float:damage, Float:direction[3], traceh
 		return HAM_IGNORED; // Knockback disabled, nothing else to do here
 
 	// Specials knockback disabled, nothing else to do here	
-	if(isDefaultSpecialZombie(victim)) {
-		if(get_pcvar_float(cvar_zmsp_knockback[g_zm_special[victim]]) == 0.0) 
-			return HAM_IGNORED;
-	}
-	else if(g_zombie_knockback[victim] == 0.0 && isCustomSpecialZombie(victim)) 
+	if(g_zombie_knockback[victim] == 0.0 && g_zm_special[victim] > 0) 
 		return HAM_IGNORED;
 
 	// Get whether the victim is in a crouch state
@@ -2832,10 +2843,7 @@ public fw_TraceAttack(victim, attacker, Float:damage, Float:direction[3], traceh
 		xs_vec_mul_scalar(direction, get_pcvar_float(cvar_knockbackducking), direction) // Apply ducking knockback multiplier
 	
 	// Apply zombie class/nemesis knockback multiplier
-	if(isDefaultSpecialZombie(victim)) 
-		xs_vec_mul_scalar(direction, get_pcvar_float(cvar_zmsp_knockback[g_zm_special[victim]]), direction)
-	else 
-		xs_vec_mul_scalar(direction, g_zombie_knockback[victim], direction) 
+	xs_vec_mul_scalar(direction, g_zombie_knockback[victim], direction) 
 
 	xs_vec_add(velocity, direction, direction) // Add up the new vector
 
@@ -2910,6 +2918,10 @@ public fw_Item_Deploy_Post(weapon_ent) { // Ham Weapon Deploy Forward
 	
 	g_currentweapon[owner] = weaponid // Store current weapon's id for reference
 	replace_weapon_models(owner, weaponid) // Replace weapon models with custom ones
+
+	ExecuteForward(g_forwards[DEPLOY_WEAPON], g_fwDummyResult, owner, weaponid);
+	if(g_fwDummyResult >= ZP_PLUGIN_HANDLED)
+		return;
 
 	// Zombie not holding an allowed weapon for some reason
 	if(g_zombie[owner] && !((1<<weaponid) & ZOMBIE_ALLOWED_WEAPONS_BITSUM)) {
@@ -4813,7 +4825,12 @@ public menu_hclass(id, menuid, item) { // Human Class Menu?
 		g_choosed_hclass[id] = true
 		humanme(id, 0, 2, 0)
 	}
-	else client_print_color(id, print_team_default, "%L %L^4 %s", id, "ZP_CHAT_TAG", id, "HUMAN_SELECT", name)
+	else {
+		client_print_color(id, print_team_default, "%L %L^4 %s", id, "ZP_CHAT_TAG", id, "HUMAN_SELECT", name)
+		
+		if(get_pcvar_num(cvar_buycustom)) 
+			menu_buy_show(id+TASK_SPAWN) // Show custom buy menu?
+	}
 
 	// Show selected human class info and stats
 	static hp, armor, speed, Float:Gravity
@@ -5514,12 +5531,12 @@ public cmd_lnj(id, level, cid) { // zp_lnj
 =================================================================================*/
 // Current Weapon info
 public message_cur_weapon(msg_id, msg_dest, msg_entity) {
-	if(!g_isalive[msg_entity] || g_zombie[msg_entity] || g_hm_special[msg_entity] == BERSERKER) return; // Not alive or zombie
+	if(!g_isalive[msg_entity] || g_zombie[msg_entity]) return; // Not alive or zombie
 	if(get_msg_arg_int(1) != 1) return; // Not an active weapon
 	
-	// Unlimited clip disabled for class
-	if(g_hm_special[msg_entity] >= MAX_SPECIALS_HUMANS) if(ArrayGetCell(g_hm_sp_uclip, g_hm_special[msg_entity]-MAX_SPECIALS_HUMANS) <= 1) return;
-	if(g_hm_special[msg_entity] < MAX_SPECIALS_HUMANS) if(get_pcvar_num(cvar_hm_infammo[g_hm_special[msg_entity]]) <= 1) return;
+	// Unlimited clip disabled
+	if(g_infammo[msg_entity] < 2) 
+		return;
 
 	static weapon; weapon = get_msg_arg_int(2) // Get weapon's id
 	if(MAXBPAMMO[weapon] > 2) { // Unlimited Clip Ammo for this weapon?
@@ -6361,6 +6378,7 @@ zombieme(id, infector, classid, silentmode, rewards) {
 	g_hm_special[id] = 0
 	g_damagedealt[id] = 0
 	g_choosed_hclass[id] = false
+	g_infammo[id] = 0
 
 	if(silentmode != 2) g_firstzombie[id] = false
 	g_user_custom_speed[id] = false
@@ -6443,6 +6461,8 @@ zombieme(id, infector, classid, silentmode, rewards) {
 				if(g_isbot[id]) set_task(random_float(5.0, 15.0), "use_cmd", id, _, _, "b") // Dragon Skills Bot Suport
 				client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "DRAGON_INFO") // Dragon Info Msg
 			}
+
+			g_zombie_knockback[id] = get_pcvar_float(cvar_zmsp_knockback[classid])
 		}
 		else if((fnGetZombies() == 1) && g_zm_special[id] <= 0) {
 			g_firstzombie[id] = true // First zombie
@@ -6661,6 +6681,8 @@ humanme(id, classid, silentmode, attacker) { // Function Human Me (player id, tu
 			g_nvision[id] = true
 			cs_set_user_nvg(id, 1)
 		}
+
+		g_infammo[id] = ArrayGetCell(g_hm_sp_cliptype, g_hm_special[id]-MAX_SPECIALS_HUMANS)
 	}
 	else if(classid > 0 && hm_special_enable[classid]) {
 		g_hm_special[id] = classid
@@ -6711,6 +6733,12 @@ humanme(id, classid, silentmode, attacker) { // Function Human Me (player id, tu
 			ExecuteHamB(Ham_GiveAmmo, id, MAXBPAMMO[CSW_M3], AMMOTYPE[CSW_M3], MAXBPAMMO[CSW_M3])
 			set_task(1.0, "turn_invisible", id)
 		}
+
+		if(g_hm_special[id] != BERSERKER)
+			g_infammo[id] = get_pcvar_num(cvar_hm_infammo[g_hm_special[id]])
+		else 
+			g_infammo[id] = 0
+		
 	}
 	else if(!g_hclass_i) { // Default human if not have human classes
 		fm_set_user_health(id, get_pcvar_num(cvar_hm_health[0])) // Set health
@@ -6718,6 +6746,8 @@ humanme(id, classid, silentmode, attacker) { // Function Human Me (player id, tu
 		// Set gravity, unless frozen
 		if(!g_frozen[id]) set_pev(id, pev_gravity, get_pcvar_float(cvar_hmgravity[0]))
 		else g_frozen_gravity[id] = get_pcvar_float(cvar_hmgravity[0])
+
+		g_infammo[id] = get_pcvar_num(cvar_hm_infammo[0])
 
 		if(get_pcvar_num(cvar_buycustom)) set_task(0.2, "menu_buy_show", id+TASK_SPAWN) // Show custom buy menu?
 	}
@@ -6798,6 +6828,7 @@ set_hclass_attributes(id)
 	userHealth = ArrayGetCell(g_hclass_hp, g_user_hclass[id])
 	Gravity = Float:ArrayGetCell(g_hclass_gravity, g_user_hclass[id])
 	g_spd[id] = float(ArrayGetCell(g_hclass_speed, g_user_hclass[id]))
+	g_infammo[id] = get_pcvar_num(cvar_hm_infammo[0])
 
 	// If Gravity/Armor/Health are equal or less than 0 use a default internal human configs
 	if(g_spd[id] <= 0)
@@ -9263,8 +9294,8 @@ public native_set_user_frozen(plugin_id, num_params) {
 	id = get_param(1)
 	set = get_param(2)
 
-	if(num_params < 3) Duration = -1.0
-	else Duration = get_param_f(3)
+	if(num_params > 2) Duration = get_param_f(3);
+	else Duration = -1.0 
 
 	if(Duration == -1.0)
 		Duration = get_pcvar_float(cvar_freezeduration)
@@ -9365,8 +9396,8 @@ public native_set_user_burn(plugin_id, num_params) {
 	id = get_param(1)
 	set = get_param(2)
 
-	if(num_params < 3) Duration = -1.0
-	else Duration = get_param_f(3)
+	if(num_params > 2) Duration = get_param_f(3)
+	else Duration = -1.0
 
 	if(Duration == -1.0)
 		Duration = get_pcvar_float(cvar_fireduration)
@@ -9748,7 +9779,7 @@ public native_register_human_special(plugin_id, num_params) {
 	amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", ArrModelTemp)
 	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "BODY", ArrBodyTemp)
 	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", ArrSkinTemp)
-	if (ArraySize(ArrModelTemp) > 0) {
+	if(ArraySize(ArrModelTemp) > 0) {
 		// Precache player models
 		for (i = 0; i < ArraySize(ArrModelTemp); i++) {
 			ArrayGetString(ArrModelTemp, i, szPrecache, charsmax(szPrecache))
@@ -9813,7 +9844,7 @@ public native_register_human_special(plugin_id, num_params) {
 
 	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "CLIP TYPE", clip_type)) 
 		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "CLIP TYPE", clip_type)
-	ArrayPushCell(g_hm_sp_uclip, clip_type)
+	ArrayPushCell(g_hm_sp_cliptype, clip_type)
 
 	if(!amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW LEAP", value)) {
 		amx_save_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ALLOW LEAP", 1)
@@ -9953,7 +9984,7 @@ public native_register_zombie_special(plugin_id, num_params) {
 	amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", ArrModelTemp)
 	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "BODY", ArrBodyTemp)
 	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", ArrSkinTemp)
-	if (ArraySize(ArrModelTemp) > 0) {
+	if(ArraySize(ArrModelTemp) > 0) {
 		// Precache player models
 		for (i = 0; i < ArraySize(ArrModelTemp); i++) {
 			ArrayGetString(ArrModelTemp, i, szPrecache, charsmax(szPrecache))
@@ -10308,7 +10339,7 @@ public native_register_gamemode_ambience(plugin_id, num_params)
 	get_string(2, sound, charsmax(sound))
 	Duration = get_param_f(3);
 
-	if (gmid < MAX_GAME_MODES || gmid >= g_gamemodes_i) {
+	if(gmid < MAX_GAME_MODES || gmid >= g_gamemodes_i) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid gamemode id (%d)", gmid)
 		return false;
 	}
@@ -10337,7 +10368,7 @@ public native_register_gamemode_ambience(plugin_id, num_params)
 	ArrDuration = ArrayGetCell(g_gm_amb_duration_handle, gmid)
 
 	// No models registered yet?
-	if (ArrSound == Invalid_Array) {
+	if(ArrSound == Invalid_Array) {
 		ArrSound = ArrayCreate(64, 1)
 		ArrDuration = ArrayCreate(1, 1)
 		ArraySetCell(g_gm_amb_sound_handle, gmid, ArrSound)
@@ -10359,7 +10390,7 @@ public native_register_start_gamemode_snd(plugin_id, num_params)
 	gmid = get_param(1);
 	get_string(2, sound, charsmax(sound))
 
-	if (gmid < MAX_GAME_MODES || gmid >= g_gamemodes_i) {
+	if(gmid < MAX_GAME_MODES || gmid >= g_gamemodes_i) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid gamemode id (%d)", gmid)
 		return false;
 	}
@@ -10378,7 +10409,7 @@ public native_register_start_gamemode_snd(plugin_id, num_params)
 	ArrSound = ArrayGetCell(g_gm_rstart_snd_handler, gmid)
 
 	// No models registered yet?
-	if (ArrSound == Invalid_Array) {
+	if(ArrSound == Invalid_Array) {
 		ArrSound = ArrayCreate(64, 1)
 		ArraySetCell(g_gm_rstart_snd_handler, gmid, ArrSound)
 	}
@@ -10659,7 +10690,7 @@ public native_register_human_class(plugin_id, num_params) {
 	amx_load_setting_string_arr(ZP_HUMANCLASSES_FILE, section, "MODELS", ArrModelTemp)
 	amx_load_setting_int_arr(ZP_HUMANCLASSES_FILE, section, "BODY", ArrBodyTemp)
 	amx_load_setting_int_arr(ZP_HUMANCLASSES_FILE, section, "SKIN", ArrSkinTemp)
-	if (ArraySize(ArrModelTemp) > 0) {
+	if(ArraySize(ArrModelTemp) > 0) {
 		ArrayPushCell(g_hclass_mdl_file, true)
 		// Precache player models
 		static buffer[250];
@@ -10707,14 +10738,14 @@ public native_register_hclass_model(plugin_id, num_params)
 	body = get_param(3);
 	skin = get_param(4);
 
-	if (classid < 0 || classid >= g_hclass_i)
+	if(classid < 0 || classid >= g_hclass_i)
 	{
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid human class id (%d)", classid)
 		return false;
 	}
 	
 	// Player models already loaded from file
-	if (ArrayGetCell(g_hclass_mdl_file, classid))
+	if(ArrayGetCell(g_hclass_mdl_file, classid))
 		return true;
 	
 	precache_player_model(player_model)
@@ -10724,7 +10755,7 @@ public native_register_hclass_model(plugin_id, num_params)
 	ArrSkinTemp = ArrayGetCell(g_hclass_skin_handle, classid)
 	
 	// No models registered yet?
-	if (ArrModelTemp == Invalid_Array) {
+	if(ArrModelTemp == Invalid_Array) {
 		ArrModelTemp = ArrayCreate(32, 1)
 		ArrBodyTemp = ArrayCreate(1, 1)
 		ArrSkinTemp = ArrayCreate(1, 1)
@@ -10798,7 +10829,7 @@ public native_register_zombie_class(plugin_id, num_params) {
 		amx_load_setting_string_arr(ZP_ZOMBIECLASSES_FILE, section, "MODELS", ArrModelTemp)
 		amx_load_setting_int_arr(ZP_ZOMBIECLASSES_FILE, section, "BODY", ArrBodyTemp)
 		amx_load_setting_int_arr(ZP_ZOMBIECLASSES_FILE, section, "SKIN", ArrSkinTemp)
-		if (ArraySize(ArrModelTemp) > 0) {
+		if(ArraySize(ArrModelTemp) > 0) {
 			// Precache player models
 			for (i = 0; i < ArraySize(ArrModelTemp); i++) {
 				ArrayGetString(ArrModelTemp, i, szPrecache, charsmax(szPrecache))
@@ -10935,14 +10966,14 @@ public native_register_zmspecial_deathsnd(plugin_id, num_params) {
 
 public register_zclass_sounds(is_sp, classid, key[], Array:realname, Array:enable_array, Array:handle_array, sound[]) {
 	if(!is_sp) {
-		if (classid < 0 || classid >= g_zclass_i) {
+		if(classid < 0 || classid >= g_zclass_i) {
 			log_error(AMX_ERR_NATIVE, "[ZP] Invalid zombie class id (%d)", classid)
 			return false;
 		}
 	}
 
 	// Sound alterady enable
-	if (ArrayGetCell(enable_array, classid))
+	if(ArrayGetCell(enable_array, classid))
 		return true;
 	
 	engfunc(EngFunc_PrecacheSound, sound);
@@ -10951,7 +10982,7 @@ public register_zclass_sounds(is_sp, classid, key[], Array:realname, Array:enabl
 	ArrSoundTemp = ArrayGetCell(handle_array, classid)
 	
 	// No sounds registered
-	if (ArrSoundTemp == Invalid_Array) {
+	if(ArrSoundTemp == Invalid_Array) {
 		ArrSoundTemp = ArrayCreate(64, 1)
 		ArraySetCell(handle_array, classid, ArrSoundTemp)
 	}
@@ -10959,11 +10990,14 @@ public register_zclass_sounds(is_sp, classid, key[], Array:realname, Array:enabl
 	
 	// Save models to file
 	static real_name[32]
-	ArrayGetString(realname, classid, real_name, charsmax(real_name))
-	if(is_sp)
+	if(!is_sp) {
+		ArrayGetString(realname, classid, real_name, charsmax(real_name))
 		amx_save_setting_string_arr(ZP_ZOMBIECLASSES_FILE, real_name, key, ArrSoundTemp)
-	else 
+	}
+	else {
+		ArrayGetString(realname, classid-MAX_SPECIALS_ZOMBIES+1, real_name, charsmax(real_name))
 		amx_save_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, fmt("Z:%s", real_name), key, ArrSoundTemp)
+	}
 
 	return true;
 }
@@ -11165,6 +11199,143 @@ public native_is_user_stuck(plugin_id, num_params) { // Native: zp_is_user_stuck
 	static id; id = get_param(1);
 	return is_player_stuck(id); 
 }
+
+
+// Native: zp_get_user_unlimited_ammo
+public native_get_user_unlimited_ammo(plugin_id, num_params)
+{
+	static id;
+	id = get_param(1)
+
+	// ZP disabled
+	if(!g_pluginenabled)
+		return -1;
+	
+	if(!is_user_valid(id))
+		return -1;
+
+	if(!g_isalive[id] || g_zombie[id])
+		return 0;
+	
+	return g_infammo[id];
+}
+
+// Native: zp_set_user_unlimited_ammo
+public native_set_user_unlimited_ammo(plugin_id, num_params)
+{
+	static id, set;
+	id = get_param(1)
+	set = get_param(2)
+
+	// ZP disabled
+	if(!g_pluginenabled)
+		return -1;
+	
+	if(!is_user_valid(id))
+		return -1;
+
+	if(!g_isalive[id] || g_zombie[id])
+		return 0;
+	
+	g_infammo[id] = set
+	
+	return 1;
+}
+
+
+// Native: zp_reset_user_unlimited_ammo
+public native_reset_user_unlimited_ammo(plugin_id, num_params)
+{
+	static id;
+	id = get_param(1)
+
+	// ZP disabled
+	if(!g_pluginenabled)
+		return -1;
+	
+	if(!is_user_valid(id))
+		return -1;
+
+	if(!g_isalive[id] || g_zombie[id])
+		return 0;
+
+	if(isCustomSpecialHuman(id))
+		ArrayGetCell(g_hm_sp_cliptype, g_hm_special[id]-MAX_SPECIALS_HUMANS)
+	else if(g_hm_special[id] == BERSERKER)
+		g_infammo[id] = 0
+	else 
+		g_infammo[id] = get_pcvar_num(cvar_hm_infammo[g_hm_special[id]])
+	
+	return 1;
+}
+
+// Native: zp_get_user_knockback
+public Float:native_get_user_knockback(plugin_id, num_params)
+{
+	static id;
+	id = get_param(1)
+
+	// ZP disabled
+	if(!g_pluginenabled)
+		return -1.0;
+	
+	if(!is_user_valid(id))
+		return -1.0;
+
+	if(!g_isalive[id] || !g_zombie[id])
+		return 0.0;
+	
+	return g_zombie_knockback[id];
+}
+
+// Native: zp_set_user_knockback
+public native_set_user_knockback(plugin_id, num_params)
+{
+	static id, Float:amount;
+	id = get_param(1)
+	amount = get_param_f(2)
+
+	// ZP disabled
+	if(!g_pluginenabled)
+		return -1;
+	
+	if(!is_user_valid(id))
+		return -1;
+
+	if(!g_isalive[id] || g_zombie[id])
+		return 0;
+	
+	g_zombie_knockback[id] = amount;
+	
+	return 1;
+}
+
+// Native: zp_reset_user_knockback
+public native_reset_user_knockback(plugin_id, num_params)
+{
+	static id;
+	id = get_param(1)
+
+	// ZP disabled
+	if(!g_pluginenabled)
+		return -1;
+	
+	if(!is_user_valid(id))
+		return -1;
+
+	if(!g_isalive[id] || !g_zombie[id])
+		return 0;
+
+	if(isCustomSpecialZombie(id))
+		g_zombie_knockback[id] = Float:ArrayGetCell(g_zm_sp_knockback, g_zm_special[id]-MAX_SPECIALS_ZOMBIES)
+	else if(isDefaultSpecialZombie(id))
+		g_zombie_knockback[id] = get_pcvar_float(cvar_zmsp_knockback[g_zm_special[id]-MAX_SPECIALS_ZOMBIES])
+	else
+		g_zombie_knockback[id] = Float:ArrayGetCell(g_zclass_kb, g_zombieclass[id])
+	
+	return 1;
+}
+
 public native_register_weapon(plugin_id, num_params) { // Native: zp_register_weapon/zpsp_register_weapon
 	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
@@ -11261,10 +11432,24 @@ public native_is_gamemode_enable(plugin_id, num_params) {
 public native_drop_weapons(plugin_id, num_params) drop_weapons(get_param(1), get_param(2)+1);
 
 public native_give_item(plugin_id, num_params) {
-	static id, item[32];
+	static id, item[32], ammo;
 	id = get_param(1);
 	get_string(2, item, charsmax(item))
-	return fm_give_item(id, item);
+	ammo = get_param(3);
+
+	if(!is_user_valid(id))
+		return -1;
+
+	fm_give_item(id, item)
+
+	// Give full ammo
+	if (ammo) {	
+		static weaponid
+		weaponid = cs_weapon_name_to_id(item)
+		ExecuteHamB(Ham_GiveAmmo, id, MAXBPAMMO[weaponid], AMMOTYPE[weaponid], MAXBPAMMO[weaponid])
+	}
+
+	return 1;
 }
 
 public native_strip_user_weapons(plugin_id, num_params) return fm_strip_user_weapons(get_param(1));

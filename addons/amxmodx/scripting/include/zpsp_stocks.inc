@@ -5,8 +5,37 @@
 
 #define MODE_ARMAGEDDON MODE_LNJ
 
-// Same thing with 'zp_get_user_burn'
-#define zp_get_user_burning(%1) zp_get_user_burn(%1)
+#define zp_get_user_burning(%1) zp_get_user_burn(%1) // Same thing with 'zp_get_user_burn'
+#define zp_teleport_user(%1) zp_do_random_spawn(%1) // Same thing with 'zp_do_random_spawn'
+#define zp_get_user_clip_mode(%1) zp_get_user_unlimited_ammo(%1) // Same thing with 'zp_get_user_unlimited_ammo'
+#define zp_reset_user_clip_mode(%1) zp_reset_user_unlimited_ammo(%1) // Same thing with 'zp_reset_user_unlimited_ammo'
+
+/**
+ * Give user unlimited clip
+ *
+ * @param id	Player Index
+ * @return		True if sucess, false otherwise.
+ */
+ stock zp_give_user_unlimited_clip(id)
+	return zp_set_user_unlimited_ammo(id, 2);
+
+/**
+ * Give user unlimited ammo
+ *
+ * @param id	Player Index
+ * @return		True if sucess, false otherwise.
+ */
+ stock zp_give_user_unlimited_ammo(id)
+	return zp_set_user_unlimited_ammo(id, 1);
+
+/**
+ * Remove user unlimited ammo
+ *
+ * @param id	Player Index
+ * @return		True if sucess, false otherwise.
+ */
+ stock zp_remove_user_unlimited_ammo(id)
+	return zp_set_user_unlimited_ammo(id, 0);
 
 /**
  * Reset user gravity
@@ -92,10 +121,12 @@ stock zp_is_multi_infection_round()
 /**
  * Returns whether the current round is a Custom Round.
  *
- * @return		True if it is, false otherwise.
+ * @return		Gamemode index if it is custom round, 0 if not.
  */
-stock zp_is_custom_round()
-	return (zp_get_current_mode() > MODE_LNJ);
+stock zp_is_custom_round() {
+	static currentmode; currentmode = zp_get_current_mode();
+	return (currentmode > MODE_LNJ) ? currentmode : 0;
+}
 
 /**
  * Returns whether the current round is a Armageddon (Lnj).
@@ -114,7 +145,7 @@ stock zp_get_alive_players() {
 	static i_alive, id
 	i_alive = 0
 	
-	for (id = 1; id <= ZP_MAX_PLAYERS; id++) {
+	for (id = 1; id <= MaxClients; id++) {
 		if(is_user_alive(id))
 			i_alive++
 	}

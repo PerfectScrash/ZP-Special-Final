@@ -303,3 +303,10 @@ Bombardier (From ZP Shade), Wesker (From Zombie Apocalipse), Spy and Dragon
 			- Expanded buffer size on filenames
 			- Added Directory Support on filenames
 		- Added Native: zp_get_hclass_count()
+		- Added Native: zp_get_user_unlimited_ammo(id)
+		- Added Native: zp_set_user_unlimited_ammo(id, set)
+		- Added Native: zp_reset_user_unlimited_ammo(id)
+		- Added Native: zp_get_user_knockback(id)
+		- Added Native: zp_set_user_knockback(id, Float:amount)
+		- Added Native: zp_reset_user_knockback(id)
+		- Added Forward: zp_fw_deploy_weapon(id, weaponid)

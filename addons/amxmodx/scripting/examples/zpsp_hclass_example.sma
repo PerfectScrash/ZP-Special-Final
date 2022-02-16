@@ -14,7 +14,6 @@
 ================================================================================*/
 
 #include <amxmodx>
-#include <cstrike>
 #include <zombie_plague_special>
 
 /*================================================================================
@@ -69,6 +68,5 @@ hclass_attributes(id) {
 	if(!is_user_alive(id))
 		return;
 
-	zp_give_item(id, "weapon_g3sg1");
-	cs_set_user_bpammo(id, CSW_G3SG1, 90);
+	zp_give_item(id, "weapon_g3sg1", 1);
 }

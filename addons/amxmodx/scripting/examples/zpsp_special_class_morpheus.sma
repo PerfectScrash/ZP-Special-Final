@@ -8,7 +8,6 @@
 #include <amxmodx>
 #include <hamsandwich>
 #include <fakemeta>
-#include <cstrike>
 #include <zombie_plague_special>
 #include <amx_settings_api>
 
@@ -79,7 +78,7 @@ public plugin_init()
 	cvar_damage = register_cvar("zp_morpheus_damage_multi", "1.5") 
 	
 	RegisterHam(Ham_TakeDamage, "player", "fw_TakeDamage")
-	register_event("CurWeapon","checkModel","be","1=1")
+	// register_event("CurWeapon","checkModel","be","1=1")
 	
 	g_msg_sync = CreateHudSyncObj()
 }
@@ -140,18 +139,18 @@ public native_is_morpheus_round(plugin_id, num_params)
 --> Class Functions
 --------------------------------------*/
 // Mp5 Model
-public checkModel(id) {
+public zp_fw_deploy_weapon(id, weaponid) {
 	if(!is_user_alive(id))
-		return PLUGIN_HANDLED;
+		return PLUGIN_CONTINUE;
 
 	if(zp_get_user_zombie(id) || !GetUserMorpheus(id))
-		return PLUGIN_HANDLED;
+		return PLUGIN_CONTINUE;
 	
-	if(get_user_weapon(id) == CSW_MP5NAVY) {
+	if(weaponid == CSW_MP5NAVY) {
 		set_pev(id, pev_viewmodel2, v_mp5_model)
 		set_pev(id, pev_weaponmodel2, p_mp5_model)
 	}
-	return PLUGIN_HANDLED
+	return PLUGIN_CONTINUE;
 }
 
 // Mp5 Damage
@@ -174,8 +173,7 @@ public zp_user_humanized_post(id) {
 		zp_set_custom_game_mod(g_gameid)	// Force Start Morpheus Round
 	
 	// Give MP5
-	zp_give_item(id, "weapon_mp5navy")
-	cs_set_user_bpammo(id, CSW_MP5NAVY, 90)
+	zp_give_item(id, "weapon_mp5navy", 1)
 }
 
 /*-------------------------------------

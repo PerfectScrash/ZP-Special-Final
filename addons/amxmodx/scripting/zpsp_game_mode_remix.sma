@@ -74,6 +74,8 @@ new const g_chance = 90						// Gamemode chance
 --------------------------------------*/
 new g_gameid, cvar_minplayers, cvar_ratio, cvar_humanhp, cvar_zombiehp, g_msg_sync, class_random[33]
 
+#define IsRemixRound() (zp_get_current_mode() == g_gameid)
+
 /*-------------------------------------
 --> Plugin Register
 --------------------------------------*/
@@ -114,7 +116,7 @@ public plugin_natives() {
 	register_native("zp_is_remix_round", "native_is_remix_round")
 }
 public native_is_remix_round(plugin_id, num_params) {
-	return (zp_get_current_mode() == g_gameid)
+	return IsRemixRound();
 }
 
 /*-------------------------------------
@@ -122,7 +124,7 @@ public native_is_remix_round(plugin_id, num_params) {
 --------------------------------------*/
 public zp_player_spawn_post(id) {
 	// Check for current mode 
-	if(zp_get_current_mode() != g_gameid)
+	if(!IsRemixRound())
 		return;
 
 	turn_random_class(id, zp_get_user_zombie(id) ? GET_ZOMBIE : GET_HUMAN)
@@ -136,9 +138,6 @@ public zp_round_started_pre(game) {
 	// Check for min players
 	if(zp_get_alive_players() < get_pcvar_num(cvar_minplayers))
 		return ZP_PLUGIN_HANDLED
-
-	// Start our new mode
-	start_remix_mode()
 	
 	// Make the compiler happy =)
 	return PLUGIN_CONTINUE
@@ -146,25 +145,16 @@ public zp_round_started_pre(game) {
 
 public zp_round_started(game, id) {
 	// Check if it is our game mode
-	if(game != g_gameid)
-		return
-	
-	// Show HUD notice
-	set_hudmessage(221, 156, 21, -1.0, 0.17, 1, 0.0, 5.0, 1.0, 1.0, -1)
-	ShowSyncHudMsg(0, g_msg_sync, "Remix Mode !!!")
-}
-
-public zp_game_mode_selected(gameid, id) {
-	// Check if our game mode was called
-	if(gameid == g_gameid)
-		start_remix_mode()
-	
-	// Make the compiler happy again =)
-	return PLUGIN_CONTINUE
+	if(game == g_gameid)
+		start_remix_mode()	
 }
 
 // This function contains the whole code behind this game mode
 start_remix_mode() {
+	// Show HUD notice
+	set_hudmessage(221, 156, 21, -1.0, 0.17, 1, 0.0, 5.0, 1.0, 1.0, -1)
+	ShowSyncHudMsg(0, g_msg_sync, "Remix Mode !!!")
+
 	// Create and initialize some important vars
 	static i_zombies, i_max_zombies, id, i_alive
 	i_alive = zp_get_alive_players()
@@ -194,7 +184,7 @@ start_remix_mode() {
 		if (!is_user_alive(id))
 			continue;
 
-		if(zp_get_user_zombie(id))
+		if(zp_get_user_zombie(id) || zp_get_human_special_class(id))
 			continue;
 
 		turn_random_class(id, GET_HUMAN)
