@@ -6395,7 +6395,7 @@ zombieme(id, infector, classid, silentmode, rewards) {
 	// Show deathmsg and reward infector?
 	if(rewards && infector) {
 		// Send death notice and fix the "dead" attrib on scoreboard
-		SendDeathMsg(infector, id)
+		SendDeathMsg(infector, id, 0)
 		FixDeadAttrib(id)
 		
 		// Reward frags, deaths, health, and ammo packs
@@ -6648,7 +6648,7 @@ humanme(id, classid, silentmode, attacker) { // Function Human Me (player id, tu
 	// Show deathmsg and reward infector?
 	if(attacker) {
 		// Send death notice and fix the "dead" attrib on scoreboard
-		SendDeathMsg(attacker, id)
+		SendDeathMsg(attacker, id, 1)
 		FixDeadAttrib(id)
 		
 		// Reward frags, deaths, health, and ammo packs
@@ -11973,12 +11973,15 @@ FixDeadAttrib(id) { // Fix Dead Attrib on scoreboard
 	write_byte(0) // attrib
 	message_end()
 }
-SendDeathMsg(attacker, victim) { // Send Death Message for infections
+SendDeathMsg(attacker, victim, disinfection) { // Send Death Message for infections
 	message_begin(MSG_BROADCAST, g_msgDeathMsg)
 	write_byte(attacker) // killer
 	write_byte(victim) // victim
 	write_byte(1) // headshot flag
-	write_string(get_pcvar_num(cvar_green_dm) ? "teammate" : "infection") // killer's weapon
+	if(disinfection)
+		write_string("antidote") // killer's weapon
+	else
+		write_string(get_pcvar_num(cvar_green_dm) ? "teammate" : "infection") // killer's weapon
 	message_end()
 }
 UpdateFrags(attacker, victim, frags, deaths, scoreboard) { // Update Player Frags and Deaths
