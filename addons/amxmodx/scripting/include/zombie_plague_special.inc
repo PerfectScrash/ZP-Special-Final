@@ -1660,6 +1660,27 @@ native zp_set_user_knockback(id, Float:amount);
  */
 native zp_reset_user_knockback(id);
 
+/**
+ * Get user default clip mode
+ *
+ * @return			Default Clip mode
+ */
+native zp_get_default_unlimited_ammo(id);
+
+/**
+ * Get user default knockback
+ *
+ * @return			Default Knockback
+ */
+native Float:zp_get_default_knockback(id);
+
+/**
+ * Get user default max speed
+ *
+ * @return			Default max speed
+ */
+native Float:zp_get_user_default_maxspeed(id);
+
 /***************************************************
 -------------------- Forwards ----------------------
 ****************************************************/

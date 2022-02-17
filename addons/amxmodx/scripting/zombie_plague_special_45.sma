@@ -314,6 +314,10 @@
 			- Added Native: zp_set_user_knockback(id, Float:amount)
 			- Added Native: zp_reset_user_knockback(id)
 			- Added Forward: zp_fw_deploy_weapon(id, weaponid)
+			- Added Native: zp_get_default_unlimited_ammo(id)
+			- Added Native: zp_get_default_knockback(id)
+			- Added Native: zp_get_user_default_maxspeed(id)
+			- Added Hud Cvars
 
 
 ============================================================================================================================*/
@@ -837,7 +841,7 @@ cvar_leap_zm_allow[MAX_SPECIALS_ZOMBIES], cvar_leap_zm_cooldown[MAX_SPECIALS_ZOM
 cvar_zm_spd[MAX_SPECIALS_ZOMBIES], cvar_zm_glow[MAX_SPECIALS_ZOMBIES], cvar_zm_aura[MAX_SPECIALS_ZOMBIES], cvar_zm_auraradius, cvar_zm_painfree[MAX_SPECIALS_ZOMBIES], cvar_zm_damage[MAX_SPECIALS_ZOMBIES],
 cvar_zm_respawn[MAX_SPECIALS_ZOMBIES],cvar_zm_basehp[MAX_SPECIALS_ZOMBIES], cvar_zm_health[MAX_SPECIALS_ZOMBIES], cvar_zmgravity[MAX_SPECIALS_ZOMBIES], cvar_zmsp_knockback[MAX_SPECIALS_ZOMBIES], cvar_zm_ignore_frags[MAX_SPECIALS_ZOMBIES],
 cvar_zm_allow_frost[MAX_SPECIALS_ZOMBIES], cvar_zm_allow_burn[MAX_SPECIALS_ZOMBIES], cvar_block_zm_use_button, cvar_zombieescapefail, cvar_zm_idle_sound, cvar_hm_allow_weight_spd;
-new frostsprite, cvar_dragon_power_distance, cvar_dragon_power_cooldown, cvar_dragon_flyspped,  Float:gLastUseCmd[33];
+new frostsprite, cvar_dragon_power_distance, cvar_dragon_power_cooldown, cvar_dragon_flyspped, cvar_hud_mode, cvar_hud_hm_rgb[3], cvar_hud_zm_rgb[3], Float:gLastUseCmd[33];
 
 // CVARS with arrays
 new cvar_flashcolor[3], cvar_flashcolor2[3], cvar_hm_red[MAX_SPECIALS_HUMANS], cvar_hm_green[MAX_SPECIALS_HUMANS], cvar_hm_blue[MAX_SPECIALS_HUMANS],
@@ -1064,6 +1068,9 @@ public plugin_natives() {
 	register_native("zp_get_user_knockback", "native_get_user_knockback");
 	register_native("zp_set_user_knockback", "native_set_user_knockback");
 	register_native("zp_reset_user_knockback", "native_reset_user_knockback");
+	register_native("zp_get_default_unlimited_ammo", "native_get_default_unlimited_ammo");
+	register_native("zp_get_default_knockback", "native_get_default_knockback");
+	register_native("zp_get_user_default_maxspeed", "native_get_user_default_maxspeed");
 
 }
 public plugin_precache() {
@@ -1624,6 +1631,13 @@ public plugin_init() {
 	cvar_chosse_instantanly[1] = register_cvar("zp_choose_hclass_instantanly", "1")
 	cvar_ammodamage_quantity = register_cvar("zp_ammopack_damage", "1")
 	cvar_green_dm = register_cvar("zp_green_deathmsg", "1")
+	cvar_hud_mode = register_cvar("zp_default_user_hud", "0")
+	cvar_hud_hm_rgb[0] = register_cvar("zp_hm_hud_color_r", "0")
+	cvar_hud_hm_rgb[1] = register_cvar("zp_hm_hud_color_g", "100")
+	cvar_hud_hm_rgb[2] = register_cvar("zp_hm_hud_color_b", "255")
+	cvar_hud_zm_rgb[0] = register_cvar("zp_zm_hud_color_r", "255")
+	cvar_hud_zm_rgb[1] = register_cvar("zp_zm_hud_color_g", "255")
+	cvar_hud_zm_rgb[2] = register_cvar("zp_zm_hud_color_b", "0")
 	
 	// CVARS - Deathmatch
 	cvar_deathmatch = register_cvar("zp_deathmatch", "0")
@@ -2943,8 +2957,6 @@ public client_putinserver(id) { // Client joins the game
 	get_user_name(id, g_playername[id], charsmax(g_playername[])) // Cache player's name
 
 	reset_vars(id, 1)
-	g_hud_color[0][id] = 4
-	g_hud_color[1][id] = 6
 
 	if(get_pcvar_num(cvar_statssave)) load_stats(id) // Load player stats?
 	
@@ -7802,6 +7814,14 @@ reset_vars(id, resetall) { // Reset Player Vars
 		MENU_PAGE_SPECIAL_CLASS = 0
 		MENU_PAGE_CUSTOM_SP_Z = 0
 		MENU_PAGE_CUSTOM_SP_H = 0
+		g_hud_color[0][id] = 0
+		g_hud_color[1][id] = 0
+		g_nv_color[0][id] = 0
+		g_nv_color[1][id] = 0
+		g_flashlight_color[id] = 0
+		g_hud_type[id] = get_pcvar_num(cvar_hud_mode);
+		if(g_hud_type[id] < 0 || g_hud_type[id] > 5)
+			g_hud_type[id] = 0
 	}
 }
 public spec_nvision(id) { // Set spectators nightvision
@@ -7837,13 +7857,18 @@ public ShowHUD(taskid) { // Show HUD Task
 	static class[32], rgb[3], sp_id // Format classname
 	
 	switch(g_hud_color[g_zombie[id] ? 1 : 0][id]) { // Hud Color
-		case 0: rgb = { 255, 255, 255 }
-		case 1: rgb = { 255, 0, 0 }
-		case 2: rgb = { 0, 255, 0 }
-		case 3: rgb = { 0, 0, 255 }
-		case 4: rgb = { 0, 255, 255 }
-		case 5: rgb = { 255, 0, 255 }
-		case 6: rgb = { 255, 255, 0 }
+		case 1: rgb = { 255, 255, 255 }
+		case 2: rgb = { 255, 0, 0 }
+		case 3: rgb = { 0, 255, 0 }
+		case 4: rgb = { 0, 0, 255 }
+		case 5: rgb = { 0, 255, 255 }
+		case 6: rgb = { 255, 0, 255 }
+		case 7: rgb = { 255, 255, 0 }
+		default: {
+			static i;
+			for(i = 0; i < 3; i++)
+				rgb[i] = get_pcvar_num(g_zombie[id] ? cvar_hud_zm_rgb[i] : cvar_hud_hm_rgb[i]);
+		}
 	}
 
 	if(g_zombie[id]) { // Zombies	
@@ -11268,6 +11293,29 @@ public native_reset_user_unlimited_ammo(plugin_id, num_params)
 	return 1;
 }
 
+// Native: zp_get_default_unlimited_ammo
+public native_get_default_unlimited_ammo(plugin_id, num_params)
+{
+	static id;
+	id = get_param(1)
+
+	// ZP disabled
+	if(!g_pluginenabled)
+		return -1;
+	
+	if(!is_user_valid(id))
+		return -1;
+
+	if(!g_isalive[id] || g_zombie[id] || g_hm_special[id] == BERSERKER)
+		return 0;
+
+	if(isCustomSpecialHuman(id))
+		return ArrayGetCell(g_hm_sp_cliptype, g_hm_special[id]-MAX_SPECIALS_HUMANS)
+
+	return get_pcvar_num(cvar_hm_infammo[g_hm_special[id]])
+	
+}
+
 // Native: zp_get_user_knockback
 public Float:native_get_user_knockback(plugin_id, num_params)
 {
@@ -11333,6 +11381,71 @@ public native_reset_user_knockback(plugin_id, num_params)
 		g_zombie_knockback[id] = Float:ArrayGetCell(g_zclass_kb, g_zombieclass[id])
 	
 	return 1;
+}
+
+// Native: zp_get_default_knockback
+public Float:native_get_default_knockback(plugin_id, num_params)
+{
+	static id;
+	id = get_param(1)
+
+	// ZP disabled
+	if(!g_pluginenabled)
+		return -1.0;
+	
+	if(!is_user_valid(id))
+		return -1.0;
+
+	if(!g_isalive[id] || !g_zombie[id])
+		return 0.0;
+
+	if(isCustomSpecialZombie(id))
+		return Float:ArrayGetCell(g_zm_sp_knockback, g_zm_special[id]-MAX_SPECIALS_ZOMBIES)
+	else if(isDefaultSpecialZombie(id))
+		return get_pcvar_float(cvar_zmsp_knockback[g_zm_special[id]-MAX_SPECIALS_ZOMBIES])
+		
+	return Float:ArrayGetCell(g_zclass_kb, g_zombieclass[id])
+}
+
+// Native: zp_get_user_default_maxspeed
+public Float:native_get_user_default_maxspeed(plugin_id, num_params) {
+	static id;
+	id = get_param(1)
+
+	// ZP disabled
+	if(!g_pluginenabled)
+		return -1.0;
+	
+	if(!is_user_valid(id))
+		return -1.0;
+
+	if(!g_isalive[id] || !g_zombie[id])
+		return 0.0;
+
+	if(isCustomSpecialZombie(id) || isCustomSpecialHuman(id) || isDefaultZombie(id)) 
+		return g_spd[id];
+
+	else if(isDefaultSpecialZombie(id)) 
+		return get_pcvar_float(cvar_zm_spd[g_zm_special[id]]);
+
+	else if(isDefaultSpecialHuman(id)) {
+		return get_pcvar_float(cvar_hm_spd[g_hm_special[id]]);
+	}
+	
+	else if(isDefaultHuman(id)) {
+		static cvarWeight 
+		cvarWeight = get_pcvar_num(cvar_hm_allow_weight_spd)
+		
+		if(!g_hclass_i) // No hclass instaled
+			g_spd[id] = get_pcvar_float(cvar_hm_spd[g_hm_special[id]])
+
+		if(cvarWeight == 1 || cvarWeight == 2 && !g_escape_map || cvarWeight >= 3 && g_escape_map)
+			return (g_spd[id] * weapon_spd_multi[g_currentweapon[id]]);
+		else
+			return (g_spd[id]);
+	}
+
+	return 0.0;
 }
 
 public native_register_weapon(plugin_id, num_params) { // Native: zp_register_weapon/zpsp_register_weapon
@@ -11564,7 +11677,6 @@ public set_user_flashlight(taskid) { // Custom Flashlight
 	for(i = 0; i < 3; i++) engfunc(EngFunc_WriteCoord, destoriginF[i]); // xyz
 	
 	switch(g_flashlight_color[ID_FLASH]) {
-		case 0: for(i = 0; i < 3; i++) g_flashlight_rgb[i] = get_pcvar_num((g_currentmode == MODE_ASSASSIN) ? cvar_flashcolor2[i] : cvar_flashcolor[i]);
 		case 1: g_flashlight_rgb = { 255, 255, 255 }
 		case 2: g_flashlight_rgb = { 255, 0, 0 }
 		case 3: g_flashlight_rgb = { 0, 255, 0 }
@@ -11572,6 +11684,10 @@ public set_user_flashlight(taskid) { // Custom Flashlight
 		case 5: g_flashlight_rgb = { 0, 255, 255 }
 		case 6: g_flashlight_rgb = { 255, 0, 255 }
 		case 7: g_flashlight_rgb = { 255, 255, 0 }
+		default: {
+			for(i = 0; i < 3; i++) 
+				g_flashlight_rgb[i] = get_pcvar_num((g_currentmode == MODE_ASSASSIN) ? cvar_flashcolor2[i] : cvar_flashcolor[i]);
+		}
 	}
 	
 	// Different flashlight in assassin round ?
@@ -12441,9 +12557,6 @@ public menu_color(id, zm, type) {
 	menu = menu_create(szText, "menu_color_handler")
 
 	for(i = 0; i < 8; i++) {
-		if(i == 0 && type == HUD) 
-			continue; 
-
 		menu_additem(menu, fmt("%L", id, personal_color_langs[i]), fmt("%s%d", szItem, i), 0)
 	}
 	menu_setprop(menu, MPROP_EXIT, MEXIT_ALL)
@@ -12462,8 +12575,8 @@ public menu_color_handler(id, menu, item) {
 	static data[32], iName[64], access, callback
 	menu_item_getinfo(menu, item, access, data, charsmax(data), iName, charsmax(iName), callback);
 
-	if(equal(data, "HH-", 3)) g_hud_color[0][id] = str_to_num(data[3])-1, menu_hud_config(id)
-	else if(equal(data, "HZ-", 3)) g_hud_color[1][id] = str_to_num(data[3])-1, menu_hud_config(id)
+	if(equal(data, "HH-", 3)) g_hud_color[0][id] = str_to_num(data[3]), menu_hud_config(id)
+	else if(equal(data, "HZ-", 3)) g_hud_color[1][id] = str_to_num(data[3]), menu_hud_config(id)
 	else if(equal(data, "Fl:", 3)) g_flashlight_color[id] = str_to_num(data[3]), show_menu_personal(id)
 	else if(equal(data, "NH-", 3)) {
 		g_nv_color[0][id] = str_to_num(data[3])
@@ -12795,8 +12908,8 @@ public reset_player_models(id) {
 	ArrayGetString(Arr_Model, iRand, newmodel, charsmax(newmodel))
 
 	g_ForwardParameter[0] = 0
-	g_FW_intParam[0] = -1
-	g_FW_intParam[1] = -1
+	g_FW_intParam[3] = -1
+	g_FW_intParam[4] = -1
 	ExecuteForward(g_forwards[MODEL_CHANGE_PRE], g_fwDummyResult, id, newmodel, NewBody, NewSkin)
 
 	if(g_fwDummyResult >= ZP_PLUGIN_SUPERCEDE) 
@@ -12805,11 +12918,11 @@ public reset_player_models(id) {
 	if(g_ForwardParameter[0]) 
 		formatex(newmodel, charsmax(newmodel), g_ForwardParameter) // Check if forward not changed the param
 
-	if(g_FW_intParam[0] != -1) 
-		NewBody = g_FW_intParam[0]
+	if(g_FW_intParam[3] != -1) 
+		NewBody = g_FW_intParam[3]
 	
-	if(g_FW_intParam[1] != -1) 
-		NewSkin = g_FW_intParam[1]
+	if(g_FW_intParam[4] != -1) 
+		NewSkin = g_FW_intParam[4]
 
 	formatex(g_playermodel[id], charsmax(g_playermodel[]), newmodel)
 	cs_set_user_model(id, newmodel, g_set_modelindex_offset ? true : false)

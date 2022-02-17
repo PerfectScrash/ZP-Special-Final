@@ -9,6 +9,7 @@
 #define zp_teleport_user(%1) zp_do_random_spawn(%1) // Same thing with 'zp_do_random_spawn'
 #define zp_get_user_clip_mode(%1) zp_get_user_unlimited_ammo(%1) // Same thing with 'zp_get_user_unlimited_ammo'
 #define zp_reset_user_clip_mode(%1) zp_reset_user_unlimited_ammo(%1) // Same thing with 'zp_reset_user_unlimited_ammo'
+#define zp_get_default_clip_mode(%1) zp_get_default_unlimited_ammo(%1) // Same thing with 'zp_get_default_unlimited_ammo'
 
 /**
  * Give user unlimited clip

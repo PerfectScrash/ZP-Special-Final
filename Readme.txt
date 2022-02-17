@@ -310,3 +310,7 @@ Bombardier (From ZP Shade), Wesker (From Zombie Apocalipse), Spy and Dragon
 		- Added Native: zp_set_user_knockback(id, Float:amount)
 		- Added Native: zp_reset_user_knockback(id)
 		- Added Forward: zp_fw_deploy_weapon(id, weaponid)
+		- Added Native: zp_get_default_unlimited_ammo(id)
+		- Added Native: zp_get_default_knockback(id)
+		- Added Native: zp_get_user_default_maxspeed(id)
+		- Added Hud Cvars
