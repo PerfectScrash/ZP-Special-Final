@@ -604,7 +604,7 @@ new const AMMOWEAPON[] = { 0, CSW_AWP, CSW_SCOUT, CSW_M249, CSW_AUG, CSW_XM1014,
 // Primary and Secondary Weapon Names
 new const WEAPONNAMES[][] = { "", "P228 Compact", "", "Schmidt Scout", "", "XM1014 M4", "", "Ingram MAC-10", "Steyr AUG A1", "", "Dual Elite Berettas", "FiveseveN", "UMP 45", 
 "SG-550 Auto-Sniper", "IMI Galil", "Famas", "USP .45 ACP Tactical", "Glock 18C", "AWP Magnum Sniper", "MP5 Navy", "M249 for Machinegun", "M3 Super 90", "M4A1 Carbine", 
-"Schmidt TMP", "G3SG1 Auto-Sniper", "", "Desert Eagle .50 AE", "SG-552 Commando", "AK-47 Kalashnikov", "", "ES P90" };
+"Schmidt TMP", "G3SG1 Auto-Sniper", "", "Desert Eagle .50 AE", "SG-552 Commando", "AK-47 Kalashnikov", "Knife", "ES P90" };
 
 // Weapon entity names
 new const WEAPONENTNAMES[][] = { "", "weapon_p228", "", "weapon_scout", "weapon_hegrenade", "weapon_xm1014", "weapon_c4", "weapon_mac10", "weapon_aug", "weapon_smokegrenade", 
@@ -613,7 +613,7 @@ new const WEAPONENTNAMES[][] = { "", "weapon_p228", "", "weapon_scout", "weapon_
 
 // Weapon Lang Keys
 new const WPN_LANG_KEYS[][] = { "", "WPN_P228", "", "WPN_SCOUT", "", "WPN_XM1014", "", "WPN_MAC10", "WPN_AUG", "", "WPN_ELITE", "WPN_FIVESEVEN", "WPN_UMP45", "WPN_SG550", "WPN_GALIL", "WPN_FAMAS", "WPN_USP", 
-"WPN_GLOCK18", "WPN_AWP", "WPN_MP5", "WPN_M249", "WPN_M3", "WPN_M4A1", "WPN_TMP", "WPN_G3SG1", "", "WPN_DEAGLE", "WPN_SG552", "WPN_AK47", "", "WPN_P90" };
+"WPN_GLOCK18", "WPN_AWP", "WPN_MP5", "WPN_M249", "WPN_M3", "WPN_M4A1", "WPN_TMP", "WPN_G3SG1", "", "WPN_DEAGLE", "WPN_SG552", "WPN_AK47", "WPN_KNIFE", "WPN_P90" };
 
 new const cs_sounds[][] = { "items/flashlight1.wav", "items/9mmclip1.wav", "player/bhit_helmet-1.wav" }; // CS sounds;
 new Float:NADE_EXPLOSION_RADIUS; // Explosion radius for custom grenades;
@@ -2931,7 +2931,7 @@ public fw_Item_Deploy_Post(weapon_ent) { // Ham Weapon Deploy Forward
 }
 // WeaponMod bugfix
 // forward wpn_gi_reset_weapon(id);
-public wpn_gi_reset_weapon(id) replace_weapon_models(id, CSW_KNIFE); // Replace knife model
+//public wpn_gi_reset_weapon(id) replace_weapon_models(id, CSW_KNIFE); // Replace knife model
 
 public client_putinserver(id) { // Client joins the game
 	if(!g_pluginenabled) return; // Plugin disabled?
@@ -6614,7 +6614,6 @@ humanme(id, classid, silentmode, attacker) { // Function Human Me (player id, tu
 	// Reset some vars
 	g_zombie[id] = false
 	g_zm_special[id] = 0
-	g_hm_special[id] = 0
 	g_firstzombie[id] = false
 	g_canbuy[id] = 2
 	g_user_custom_speed[id] = false
@@ -6638,6 +6637,10 @@ humanme(id, classid, silentmode, attacker) { // Function Human Me (player id, tu
 		nvision_toggle_off(id)
 	}
 
+
+	// Setting before drop weapons for Fix a knife model bug
+	g_hm_special[id] = (classid > 0) ? classid : 0
+
 	drop_weapons(id, 1) // Drop previous weapons
 	drop_weapons(id, 2)
 	
@@ -6658,8 +6661,6 @@ humanme(id, classid, silentmode, attacker) { // Function Human Me (player id, tu
 	}
 
 	if(classid >= MAX_SPECIALS_HUMANS) { // Set human attributes based on the mode
-		g_hm_special[id] = classid
-		
 		static special_id; special_id = g_hm_special[id]-MAX_SPECIALS_HUMANS
 
 		if(ArrayGetCell(g_hm_sp_health, special_id) == 0) fm_set_user_health(id, get_pcvar_num(cvar_hm_health[0]) * fnGetAlive()) // Set Health [0 = auto]
@@ -6685,8 +6686,6 @@ humanme(id, classid, silentmode, attacker) { // Function Human Me (player id, tu
 		g_infammo[id] = ArrayGetCell(g_hm_sp_cliptype, g_hm_special[id]-MAX_SPECIALS_HUMANS)
 	}
 	else if(classid > 0 && hm_special_enable[classid]) {
-		g_hm_special[id] = classid
-			
 		// Set Health [0 = auto]
 		if(get_pcvar_num(cvar_hm_health[classid]) == 0) {
 			if(get_pcvar_num(cvar_hm_basehp[classid]) == 0) fm_set_user_health(id, get_pcvar_num(cvar_hm_health[0]) * fnGetAlive())
@@ -6721,8 +6720,8 @@ humanme(id, classid, silentmode, attacker) { // Function Human Me (player id, tu
 		}
 		else if(g_hm_special[id] == BERSERKER) {
 			fm_give_item(id, "weapon_knife")
-			g_currentweapon[id] = CSW_KNIFE
-			replace_weapon_models(id, g_currentweapon[id])
+			//g_currentweapon[id] = CSW_KNIFE
+			//replace_weapon_models(id, g_currentweapon[id])
 		}
 		else if(g_hm_special[id] == WESKER) {
 			fm_give_item(id, "weapon_deagle")
