@@ -724,6 +724,7 @@ new g_trailSpr[MAX_GRENADES], g_ExplodeSpr[MAX_GRENADES], g_GibSpr[MAX_GRENADES]
 new g_hamczbots, g_fwSpawn, g_fwPrecacheSound, g_infbombcounter, g_antidotecounter, g_madnesscounter, g_arrays_created, g_escape_map;
 new g_lastplayerleaving, g_switchingteam, g_buyzone_ent, zm_special_enable[MAX_SPECIALS_ZOMBIES], hm_special_enable[MAX_SPECIALS_HUMANS];
 new custom_lighting[2], g_custom_light, g_ForwardParameter[64], g_FW_intParam[10], g_AdditionalHudText[500];
+#define CheckAllowed(%1) (%1 == 1 || %1 == 2 && !g_escape_map || %1 >= 3 && g_escape_map) // Check if allowed X function with escape map checks
 
 // Message IDs vars
 new g_msgScoreInfo, g_msgNVGToggle, g_msgScoreAttrib, g_msgAmmoPickup, g_msgScreenFade, g_msgDeathMsg, g_msgSetFOV, g_msgFlashlight, g_msgFlashBat, 
@@ -2744,7 +2745,9 @@ public fw_TakeDamage(victim, inflictor, attacker, Float:damage, damage_type) { /
 	if(!g_allowinfection || fnGetHumans() == 1) return HAM_IGNORED; // Last human or infection not allowed
 	
 	// Does human armor need to be reduced before infecting?
-	if(get_pcvar_num(cvar_humanarmor) == 1 || get_pcvar_num(cvar_humanarmor) == 2 && !g_escape_map || get_pcvar_num(cvar_humanarmor) >= 3 && g_escape_map) {
+	static CvarValue;
+	CvarValue = get_pcvar_num(cvar_humanarmor)
+	if(CheckAllowed(CvarValue)) {
 		
 		static Float:armor; pev(victim, pev_armorvalue, armor) // Get victim armor
 		if(armor > 0.0) { // If he has some, block the infection and reduce armor instead
@@ -3313,7 +3316,7 @@ set_player_maxspeed(id) { // Set proper maxspeed for player
 			if(!g_hclass_i) // No hclass instaled
 				g_spd[id] = get_pcvar_float(cvar_hm_spd[g_hm_special[id]])
 
-			if(cvarWeight == 1 || cvarWeight == 2 && !g_escape_map || cvarWeight >= 3 && g_escape_map)
+			if(CheckAllowed(cvarWeight))
 				set_pev(id, pev_maxspeed, g_spd[id] * weapon_spd_multi[g_currentweapon[id]])
 			else
 				set_pev(id, pev_maxspeed, g_spd[id])
@@ -6917,7 +6920,7 @@ load_customization_from_files() {
 		formatex(szKey, charsmax(szKey), "ENABLE %s", zombie_special_names[i])
 		amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "Main Configs", szKey, num)
 
-		if(num == 1 || num == 2 && !g_escape_map || num >= 3 && g_escape_map) zm_special_enable[i] =  true
+		if(CheckAllowed(num)) zm_special_enable[i] =  true
 		else zm_special_enable[i] =  false
 	}
 
@@ -6925,7 +6928,7 @@ load_customization_from_files() {
 		num = 0
 		amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "Main Configs", fmt("ENABLE %s", human_special_names[i]), num)
 		
-		if(num == 1 || num == 2 && !g_escape_map || num >= 3 && g_escape_map) hm_special_enable[i] =  true
+		if(CheckAllowed(num)) hm_special_enable[i] =  true
 		else hm_special_enable[i] =  false
 	}
 
@@ -9919,7 +9922,7 @@ public native_register_human_special(plugin_id, num_params) {
 	else ArrayPushCell(g_hm_sp_painfree, value)
 
 	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ENABLE", value)) {
-		if(value == 1 || value == 2 && !g_escape_map || value >= 3 && g_escape_map) ArrayPushCell(g_hm_sp_enable, 1)
+		if(CheckAllowed(value)) ArrayPushCell(g_hm_sp_enable, 1)
 		else ArrayPushCell(g_hm_sp_enable, 0)
 	}
 	else {
@@ -10172,7 +10175,7 @@ public native_register_zombie_special(plugin_id, num_params) {
 	else ArrayPushCell(g_zm_sp_allow_frost, value)
 
 	if(amx_load_setting_int(ZP_SPECIAL_CLASSES_FILE, section, "ENABLE", value)) {
-		if(value == 1 || value == 2 && !g_escape_map || value >= 3 && g_escape_map) ArrayPushCell(g_zm_sp_enable, 1)
+		if(CheckAllowed(value)) ArrayPushCell(g_zm_sp_enable, 1)
 		else ArrayPushCell(g_zm_sp_enable, 0)
 	}
 	else {
@@ -11439,7 +11442,7 @@ public Float:native_get_user_default_maxspeed(plugin_id, num_params) {
 		if(!g_hclass_i) // No hclass instaled
 			g_spd[id] = get_pcvar_float(cvar_hm_spd[g_hm_special[id]])
 
-		if(cvarWeight == 1 || cvarWeight == 2 && !g_escape_map || cvarWeight >= 3 && g_escape_map)
+		if(CheckAllowed(cvarWeight))
 			return (g_spd[id] * weapon_spd_multi[g_currentweapon[id]]);
 		else
 			return (g_spd[id]);
@@ -13077,7 +13080,10 @@ public is_gamemode_enable(modeid) {
 		return 1;
 
 	if(modeid < MAX_GAME_MODES) { // Internal Game Modes
-		if(!get_pcvar_num(cvar_mod_enable[modeid]) || get_pcvar_num(cvar_mod_enable[modeid]) == 2 && !g_escape_map || get_pcvar_num(cvar_mod_enable[modeid]) == 3 && g_escape_map)
+		static CvarValue;
+		CvarValue = get_pcvar_num(cvar_mod_enable[modeid]);
+
+		if(!CheckAllowed(CvarValue))
 			return 0
 
 		switch(modeid) {
