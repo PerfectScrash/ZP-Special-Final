@@ -942,3 +942,238 @@ MENU_PERSONAL_COLOR6 = \wRózsaszín
 MENU_PERSONAL_COLOR7 = \wSárga
 
 DRAGON_INFO = Nyomd meg az ^4[E]^1 gombot a képességed használatához!, ^4[Ugrás]^1 gombbal repülsz!
+
+[ru]
+ZP_CHAT_TAG = ^4[ZPSp]^1
+NOTICE_INFO1 = Нажми М чтобы открыть игровое меню
+NOTICE_INFO2 = Нажми , или . чтобы купить патроны
+NOTICE_VIRUS_FREE = Т-вирус вырвался наружу...
+NOTICE_FIRST = %s  первый зомби !!!
+NOTICE_INFECT = %s мозги были съедены...
+NOTICE_INFECT2 = %s мозги были съедены %s...
+NOTICE_ANTIDOTE = %s использовал антидот...
+NOTICE_NEMESIS = %s Немезида !!!
+NOTICE_SURVIVOR = %s Выживший !!!
+NOTICE_SWARM = Куча на кучу !!!
+NOTICE_MULTI = Множественная инфекция !!!
+NOTICE_PLAGUE = Чума !!!
+NOTICE_SNIPER = %s Снайпер !!!
+NOTICE_ASSASSIN = %s Ассасин !!!
+NOTICE_PREDATOR = %s Хищник !!!
+NOTICE_BOMBARDIER = %s Бомбардёр !!!
+NOTICE_WESKER = %s Вескер !!!
+NOTICE_BERSERKER = %s Берсеркер!!!
+NOTICE_SPY = %s Шпион!!!
+NOTICE_DRAGON = %s Дракон !!!
+NOTICE_LNJ = Армагеддон !!!
+
+WIN_HUMAN = Люди победили нашествие чумы!
+WIN_ZOMBIE = Зомби поглотили этот мир!
+WIN_NO_ONE = Ничья...
+WIN_HUMAN_SURVIVE = Люди смогли выжить!
+WIN_ZOMBIE_ESCAPE_FAIL = Люди не спаслись!
+
+CMD_INFECT = превращен в зомби
+CMD_DISINFECT = превращен в человека
+CMD_NEMESIS = превращен в Немезиду
+CMD_SURVIVAL = превращен в Выжившего
+CMD_ASSASSIN = превращен в Ассасина
+CMD_PREDATOR = превращен в Хищника
+CMD_BOMBARDIER = превращен в Бомбардёра
+CMD_BERSERKER = превращен в Берсеркера
+CMD_WESKER = превращен в Вескера
+CMD_SPY = превращен в Шпиона
+CMD_DRAGON = превращен в Дракона
+CMD_SWARM = начать Кучу на кучу
+CMD_MULTI = начать множественную инфекцию
+CMD_PLAGUE = начать чуму
+CMD_SNIPER = превращен в Снайпера
+CMD_LNJ = начать Армагеддон
+CMD_RESPAWN = возрождён
+CMD_NOT = недопустимая команда.
+CMD_ZOMBIE_ONLY = Это доступно только зомби.
+CMD_HUMAN_ONLY = Это доступно только людям.
+CMD_NOT_STUCK = Ты не застрял.
+CMD_NOT_ACCESS = У тебя нет доступа.
+CMD_NOT_CANTUSE = Ты не можешь использовать это прямо сейчас.
+CMD_NOT_EXTRAS = Экстра-предметы отключены.
+CMD_NOT_GAME_MODES = Пользовательские моды отключены
+CMD_NOT_ZCLASSES = Зомби классы отключены.
+CMD_NOT_HCLASSES = Классы людей отключены.
+CMD_NOT_CUSTOM_SP = Пользовательские Спец-классы отключены.
+CMD_HAVE_ITEM = У тебя уже есть это.
+CMD_CUSTOM_SP = превращен в %s
+CMD_MODE_INFECTION = начать режим Инфекцию
+CMD_MODE_NEMESIS = начать режим Немезиды
+CMD_MODE_ASSASSIN = начать режим Ассасина
+CMD_MODE_PREDATOR = начать режим Хищника
+CMD_MODE_BOMBARDIER = начать режим Бомбардёра
+CMD_MODE_DRAGON = начать режим Дракона
+CMD_MODE_SURVIVOR = начать режим Выжившего
+CMD_MODE_SNIPER = начать режим Снайпера
+CMD_MODE_BERSERKER = начать режим Берсеркера
+CMD_MODE_WESKER = начать режим Вескера
+CMD_MODE_SPY = начать режим Шпиона
+CMD_WAIT_USE = Подожди несколько секунд
+
+MOTD_ENABLED = Включено
+MOTD_DISABLED = ВЫключено
+
+ZP_MAIN_MENU_TITLE = Zombie Plague Special
+
+MENU_BUY = Купить оружие
+MENU_EXTRABUY = Купить экстра-предметы
+MENU_ZCLASS = Выбрать класс зомби
+MENU_HCLASS = Выбрать класс человека
+MENU_UNSTUCK = Застрял!
+MENU_ADMIN_CUSTOM = Открыть меню пользовательских модов
+MENU_ADMIN = Изменить класс
+MENU2_ADMIN = Открыть меню модов
+MENU3_ADMIN = Админ меню
+MENU_INFO = Помощь
+MENU_SPECTATOR = Зайти за наблюдателя
+
+MENU_BUY1_TITLE = Основное оружие
+MENU_BUY2_TITLE = Дополнительное оружие
+MENU_ZCLASS_TITLE = Зомби класс
+MENU_HCLASS_TITLE = Класс человека
+MENU_EXTRA_TITLE = Экстра-предмет
+MENU_ADMIN_CUSTOM_TITLE = Чтобы начать выбери пользовательский режим
+MENU_ADMIN_TITLE = Изменить класс
+MENU2_ADMIN_TITLE = Чтобы начать выбери режим
+MENU3_ADMIN_TITLE = ZP Special Админ меню
+MENU_INFO_TITLE = Информация по плагинам
+MENU_ADMIN_CUSTOM_SP_H = Сделать особого \y(Человека)
+MENU_ADMIN_CUSTOM_SP_Z = Сделать особого \r(Зомби)
+
+MENU_EXTRA1 = Ночное зрение (один раунд)
+MENU_EXTRA2 = T-Вирус Антидот
+MENU_EXTRA3 = Бешенство зомби
+MENU_EXTRA4 = Инфекционная граната
+MENU_ADMIN1_CUSTOM = Начать
+MENU_ADMIN2_CUSTOM = начать
+MENU_ADMIN1 = Сделать зомби/человеком
+MENU_ADMIN2 = Сделать Немезидой
+MENU_ADMIN3 = Сделать Выжившим
+MENU_ADMIN4 = Возродить
+MENU_ADMIN5 = Начать Кучу на кучу
+MENU_ADMIN6 = Начать Множественную инфекцию
+MENU_ADMIN7 = Начать Чуму
+MENU_ADMIN8 = Сделать Снайпером
+MENU_ADMIN9 = Сделать Ассасином
+MENU_ADMIN10 = Начать Армагеддон
+MENU_ADMIN11 = Сделать Хищником
+MENU_ADMIN12 = Сделать Бомбардёром
+MENU_ADMIN13 = Сделать Берсеркером
+MENU_ADMIN14 = Сделать Вескером
+MENU_ADMIN15 = Сделать Шпионом
+MENU_ADMIN16 = Сделать Драконом
+MENU_ADMIN17 = Начать режим Инфекции
+MENU_ADMIN18 = Начать режим Немезиды
+MENU_ADMIN19 = Начать режим Ассасина
+MENU_ADMIN20 = Начать режим Хищника
+MENU_ADMIN21 = Начать режим Бомбардёра
+MENU_ADMIN22 = Начать режим Дракона
+MENU_ADMIN23 = Начать режим Выжившего
+MENU_ADMIN24 = Начать режим Снайпера
+MENU_ADMIN25 = Начать режим Берсеркера
+MENU_ADMIN26 = Начать режим Вескера
+MENU_ADMIN27 = Начать режим Шпиона
+MENU_MAKE_CUSTOM_SP = Сделать %s
+
+MENU_AUTOSELECT = Запомнить выбор
+MENU_BACK = Назад
+MENU_NEXT = Дальше
+MENU_EXIT = Выход
+
+ZOMBIE_ATTRIB1 = Здоровье
+ZOMBIE_ATTRIB2 = Скорость
+ZOMBIE_ATTRIB3 = Гравитация
+ZOMBIE_ATTRIB4 = Отбрасывание
+ZOMBIE_ATTRIB5 = Броня
+ZOMBIE_ATTRIB6 = Режим
+ZOMBIE_ATTRIB7 = Убийства
+ZOMBIE_ATTRIB8 = Смертей
+
+CURRENT_MODE = Текущий режим
+MODE_NONE = Ждём конец света!
+MODE_INFECTION = Инфекция
+MODE_SWARM = Куча на кучу
+MODE_MULTI = Множественная инфекция
+MODE_PLAGUE = Чума
+MODE_LNJ = Армагеддон
+MODE_UNDEFNIED = Не опознано
+ROUND_ENDED = Раунд окончен!
+
+CLASS_CLASS = Класс:
+CLASS_HUMAN = Человек
+CLASS_ZOMBIE = Зомби
+CLASS_NEMESIS = Немезида
+CLASS_ASSASSIN = Ассасин
+CLASS_SURVIVOR = Выживший
+CLASS_SNIPER = Снайпер
+CLASS_PREDATOR = Хищник
+CLASS_BOMBARDIER = Бомбардёр
+CLASS_BERSERKER = Берсеркер
+CLASS_WESKER = Вескер
+CLASS_SPY = Шпион
+CLASS_DRAGON = Дракон
+
+ARMOR = Броня:
+LAST_ZOMBIE_LEFT = Последний зомби исчез, поэтому %s новый зомби.
+LAST_HUMAN_LEFT = Последний человек сбежал, поэтому %s новый человек.
+NOT_ENOUGH_AMMO = У тебя не хватает аммо паков.
+AMMO_BOUGHT = Ты купил патроны.
+ZOMBIE_SELECT = Твой зомби класс в следующем раунде будет:
+ZOMBIE_SELECT_NOW = Сейчас твой зомби класс:
+HUMAN_SELECT = Твой класс человека в следующем раунде будет:
+HUMAN_SELECT_NOW = Сейчас твой класс человека:
+BUY_ENABLED = Меню покупки подключено.
+AMMO_PACKS1 = Аммо паков:
+AMMO_PACKS2 = аммо паков
+SPECTATING = Наблюдает:
+AIM_INFO = %s^n[ %s | Здоровье: %d | Броня: %d | Аммо паков: %d ]
+
+WAIT_ROUND_BEGINS = Ждём начала раунда...
+MENU_PERSONAL_OPTIONS = Настройки пользователя
+
+ANTIDOTE_NOT_AVALIABLE1 = Антидот доступен когда есть как минимум ^3%d^1 зомби
+
+MENU_PERSONAL_TITLE = \r[\dZP\r] \wНастройки пользователя:
+MENU_PERSONAL_ITEM1 = \wНастройки худа
+MENU_PERSONAL_ITEM2 = \wНастройки ночного зрения
+MENU_PERSONAL_ITEM3 = \wЦвет фонарика
+MENU_HUD_TITLE = \r[\dZP\r] \wНастройки худа:
+MENU_HUD_ITEM1 = \wИзменить тип худа
+MENU_HUD_ITEM2 = \wИзменить цвет худа \y[Люди]
+MENU_HUD_ITEM3 = \wИзменить цвет худа \r[Зомби]
+
+MENU_CHOOSE_HUD_COLOR_TITLE1 = \r[\dZP\r] \wИзменить цвет худа \r[Зомби]\w:
+MENU_CHOOSE_HUD_COLOR_TITLE2 = \r[\dZP\r] \wИзменить цвет худа \y[Люди]\w:
+
+MENU_HUD_TYPE_TITLE = \r[\dZP\r] \wИзменить тип худа:
+MENU_HUD_TYPE_ITEM1 = \wОбычный
+MENU_HUD_TYPE_ITEM2 = \wКлассический
+MENU_HUD_TYPE_ITEM3 = \wПо центру
+MENU_HUD_TYPE_ITEM4 = \wAnthRax Стиль
+MENU_HUD_TYPE_ITEM5 = \wПод радаром
+MENU_HUD_TYPE_ITEM6 = \wПо центру AnthRax
+
+MENU_CHOOSE_FLASH_COLOR_TITLE = \r[\dZP\r] \wЦвет фонарика:
+
+MENU_NVISION_CONFIG_TITLE = \r[\dZP\r] \wНастройки ночного зрения:
+MENU_NVISION_ITEM1 = \wВыбрать цвет ночного зрения \r[Зомби]
+MENU_NVISION_ITEM2 = \wВыбрать цвет ночного зрения \y[Люди]
+MENU_NVISION_COLOR_TITLE1 = \r[\dZP\r] \wВыбрать цвет ночного зрения \y[Люди]\w:
+MENU_NVISION_COLOR_TITLE2 = \r[\dZP\r] \wВыбрать цвет ночного зрения \r[Зомби]\w:
+
+MENU_COLOR_DEFAULT = \wСтандартный
+MENU_PERSONAL_COLOR1 = \wБелый
+MENU_PERSONAL_COLOR2 = \wКрасный
+MENU_PERSONAL_COLOR3 = \wЗеленый
+MENU_PERSONAL_COLOR4 = \wСиний
+MENU_PERSONAL_COLOR5 = \wБирюзовый
+MENU_PERSONAL_COLOR6 = \wРозовый
+MENU_PERSONAL_COLOR7 = \wЖелтый
+
+DRAGON_INFO = Нажми ^4[E]^1 чтобы использовать способность!, Зажми ^4[Прыжок]^1 для полета!
