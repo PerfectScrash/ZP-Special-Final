@@ -319,6 +319,10 @@
 			- Added Native: zp_get_user_default_maxspeed(id)
 			- Added Hud Cvars
 
+			-- Fixing 06/03
+				- Fixed bug when you choose gun locked by forward in weapons menu and opens a secondary menu
+				- Fixed bug when load/save custom primary/secondary weapons with same name
+
 
 ============================================================================================================================*/
 
@@ -4539,9 +4543,10 @@ public menu_buy(id, key) { // Buy Menu
 	}
 	if(WPN_TYPE == 0) {
 		WPN_AUTO_PRI = WPN_SELECTION // Store selected weapon id
-		buy_weapon(id, WPN_AUTO_PRI, 0) // Buy primary weapon
-		WPN_STARTID = 0
-		show_menu_buy(id, 1) // Show pistols menu
+		if(buy_weapon(id, WPN_AUTO_PRI, 0)) { // Buy primary weapon
+			WPN_STARTID = 0
+			show_menu_buy(id, 1) // Show pistols menu
+		}
 	}
 	else {
 		WPN_AUTO_SEC = WPN_SELECTION // Store selected weapon id
@@ -4562,7 +4567,7 @@ buy_weapon(id, selection, sec) { // Buy Primary/Secondary Weapon
 	if(g_fwDummyResult >= ZP_PLUGIN_HANDLED) {
 		WPN_AUTO_ON = 0
 		show_menu_buy(id, sec)
-		return;
+		return 0;
 	}
 	if(!sec) {
 		drop_weapons(id, 1) // Drop previous weapons
@@ -4588,6 +4593,7 @@ buy_weapon(id, selection, sec) { // Buy Primary/Secondary Weapon
 	}
 	g_canbuy[id] = sec ? 0 : 1 // Weapons bought
 	ExecuteForward(g_forwards[WEAPON_SELECTED_POST], g_fwDummyResult, id, sec, selection);
+	return 1;
 }
 public menu_extras(id, menuid, item) { // Extra Items Menu
 	if(!is_user_connected(id)) { // Player disconnected?
@@ -11482,9 +11488,9 @@ public native_register_weapon(plugin_id, num_params) { // Native: zp_register_we
 		}
 	}
 	
-	static section[32]
-	copy(section, charsmax(section), name)
-	ArrayPushString(g_wpn_realname[secondary], section)
+	static section[64]
+	formatex(section, charsmax(section), "%s:%s", secondary ? "Sec" : "Pri", name)
+	ArrayPushString(g_wpn_realname[secondary], name)
 
 	if(!amx_load_setting_string(ZP_WEAPONS_FILE, section, "NAME", name, charsmax(name))) 
 		amx_save_setting_string(ZP_WEAPONS_FILE, section, "NAME", name)
