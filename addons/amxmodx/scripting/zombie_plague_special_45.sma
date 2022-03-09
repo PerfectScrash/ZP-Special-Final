@@ -319,9 +319,13 @@
 			- Added Native: zp_get_user_default_maxspeed(id)
 			- Added Hud Cvars
 
-			-- Fixing 06/03
+			-- Patch 1 (06/03)
 				- Fixed bug when you choose gun locked by forward in weapons menu and opens a secondary menu
 				- Fixed bug when load/save custom primary/secondary weapons with same name
+			
+			-- Patch 2 (08/03)
+				- Fixed native zp_get_user_default_gravity(id);
+				- Removed useless cvar/function zp toggle
 
 
 ============================================================================================================================*/
@@ -721,7 +725,7 @@ new g_canbuy[33], g_ammopacks[33], g_damagedealt[33], how_many_rewards, Float:g_
 new g_menu_data[33][15], g_burning_dur[33], Float:g_current_maxspeed[33], g_user_custom_speed[33], g_infammo[33];
 
 // Game vars;
-new g_pluginenabled, g_newround, g_endround, g_modestarted, g_allowinfection, g_deathmatchmode, g_currentmode, g_lastmode, g_nextmode;
+new g_newround, g_endround, g_modestarted, g_allowinfection, g_deathmatchmode, g_currentmode, g_lastmode, g_nextmode;
 new g_scorezombies, g_scorehumans, g_gamecommencing, g_spawnCount, g_spawnCount2, Float:g_spawns[MAX_CSDM_SPAWNS][3], Float:g_spawns2[MAX_CSDM_SPAWNS][3];
 new g_lights_i, g_lights_cycle[32], g_lights_cycle_len, Float:g_teams_targettime, g_MsgSync[3];
 new g_trailSpr[MAX_GRENADES], g_ExplodeSpr[MAX_GRENADES], g_GibSpr[MAX_GRENADES], g_RingSpr, g_flameSpr, g_smokeSpr, g_glassSpr, g_modname[32], g_freezetime, MaxPlayers, g_czero;
@@ -827,7 +831,7 @@ sprite_grenade_ring[64], sprite_grenade_fire[64], sprite_grenade_smoke[64], spri
 
 // CVAR pointers
 new cvar_green_dm, cvar_lighting, cvar_zombiefov, cvar_removemoney, cvar_thunder, cvar_deathmatch, cvar_customnvg, cvar_nvg_alpha, cvar_hitzones, cvar_flashsize[2], cvar_ammodamage, cvar_ammodamage_quantity, cvar_zombiearmor, cvar_chosse_instantanly[2],
-cvar_flashdrain, cvar_zombiebleeding, cvar_removedoors, cvar_customflash, cvar_randspawn, cvar_ammoinfect, cvar_toggle, cvar_knockbackpower, cvar_freezeduration, cvar_triggered, cvar_flashcharge,
+cvar_flashdrain, cvar_zombiebleeding, cvar_removedoors, cvar_customflash, cvar_randspawn, cvar_ammoinfect, cvar_knockbackpower, cvar_freezeduration, cvar_triggered, cvar_flashcharge,
 cvar_firegrenades, cvar_frostgrenades, cvar_logcommands, cvar_spawnprotection, cvar_nvgsize, cvar_flareduration, cvar_zclasses, cvar_hclasses, cvar_extraitems, cvar_showactivity, cvar_warmup, cvar_flashdist, cvar_flarecolor, cvar_fireduration, cvar_firedamage,
 cvar_flaregrenades, cvar_knockbackducking, cvar_knockbackdamage, cvar_knockbackzvel, cvar_multiratio, cvar_swarmratio, cvar_flaresize[2], cvar_spawndelay, cvar_extraantidote, cvar_extramadness, cvar_extraantidote_ze, cvar_extramadness_ze,
 cvar_extraweapons, cvar_extranvision, cvar_zm_nvggive[MAX_SPECIALS_ZOMBIES], cvar_hm_nvggive[MAX_SPECIALS_HUMANS], cvar_spec_nvggive, cvar_preventconsecutive, cvar_botquota, cvar_buycustom, cvar_fireslowdown, cvar_sniperfraggore, cvar_nemfraggore, cvar_humansurvive, cvar_antidote_minzms,
@@ -1080,13 +1084,6 @@ public plugin_natives() {
 }
 public plugin_precache() {
 	register_plugin(PLUGIN, VERSION, AUTHOR) // Register earlier to show up in plugins list properly after plugin disable/error at loading
-
-	cvar_toggle = register_cvar("zp_on", "1") // To switch plugin on/off
-	if(!get_pcvar_num(cvar_toggle)) {
-		pause("a");
-		return; // Plugin disabled?
-	}
-	g_pluginenabled = true
 	
 	new i, x, buffer[150], buffer2[150]
 
@@ -1448,7 +1445,6 @@ public plugin_precache() {
 }
 public plugin_init() {
 	
-	if(!g_pluginenabled) return; // Plugin disabled?	
 	if(!g_zclass_i) set_fail_state("No zombie classes loaded!") // No zombie classes?
 	
 	// Print the number of registered Game Modes (if any)
@@ -2187,8 +2183,6 @@ public plugin_init() {
 	if(equal(mymod, "czero")) g_czero = 1
 }
 public plugin_cfg() {
-	if(!g_pluginenabled) return; // Plugin disabled?
-	
 	static cfgdir[32]; get_configsdir(cfgdir, charsmax(cfgdir)) // Get configs dir
 	server_cmd("exec %s/%s", cfgdir, ZP_CFG_FILE) // Execute .cfg config file
 
@@ -2955,8 +2949,6 @@ public fw_Item_Deploy_Post(weapon_ent) { // Ham Weapon Deploy Forward
 //public wpn_gi_reset_weapon(id) replace_weapon_models(id, CSW_KNIFE); // Replace knife model
 
 public client_putinserver(id) { // Client joins the game
-	if(!g_pluginenabled) return; // Plugin disabled?
-
 	g_isconnected[id] = true
 	g_zombieclassnext[id] = NULL_CLASS
 	g_hclass_next[id] = NULL_CLASS
@@ -8619,9 +8611,15 @@ public Float:get_gravity_default(id) {
 		if(isCustomSpecialHuman(id))
 			return Float:ArrayGetCell(g_hm_sp_gravity, g_hm_special[id]-MAX_SPECIALS_HUMANS)
 		else if(isDefaultSpecialHuman(id) || g_hm_special[id] == 0 && !g_hclass_i)
-			return get_pcvar_float(cvar_zmgravity[g_zm_special[id]])
-		else if(g_user_hclass[id] != NULL_CLASS)
-			return Float:ArrayGetCell(g_hclass_gravity, g_user_hclass[id])
+			return get_pcvar_float(cvar_hmgravity[0])
+		else if(g_user_hclass[id] != NULL_CLASS) {
+			static Float:Gravity
+			Gravity = Float:ArrayGetCell(g_hclass_gravity, g_user_hclass[id])
+			if(Gravity > 0.0)
+				return Gravity
+			else
+				return get_pcvar_float(cvar_hmgravity[0])
+		}
 	}
 	return 1.0;
 }
@@ -8697,7 +8695,6 @@ public native_get_user_infectnade(plugin_id, num_params) { // Native: zp_get_use
 
 public native_get_user_maxhealth(plugin_id, num_params) { // Native: zp_get_user_maxhealth/zp_get_zombie_maxhealth
 	static id; id = get_param(1)
-	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!is_user_valid(id)) return -1;
 	if(!g_isalive[id]) return -1;
 	
@@ -8764,7 +8761,6 @@ public native_set_user_batteries(plugin_id, num_params) { // Native: zp_set_user
 	static id, value; 
 	id = get_param(1);
 	value = get_param(2);
-	if(!g_pluginenabled) return false; // ZP Special disabled
 	if(!is_user_valid(id) || !is_user_valid_connected(id)) return false;
 	
 	g_flashbattery[id] = clamp(value, 0, 100);
@@ -8890,7 +8886,6 @@ public native_weapon_count(plugin_id, num_params) { // Native: zp_weapon_count
 }
 public native_special_class_name(plugin_id, num_params) { // Native: zp_get_special_class_name
 	if(num_params != 3) return -1;
-	if(!g_pluginenabled) return -1; // ZP Special disabled
 	
 	static id; id = get_param(1)
 	
@@ -9259,8 +9254,6 @@ public native_set_user_nightvision(plugin_id, num_params) { // Native: zp_set_us
 
 	if(!is_user_valid_connected(id)) return false;
 
-	if(!g_pluginenabled) return false; // ZP Special disabled
-
 	if(set) {
 		g_nvision[id] = true
 		
@@ -9293,8 +9286,6 @@ public native_set_user_madness(plugin_id, num_params) {
 
 public set_user_madness(id, set, Float:Duration) {
 	if(!is_user_valid(id)) return false;
-	
-	if(!g_pluginenabled) return false;
 	
 	if(set) {
 		if(g_nodamage[id]) return false;
@@ -9339,8 +9330,6 @@ public native_set_user_frozen(plugin_id, num_params) {
 public set_user_frozen(id, set, Float:Duration) {
 	if(!is_user_valid(id)) return false;
 
-	if(!g_pluginenabled) return false;
-	
 	static sound[64]
 	if(set) {
 		if(!is_user_valid_alive(id) || g_nodamage[id] || g_frozen[id]) return false; // Only effect alive unfrozen zombies
@@ -9440,8 +9429,6 @@ public native_set_user_burn(plugin_id, num_params) {
 
 public set_user_burn(id, set, Float:Duration) {
 	if(!is_user_valid(id)) return false;
-	if(!g_pluginenabled) return false;
-	
 	if(set) {
 		if(!is_user_valid_alive(id) || g_nodamage[id]) return false; // Only effect alive zombies
 			
@@ -9479,7 +9466,7 @@ public native_set_user_infectnade(plugin_id, num_params) {
 	set = get_param(2);
 
 	if(!is_user_valid_alive(id)) return false;
-	if(!g_pluginenabled || !g_zombie[id] || !g_isalive[id]) return false;
+	if(!g_zombie[id] || !g_isalive[id]) return false;
 
 	if(set) fm_give_item(id, "weapon_hegrenade");
 	else cs_set_user_bpammo(id, CSW_HEGRENADE, 0), engclient_cmd(id, "weapon_knife")
@@ -9488,8 +9475,6 @@ public native_set_user_infectnade(plugin_id, num_params) {
 
 }
 public native_infect_user(plugin_id, num_params) { // Native: zp_infect_user
-	if(!g_pluginenabled) return false; // ZP Special disabled
-
 	static id, infector, silent, rewards;
 	id = get_param(1);
 	infector = get_param(2);
@@ -9508,8 +9493,6 @@ public native_infect_user(plugin_id, num_params) { // Native: zp_infect_user
 	return true;
 }
 public native_disinfect_user(plugin_id, num_params) { // Native: zp_disinfect_user
-	if(!g_pluginenabled) return false; // ZP Special disabled
-	
 	static id, silent, attacker
 	id = get_param(1)
 	silent = get_param(2)
@@ -9547,7 +9530,6 @@ public make_user_special(id, spid, zombie) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid Special class id (%d)", spid)
 		return -1;
 	}
-	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!allowed_special(id, zombie, spid)) return 0; // Not allowed to be special
 
 	if(g_newround && spid < MAX_SPECIALS_HUMANS && !zombie || g_newround && spid < MAX_SPECIALS_ZOMBIES && zombie) { // New round?
@@ -9562,8 +9544,6 @@ public make_user_special(id, spid, zombie) {
 	return 1;
 }
 public native_force_user_class(plugin_id, num_params) {
-	if(!g_pluginenabled) return -1; // ZP Special disabled
-
 	static id, spid, zombie, attacker, silent
 	id = get_param(1)
 	spid = get_param(2)
@@ -9586,8 +9566,6 @@ public native_force_user_class(plugin_id, num_params) {
 	return 1;
 }
 public native_respawn_user(plugin_id, num_params) { // Native: zp_respawn_user
-	if(!g_pluginenabled) return false; // ZP Special disabled
-
 	static id, team;
 	id = get_param(1);
 	team = get_param(2);
@@ -9600,8 +9578,6 @@ public native_respawn_user(plugin_id, num_params) { // Native: zp_respawn_user
 	return true;
 }
 public native_force_buy_extra_item(plugin_id, num_params) { // Native: zp_force_buy_extra_item
-	if(!g_pluginenabled) return false; // ZP Special disabled	
-	
 	static id, itemid, ignorecost;
 	id = get_param(1);
 	itemid = get_param(2);
@@ -9657,7 +9633,6 @@ public native_get_user_spy(plugin_id, num_params) { // Native: zp_get_user_spy
 	return (g_hm_special[id] == SPY);
 }
 public native_get_user_model(plugin_id, num_params) { // Native: zp_get_user_model
-	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(num_params != 3) return -1; // Insufficient number of arguments
 
 	static id; id = get_param(1) // Retrieve the player's index
@@ -9690,7 +9665,6 @@ public native_override_user_model2(plugin_id, num_params)  {// Native: zpsp_over
 }
 
 public override_user_model(id, const newmodel[], body, skin, modelindex) { 
-	if(!g_pluginenabled) return false; // ZP Special disabled
 	if(!is_user_valid_alive(id)) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid Player (%d)", id)
 		return false;
@@ -9764,7 +9738,6 @@ public native_get_special_count(plugin_id, num_params) {
 
 // Native: zp_register_human_special
 public native_register_human_special(plugin_id, num_params) {
-	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
 	
 	static i, sp_name[32], name[32]
@@ -9967,7 +9940,6 @@ public native_register_human_special(plugin_id, num_params) {
 }
 // Native: zp_register_zombie_special
 public native_register_zombie_special(plugin_id, num_params) {
-	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
 
 	static i, sp_name[32], name[32]
@@ -10219,7 +10191,6 @@ public native_register_zombie_special(plugin_id, num_params) {
 	return (g_zm_specials_i-1); // Return id under which we registered the human special 
 }
 public native_register_gamemode(plugin_id, num_params) { // Native: zp_register_game_mode/zpsp_register_gamemode
-	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
 
 	static name[32]; get_string(1, name, charsmax(name))
@@ -10473,7 +10444,6 @@ public native_get_user_hud_type(plugin_id, num_params) {
 
 // Native: zp_register_extra_item
 public native_register_extra_item(plugin_id, num_params) {
-	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
 
 	static i, itemname[32], name[32], cost, team;
@@ -10567,7 +10537,6 @@ stock internal_register_extra_item(const name[], cost, team, name_by_lang, const
 	g_extraitem_i++ // Increase registered items counter
 }
 public native_register_extra_item_sp(plugin_id, num_params) { // Native: zpsp_register_extra_item
-	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
 
 	static i, itemname[32], name[32], cost, szTeam[300], uselang, langkey[32];
@@ -10653,7 +10622,6 @@ public native_register_extra_item_sp(plugin_id, num_params) { // Native: zpsp_re
 	return (g_extraitem_i-1); // Return id under which we registered the item
 }
 public native_register_human_class(plugin_id, num_params) {
-	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
 
 	static name[32];
@@ -10811,7 +10779,6 @@ public native_register_hclass_model(plugin_id, num_params)
 
 // Native: zp_register_zombie_class
 public native_register_zombie_class(plugin_id, num_params) {
-	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
 
 	static name[32];
@@ -11036,8 +11003,6 @@ public register_zclass_sounds(is_sp, classid, key[], Array:realname, Array:enabl
 }
 
 public native_get_extra_item_id(plugin_id, num_params) { // Native: zp_get_extra_item_id
-	if(!g_pluginenabled) return -1; // ZP Special disabled
-
 	static name[32];
 	get_string(1, name, charsmax(name))
 	
@@ -11054,8 +11019,6 @@ public native_get_extra_item_id(plugin_id, num_params) { // Native: zp_get_extra
 	return itemid;
 }
 public native_get_zombie_class_id(plugin_id, num_params) { // Native: zp_get_zombie_class_id
-	if(!g_pluginenabled) return -1; // ZP Special disabled
-	
 	static name[32];
 	get_string(1, name, charsmax(name))
 	
@@ -11072,8 +11035,6 @@ public native_get_zombie_class_id(plugin_id, num_params) { // Native: zp_get_zom
 	return classid;
 }
 public native_get_human_class_id(plugin_id, num_params) { // Native: zp_get_human_class_id
-	if(!g_pluginenabled) return -1; // ZP Special disabled
-	
 	static name[32];
 	get_string(1, name, charsmax(name))
 	
@@ -11090,8 +11051,6 @@ public native_get_human_class_id(plugin_id, num_params) { // Native: zp_get_huma
 	return classid;
 }
 public native_get_special_class_id(plugin_id, num_params) { // Native: zp_get_special_class_id
-	if(!g_pluginenabled) return -1; // ZP Special disabled
-	
 	static is_zombie, name[32], i, class_name[32];
 	is_zombie = get_param(1);
 	get_string(2, name, charsmax(name));
@@ -11240,10 +11199,6 @@ public native_get_user_unlimited_ammo(plugin_id, num_params)
 	static id;
 	id = get_param(1)
 
-	// ZP disabled
-	if(!g_pluginenabled)
-		return -1;
-	
 	if(!is_user_valid(id))
 		return -1;
 
@@ -11260,10 +11215,6 @@ public native_set_user_unlimited_ammo(plugin_id, num_params)
 	id = get_param(1)
 	set = get_param(2)
 
-	// ZP disabled
-	if(!g_pluginenabled)
-		return -1;
-	
 	if(!is_user_valid(id))
 		return -1;
 
@@ -11282,10 +11233,6 @@ public native_reset_user_unlimited_ammo(plugin_id, num_params)
 	static id;
 	id = get_param(1)
 
-	// ZP disabled
-	if(!g_pluginenabled)
-		return -1;
-	
 	if(!is_user_valid(id))
 		return -1;
 
@@ -11308,10 +11255,6 @@ public native_get_default_unlimited_ammo(plugin_id, num_params)
 	static id;
 	id = get_param(1)
 
-	// ZP disabled
-	if(!g_pluginenabled)
-		return -1;
-	
 	if(!is_user_valid(id))
 		return -1;
 
@@ -11331,10 +11274,6 @@ public Float:native_get_user_knockback(plugin_id, num_params)
 	static id;
 	id = get_param(1)
 
-	// ZP disabled
-	if(!g_pluginenabled)
-		return -1.0;
-	
 	if(!is_user_valid(id))
 		return -1.0;
 
@@ -11351,10 +11290,6 @@ public native_set_user_knockback(plugin_id, num_params)
 	id = get_param(1)
 	amount = get_param_f(2)
 
-	// ZP disabled
-	if(!g_pluginenabled)
-		return -1;
-	
 	if(!is_user_valid(id))
 		return -1;
 
@@ -11372,10 +11307,6 @@ public native_reset_user_knockback(plugin_id, num_params)
 	static id;
 	id = get_param(1)
 
-	// ZP disabled
-	if(!g_pluginenabled)
-		return -1;
-	
 	if(!is_user_valid(id))
 		return -1;
 
@@ -11397,10 +11328,6 @@ public Float:native_get_default_knockback(plugin_id, num_params)
 {
 	static id;
 	id = get_param(1)
-
-	// ZP disabled
-	if(!g_pluginenabled)
-		return -1.0;
 	
 	if(!is_user_valid(id))
 		return -1.0;
@@ -11421,10 +11348,6 @@ public Float:native_get_user_default_maxspeed(plugin_id, num_params) {
 	static id;
 	id = get_param(1)
 
-	// ZP disabled
-	if(!g_pluginenabled)
-		return -1.0;
-	
 	if(!is_user_valid(id))
 		return -1.0;
 
@@ -11458,7 +11381,6 @@ public Float:native_get_user_default_maxspeed(plugin_id, num_params) {
 }
 
 public native_register_weapon(plugin_id, num_params) { // Native: zp_register_weapon/zpsp_register_weapon
-	if(!g_pluginenabled) return -1; // ZP Special disabled
 	if(!g_arrays_created) return -1; // Arrays not yet initialized
 
 	static name[32], secondary, uselang, langkey[32]
