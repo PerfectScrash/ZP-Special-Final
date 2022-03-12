@@ -319,15 +319,11 @@
 			- Added Native: zp_get_user_default_maxspeed(id)
 			- Added Hud Cvars
 
-			-- Patch 1 (06/03)
+			-- Official Patch V1 (12/03)
 				- Fixed bug when you choose gun locked by forward in weapons menu and opens a secondary menu
 				- Fixed bug when load/save custom primary/secondary weapons with same name
-			
-			-- Patch 2 (08/03)
 				- Fixed native zp_get_user_default_gravity(id);
 				- Removed useless cvar/function zp toggle
-
-			-- Patch 3 (12/03)
 				- Fixed Native: zp_get_user_default_maxspeed
 				- Fixed Native: zp_set_user_knockback
 				- Fixed weapons menu

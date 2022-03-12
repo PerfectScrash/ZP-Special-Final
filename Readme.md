@@ -1,5 +1,5 @@
 ## Donate:
-- If you want to donate for my works to encourage me to continue with the work feel free to donate 
+- If you want to donate for my works to encourage me to continue with the work feel free to donate
 - Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=A8RJPHR3T8P6Y
 
 # Zombie Plague Special
@@ -23,7 +23,7 @@
 	- **Bombardier:** From Zombie Plague Shade. Zombie with infinities kill bombs
 	- **Spy:** Human with Simmilar Predator's Habilities and More Damage with M3 Shotgun
 	- **Dragon:** Can Fly and Unleash Fire and Ice
-	
+
 * **If you Want to see more ZPSp Gameplay Additions Click Here: https://github.com/PerfectScrash/ZP-Special-Additions**
 
 * **Credits:**
@@ -35,15 +35,16 @@
 
 * **Official Link of Mod:**
 	https://forums.alliedmods.net/showthread.php?t=260845
-	
+
 *  **Donate:**
-	- If you want to donate for my works to encourage me to continue with the work feel free to donate 
+	- If you want to donate for my works to encourage me to continue with the work feel free to donate
 	- Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=A8RJPHR3T8P6Y
 
 * **Change Log:**
 
 	* **1.0:**
 		- First Post
+
 	* **2.0:**
 		- Removed Another mods (Dragon/Padre/Chuck Noris)
 		- Added New Natives and Forwards
@@ -52,11 +53,14 @@
 		- Removed .ini of extra itens and zombie classes
 		- Added p_  model for Special Humans
 		- Added Wesker & Bombardier Mod
+
 	* **2.0 Fix:**
 		- Fixed Berserker Knife Model
+
 	* **2.1:**
 		- Fixed Ambiences Sounds
 		- Added native zp_get_last_mode()
+
 	* **2.2:**
 		- Added Spy Mode
 		- Re-added Dragon Mode
@@ -64,47 +68,56 @@
 		- Optimized code
 		- Fixed Small Bug off Predator's Power when Handle Models Separate is enable
 		- Fixed Predator's Glow cvar
+
 	* **2.3:**
 		- Added New Natives
 		- Fixed Small bug on Open zombie class after infection
 		- Added Bot Suppot of Dragon Skills (Unleash Fire & Ice Only, Fly is not possible)
 		- Etc
+
 	* **2.4:**
 		- Added New Natives
 		- Fixed Bot Extra Item Support
 		- Readded .ini for zombie classes and extra itens (This file is auto create)
 		- Added Some Cvars
 		- Etc
+
 	* **2.4.1:**
 		- Optimized Code
 		- Added cvar "zp_choose_zclass_instantanly"
 		- Added native lost on include (zp_override_user_model)
 		- You can turn off the special class (Nemesis/Survivor/Sniper/Etc..) you want if you have not liked
+
 	* **2.5:**
 		- Optimized Code
 		- Added .ini file of Custom Game Modes
 		- Added Bot Suppot for Bombardier Grenade
 		- Etc
+
 	* **3.0:**
 		- Optimized Code
 		- Fixed Fog
 		- Fixed Knockback
 		- Added Some Natives (zp_register_human_special/zp_register_zombie_special/Etc)
 		- Etc
+
 	* **3.0 Fix:**
 		- Fixed Make Custom Zombie Special Menu
+
 	* **3.1:**
 		- Fixed AnthRax Hud style
 		- Fixed Bug of Predator and Spy not turn invisible to those who play in Software Mode
 		- Fixed Choose Zombie Class instantanly
 		- Fixed Some Error Logs
 		- Added Native (zp_get_special_class_name)
+
 	* **3.2:**
 		- Fixed Choose Zombie Class instantanly when frozen
 		- Fixed Zombie class save when have some characters
 		- Fixed zombie pain free
 		- Added Some Natives (zp_get_special_class_id/zp_get_zombie_class_realname)
 		- Fixed custom special class's rounds
+
 	* **3.3:**
 		- Added 4.3 fix 5a's all contains and fixes
 
@@ -114,6 +127,7 @@
 		- Added Cvars for turn on/off frozing Nemesis/Assassin/Predator/Bombardier/Dragon
 		- Added Configuration for turn on/off frozing Custom Special Zombies
 		- Removed cvar "zp_random_weapons" because are changed for "zp_random_primary" and "zp_random_secondary" (Like ZP 5.0)
+
 	* **3.5:**
 		- Added Zombie Escape Map Suport
 		- Fix Bug on Custom Special Classes Game modes not start when have one people on server
@@ -122,17 +136,19 @@
 		- Fixed Small Bug on precache ambience sounds
 		- Fixed Bombardier Grenade when infection bomb is disable
 		- Added p_ & w_ model for Grenades
+
 	* **3.5 Fix:**
 		- Removed Block use button before round begins (Reason: Some maps have button for open door on start)
 		- Fixed Native zp_get_user_next_class
+
 	* **4.0:**
 		- Fixed T Model Precache
 		- Added Configuration for enable/disable Special Classes (Custom and Normal)
 		- Fixed native ze_is_escape_map
 		- Fixed Log Error when player die before round begins
-		- Readed cvar for change nvsion color 
+		- Readed cvar for change nvsion color
 		- Added cvar for disable/enable for peoples change nvision color in personal menu
-		- Fixed cvar for change flashlight color 
+		- Fixed cvar for change flashlight color
 		- Added cvar for disable/enable for peoples change flashlight color in personal menu
 		- Added one Hud Style: Under Radar, Center AnthRax
 		- Added cvar zp_zombie_escape_fail for zombies scoring when time up and humans not escaped in escape maps
@@ -183,6 +199,7 @@
 		- Improved Code
 		- .cfg update [Need Change for prevent possible bugs]
 		- Lang updated (For menu itens) [Need Change for prevent possible bugs]
+
 	* **4.3**
 		- Fixed Native: zp_get_special_class_id
 		- Fixed Native: zp_get_zombie_class_realname
@@ -205,6 +222,7 @@
 		- Added Escape support for enable/disable internal gamemodes in a certain modes
 		- .cfg update [Need Change for prevent possible bugs]
 		- Optmized Code
+
 	* **4.3 [Fix]:**
 		- Fixed small bug with extra item grenades (Like antidote bomb, jump bomb, etc)
 
@@ -228,23 +246,23 @@
 			- Added Custom Death sound for Normal/Special Zombie Classes (Now you can change in .ini files for any class)
 			- Added Pain Sounds for specific zombie class (You can change in zpsp_zombieclasses.ini)
 			- Added Native: zp_get_custom_extra_start()
-			
+
 		- **Beta Update 15/06/20**
 			- Fixed Not Precached Sound '0'
 			- Added Fade Nightvision Mode (Can change by cvar "zp_nvg_custom")
 			- Added Cvar: "zp_nvg_fade_alpha"
 			- Added Madness delay (After Use)
 			- Added Cvar: "zp_extra_madness_use_delay"
-			
+
 		- **Beta Update: 05/12/20 (Final Beta - If dont have bugs consider Official 4.4 version)**
 			- Fixed Bug when joins spec before round begins
 			- Added Human Speed by Weapon Weight (Weapon Speed Multi - You can change in zombie_plague_special.ini) [Only For Normal Humans]
 			- Added Cvar: "zp_human_wpn_weight_enable"
 			- Added Lang Option for Extra Item Name, Gamemode Name, Special Class Name, Zombie Class Name/Info, Weapons/Custom Weapons Name. Just edit "zpsp_lang_itens_classes.txt"
-			
-		-- Fixing 08/12/20:
-		- Fixed Armageddon Respawn - Before peoples respawn as human and not survivor
-		- Fixed Lang from Additional Extra Weapons (Grenades/AWP/ETC.)
+
+		- Fixing 08/12/20:
+			- Fixed Armageddon Respawn - Before peoples respawn as human and not survivor
+			- Fixed Lang from Additional Extra Weapons (Grenades/AWP/ETC.)
 
 	* **4.5**:
 		- REMOVED Amx 1.8.2 SUPORT
@@ -286,7 +304,7 @@
 		- Added Cvar: zp_choose_hclass_instantanly
 		- Improved "save_custonomization" system
 		- Improved model/sound system for any external class
-		- Updated Native: zp_disinfect_user(id, silent, attacker) 
+		- Updated Native: zp_disinfect_user(id, silent, attacker)
 		- Updated Native: zpsp_register_gamemode(const name[], flags, chance, allow, dm_mode, resp_limit=0, enable_in_ze=0, uselang=0, const langkey[]="ITEM_LANG_DEFAULT_KEY");
 		- Added Forward: zp_player_show_hud(id, target, SpHudType:hudtype);
 		- Added Native: zp_add_hud_text(const text[]);
@@ -302,7 +320,7 @@
 		- Added Native: zp_get_user_maxhealth(id)
 		- Added Native: zp_register_start_gamemode_snd(id, const sound[])
 		- ZP main configs are now in a exclusive path (configs/zpsp_configs/...)
-		- On amx settings api: 
+		- On amx settings api:
 			- Expanded buffer size on filenames
 			- Added Directory Support on filenames
 		- Added Native: zp_get_hclass_count()
@@ -317,6 +335,11 @@
 		- Added Native: zp_get_default_knockback(id)
 		- Added Native: zp_get_user_default_maxspeed(id)
 		- Added Hud Cvars
-		- Fixing 06/03
+		- Official Patch V1 (12/03)
 			- Fixed bug when you choose gun locked by forward in weapons menu and opens a secondary menu
 			- Fixed bug when load/save custom primary/secondary weapons with same name
+			- Fixed native zp_get_user_default_gravity(id);
+			- Removed useless cvar/function zp toggle
+			- Fixed Native: zp_get_user_default_maxspeed
+			- Fixed Native: zp_set_user_knockback
+			- Fixed weapons menu
