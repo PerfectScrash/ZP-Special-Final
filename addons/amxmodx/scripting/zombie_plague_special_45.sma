@@ -327,6 +327,11 @@
 				- Fixed native zp_get_user_default_gravity(id);
 				- Removed useless cvar/function zp toggle
 
+			-- Patch 3 (12/03)
+				- Fixed Native: zp_get_user_default_maxspeed
+				- Fixed Native: zp_set_user_knockback
+				- Fixed weapons menu
+
 
 ============================================================================================================================*/
 
@@ -3310,7 +3315,7 @@ set_player_maxspeed(id) { // Set proper maxspeed for player
 			cvarWeight = get_pcvar_num(cvar_hm_allow_weight_spd)
 			
 			if(!g_hclass_i) // No hclass instaled
-				g_spd[id] = get_pcvar_float(cvar_hm_spd[g_hm_special[id]])
+				g_spd[id] = get_pcvar_float(cvar_hm_spd[0])
 
 			if(CheckAllowed(cvarWeight))
 				set_pev(id, pev_maxspeed, g_spd[id] * weapon_spd_multi[g_currentweapon[id]])
@@ -4840,9 +4845,11 @@ public menu_hclass(id, menuid, item) { // Human Class Menu?
 	}
 	else {
 		client_print_color(id, print_team_default, "%L %L^4 %s", id, "ZP_CHAT_TAG", id, "HUMAN_SELECT", name)
-		
-		if(get_pcvar_num(cvar_buycustom)) 
-			menu_buy_show(id+TASK_SPAWN) // Show custom buy menu?
+
+		if(get_pcvar_num(cvar_buycustom) && g_canbuy[id]) {
+			if(g_canbuy[id] == 2) menu_buy_show(id+TASK_SPAWN); // Show custom buy menu?
+			else if(g_canbuy[id] == 1) show_menu_buy(id, 1);
+		}
 	}
 
 	// Show selected human class info and stats
@@ -6829,8 +6836,11 @@ set_hclass_attributes(id)
 	CvarHclasses = get_pcvar_num(cvar_hclasses);
 	if(g_hclass_next[id] == NULL_CLASS && CvarHclasses || !g_choosed_hclass[id] && CvarHclasses && get_pcvar_num(cvar_chosse_instantanly[1]))
 		set_task(0.2, "show_menu_human_class", id+TASK_SPAWN)
-	else if(get_pcvar_num(cvar_buycustom)) 
-		set_task(0.2, "menu_buy_show", id+TASK_SPAWN) // Show custom buy menu?
+	else if(get_pcvar_num(cvar_buycustom) && g_canbuy[id]) {
+		if(g_canbuy[id] == 2) set_task(0.2, "menu_buy_show", id+TASK_SPAWN); // Show custom buy menu?
+		else if(g_canbuy[id] == 1) show_menu_buy(id, 1);
+	}
+		
 
 	g_user_hclass[id] = g_hclass_next[id]
 	if(g_user_hclass[id] == NULL_CLASS) g_user_hclass[id] = 0
@@ -11293,7 +11303,7 @@ public native_set_user_knockback(plugin_id, num_params)
 	if(!is_user_valid(id))
 		return -1;
 
-	if(!g_isalive[id] || g_zombie[id])
+	if(!g_isalive[id])
 		return 0;
 	
 	g_zombie_knockback[id] = amount;
@@ -11351,25 +11361,25 @@ public Float:native_get_user_default_maxspeed(plugin_id, num_params) {
 	if(!is_user_valid(id))
 		return -1.0;
 
-	if(!g_isalive[id] || !g_zombie[id])
+	if(!g_isalive[id])
 		return 0.0;
 
-	if(isCustomSpecialZombie(id) || isCustomSpecialHuman(id) || isDefaultZombie(id)) 
-		return g_spd[id];
+	// if(isCustomSpecialZombie(id) || isCustomSpecialHuman(id) || isDefaultZombie(id)) 
+	// 	return g_spd[id];
 
-	else if(isDefaultSpecialZombie(id)) 
+	if(isDefaultSpecialZombie(id)) 
 		return get_pcvar_float(cvar_zm_spd[g_zm_special[id]]);
 
-	else if(isDefaultSpecialHuman(id)) {
+	if(isDefaultSpecialHuman(id)) {
 		return get_pcvar_float(cvar_hm_spd[g_hm_special[id]]);
 	}
 	
-	else if(isDefaultHuman(id)) {
+	if(isDefaultHuman(id)) {
 		static cvarWeight 
 		cvarWeight = get_pcvar_num(cvar_hm_allow_weight_spd)
 		
 		if(!g_hclass_i) // No hclass instaled
-			g_spd[id] = get_pcvar_float(cvar_hm_spd[g_hm_special[id]])
+			g_spd[id] = get_pcvar_float(cvar_hm_spd[0])
 
 		if(CheckAllowed(cvarWeight))
 			return (g_spd[id] * weapon_spd_multi[g_currentweapon[id]]);
@@ -11377,7 +11387,7 @@ public Float:native_get_user_default_maxspeed(plugin_id, num_params) {
 			return (g_spd[id]);
 	}
 
-	return 0.0;
+	return g_spd[id];
 }
 
 public native_register_weapon(plugin_id, num_params) { // Native: zp_register_weapon/zpsp_register_weapon
