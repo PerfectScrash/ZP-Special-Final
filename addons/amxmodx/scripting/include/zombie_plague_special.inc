@@ -1919,7 +1919,7 @@ forward zp_zombie_special_choosed_post(id, specialid);
 /** 
  * Called when user get infected by bomb function
  * 
- * @note Use ZP_PLUGIN_HANDLED for block it
+ * @note Use ZP_PLUGIN_SUPERCEDE for block it
  * 
  * @param id			Player Index
  * 
