@@ -328,6 +328,16 @@
 				- Fixed Native: zp_set_user_knockback
 				- Fixed weapons menu
 
+			-- Patch v2 (Not ended)
+				- Removed register_ham_czbot function, now are using "specialbot" param in hamsandwich
+				- Added auto Add Setting in .ini for NOOBS
+				- Added cvar: "zp_respawn_on_headshoot"
+				- Fixed Forward: "zp_fw_deploy_weapon"
+				- Fixed Natives: "zp_reset_user_knockback" and "zp_get_default_knockback"
+				- Small otimization on code in Admin actions
+				- Now flame are in entities now.
+
+
 
 ============================================================================================================================*/
 
@@ -435,7 +445,6 @@ enum (+= 100) { // Task offsets
 	TASK_SPAWN,
 	TASK_BLOOD,
 	TASK_AURA,
-	TASK_BURN,
 	TASK_NVISION,
 	TASK_FLASH,
 	TASK_CHARGE,
@@ -453,7 +462,6 @@ enum (+= 100) { // Task offsets
 #define ID_SPAWN (taskid - TASK_SPAWN)
 #define ID_BLOOD (taskid - TASK_BLOOD)
 #define ID_AURA (taskid - TASK_AURA)
-#define ID_BURN (taskid - TASK_BURN)
 #define ID_NVISION (taskid - TASK_NVISION)
 #define ID_FLASH (taskid - TASK_FLASH)
 #define ID_CHARGE (taskid - TASK_CHARGE)
@@ -567,8 +575,8 @@ const OFFSET_FLASHLIGHT_BATTERY = 244;
 const OFFSET_CSDEATHS = 444;
 
 const OFFSET_ACTIVE_ITEM = 373; // CS Player CBase Offsets (win32)
-
 const OFFSET_WEAPONOWNER = 41; // CS Weapon CBase Offsets (win32)
+const OFFSET_LASTHITGROUP = 75; // CS Player CBase Offsets (win32)
 
 // Linux diff's
 const OFFSET_LINUX = 5; // offsets 5 higher in Linux builds
@@ -629,6 +637,10 @@ new const WPN_LANG_KEYS[][] = { "", "WPN_P228", "", "WPN_SCOUT", "", "WPN_XM1014
 "WPN_GLOCK18", "WPN_AWP", "WPN_MP5", "WPN_M249", "WPN_M3", "WPN_M4A1", "WPN_TMP", "WPN_G3SG1", "", "WPN_DEAGLE", "WPN_SG552", "WPN_AK47", "WPN_KNIFE", "WPN_P90" };
 
 new const cs_sounds[][] = { "items/flashlight1.wav", "items/9mmclip1.wav", "player/bhit_helmet-1.wav" }; // CS sounds;
+
+// Stationary entities
+new const stationary_entities[][] = { "func_tank", "func_tankmortar", "func_tankrocket", "func_tanklaser" }
+
 new Float:NADE_EXPLOSION_RADIUS; // Explosion radius for custom grenades;
 const PEV_ADDITIONAL_AMMO = pev_iuser1; // HACK: pev_ field used to store additional ammo on weapons;
 
@@ -686,6 +698,30 @@ enum { // Admin menu actions
 	ACTION_MAKE_DRAGON,
 	ACTION_RESPAWN_PLAYER
 };
+
+// Special Class Index
+enum { NEMESIS = 1, ASSASSIN, PREDATOR, BOMBARDIER, DRAGON, MAX_SPECIALS_ZOMBIES };	
+enum { SURVIVOR = 1, SNIPER, BERSERKER, WESKER, SPY, MAX_SPECIALS_HUMANS };
+
+// Reduce code with a loop :)
+enum _:handActions { act_iszm, act_classid, act_mode_class, act_make_class, act_lang[32] };
+new const sp_adm_actions[][handActions] = {
+	{ -1, 0, -1, -1, "MENU_ADMIN1" }, // Make Human/Zombie
+
+	{ 1, NEMESIS, ACCESS_MODE_NEMESIS, ACCESS_MAKE_NEMESIS, "MENU_ADMIN2" },
+	{ 0, SURVIVOR, ACCESS_MODE_SURVIVOR, ACCESS_MAKE_SURVIVOR, "MENU_ADMIN3" },
+	{ 0, SNIPER, ACCESS_MODE_SNIPER, ACCESS_MAKE_SNIPER, "MENU_ADMIN8" },
+	{ 1, ASSASSIN, ACCESS_MODE_ASSASSIN, ACCESS_MAKE_ASSASSIN, "MENU_ADMIN9" },
+	{ 0, BERSERKER, ACCESS_MODE_BERSERKER, ACCESS_MAKE_BERSERKER, "MENU_ADMIN11" },
+	{ 1, PREDATOR, ACCESS_MODE_PREDATOR, ACCESS_MAKE_PREDATOR, "MENU_ADMIN12" },
+	{ 0, WESKER, ACCESS_MODE_WESKER, ACCESS_MAKE_WESKER, "MENU_ADMIN13" },
+	{ 1, BOMBARDIER, ACCESS_MODE_BOMBARDIER, ACCESS_MAKE_BOMBARDIER, "MENU_ADMIN14" },
+	{ 0, SPY, ACCESS_MODE_SPY, ACCESS_MAKE_SPY, "MENU_ADMIN15" },
+	{ 1, DRAGON, ACCESS_MODE_DRAGON, ACCESS_MAKE_DRAGON, "MENU_ADMIN16" },
+
+	{ -1, 0, -1, -1, "MENU_ADMIN4" } // Respawn Player
+}
+
 // Custom forward return values;
 const ZP_PLUGIN_HANDLED = 97;
 const ZP_PLUGIN_SUPERCEDE = 98;
@@ -693,10 +729,6 @@ const ZP_PLUGIN_SUPERCEDE = 98;
 /*================================================================================
  [Global Variables]
 =================================================================================*/
-// Special Class Index
-enum { NEMESIS = 1, ASSASSIN, PREDATOR, BOMBARDIER, DRAGON, MAX_SPECIALS_ZOMBIES };	
-enum { SURVIVOR = 1, SNIPER, BERSERKER, WESKER, SPY, MAX_SPECIALS_HUMANS };
-
 // Special Class Vars
 new Array:g_hm_sp_realname, Array:g_hm_sp_name, Array:g_hm_sp_health, Array:g_hm_sp_speed, Array:g_hm_sp_cliptype,
 Array:g_hm_sp_gravity, Array:g_hm_sp_leap, Array:g_hm_sp_leap_f, Array:g_hm_sp_ignorefrag, Array:g_hm_sp_ignoreammo, Array:g_hm_sp_flags,
@@ -720,17 +752,17 @@ new g_zm_specials_i = MAX_SPECIALS_ZOMBIES, g_zm_special[33];
 
 // Player vars;
 new g_hud_type[33], g_hud_color[2][33], g_flashlight_color[33], g_flashlight_rgb[3], g_nv_color[2][33], g_nvrgb[3], g_respawn_count[33];
-new g_zombie[33], g_firstzombie[33], g_lastzombie[33], g_lasthuman[33], g_frozen[33], g_nodamage[33], g_respawn_as_zombie[33], Float:g_frozen_gravity[33], Float:g_buytime[33];
+new g_zombie[33], g_firstzombie[33], g_lastzombie[33], g_lasthuman[33], g_frozen[33], g_burning[33], g_nodamage[33], g_respawn_as_zombie[33], Float:g_frozen_gravity[33], Float:g_buytime[33];
 new g_nvision[33], g_nvisionenabled[33], g_nvg_enabled_mode[33], g_zombieclass[33], g_zombieclassnext[33], g_flashlight[33], g_flashbattery[33] = { 100, ... };
 new g_canbuy[33], g_ammopacks[33], g_damagedealt[33], how_many_rewards, Float:g_lastleaptime[33], Float:g_lastflashtime[33], g_playermodel[33][32], g_playerbody[33], g_playerskin[33], g_bot_extra_count[33];
-new g_menu_data[33][15], g_burning_dur[33], Float:g_current_maxspeed[33], g_user_custom_speed[33], g_infammo[33];
+new g_menu_data[33][15], Float:g_current_maxspeed[33], g_user_custom_speed[33], g_infammo[33];
 
 // Game vars;
 new g_newround, g_endround, g_modestarted, g_allowinfection, g_deathmatchmode, g_currentmode, g_lastmode, g_nextmode;
 new g_scorezombies, g_scorehumans, g_gamecommencing, g_spawnCount, g_spawnCount2, Float:g_spawns[MAX_CSDM_SPAWNS][3], Float:g_spawns2[MAX_CSDM_SPAWNS][3];
-new g_lights_i, g_lights_cycle[32], g_lights_cycle_len, Float:g_teams_targettime, g_MsgSync[3];
+new g_lights_i, g_lights_cycle[32], g_lights_cycle_len, Float:g_teams_targettime, g_MsgSync[3], g_automate_setting;
 new g_trailSpr[MAX_GRENADES], g_ExplodeSpr[MAX_GRENADES], g_GibSpr[MAX_GRENADES], g_RingSpr, g_flameSpr, g_smokeSpr, g_glassSpr, g_modname[32], g_freezetime, MaxPlayers, g_czero;
-new g_hamczbots, g_fwSpawn, g_fwPrecacheSound, g_infbombcounter, g_antidotecounter, g_madnesscounter, g_arrays_created, g_escape_map;
+new g_fwSpawn, g_fwPrecacheSound, g_infbombcounter, g_antidotecounter, g_madnesscounter, g_arrays_created, g_escape_map;
 new g_lastplayerleaving, g_switchingteam, g_buyzone_ent, zm_special_enable[MAX_SPECIALS_ZOMBIES], hm_special_enable[MAX_SPECIALS_HUMANS];
 new custom_lighting[2], g_custom_light, g_ForwardParameter[64], g_FW_intParam[10], g_AdditionalHudText[500];
 #define CheckAllowed(%1) (%1 == 1 || %1 == 2 && !g_escape_map || %1 >= 3 && g_escape_map) // Check if allowed X function with escape map checks
@@ -738,6 +770,8 @@ new custom_lighting[2], g_custom_light, g_ForwardParameter[64], g_FW_intParam[10
 // Message IDs vars
 new g_msgScoreInfo, g_msgNVGToggle, g_msgScoreAttrib, g_msgAmmoPickup, g_msgScreenFade, g_msgDeathMsg, g_msgSetFOV, g_msgFlashlight, g_msgFlashBat, 
 g_msgTeamInfo, g_msgDamage, g_msgHideWeapon, g_msgCrosshair, g_msgScreenShake, g_msgCurWeapon;
+
+new const FLAME_CLASSNAME[] = "zpsp_flame"
 
 enum { // Forward Enum
 	ROUND_START = 0,
@@ -814,7 +848,6 @@ new Array:g_hclass_real_name, Array:g_hclass_name, Array:g_hclass_info, Array:g_
 new Array:g_hclass_lang_enable, Array:g_hclass_name_lang_key, Array:g_hclass_info_lang_key, g_hclass_i;
 new Array:g_hclass_mdl_file, Array:g_hclass_mdl_handle, Array:g_hclass_body_handle, Array:g_hclass_skin_handle
 new g_user_hclass[33], g_hclass_next[33]
-// new Array:g_hclass_modelsstart, Array:g_hclass_modelsend, Array:g_hclass_playermodel, Array:g_hclass_body, Array:g_hclass_skin;
 #define MAX_ARRAY_SOUNDS 20 // Max Array Sounds
 
 // Customization vars
@@ -835,9 +868,9 @@ new cvar_green_dm, cvar_lighting, cvar_zombiefov, cvar_removemoney, cvar_thunder
 cvar_flashdrain, cvar_zombiebleeding, cvar_removedoors, cvar_customflash, cvar_randspawn, cvar_ammoinfect, cvar_knockbackpower, cvar_freezeduration, cvar_triggered, cvar_flashcharge,
 cvar_firegrenades, cvar_frostgrenades, cvar_logcommands, cvar_spawnprotection, cvar_nvgsize, cvar_flareduration, cvar_zclasses, cvar_hclasses, cvar_extraitems, cvar_showactivity, cvar_warmup, cvar_flashdist, cvar_flarecolor, cvar_fireduration, cvar_firedamage,
 cvar_flaregrenades, cvar_knockbackducking, cvar_knockbackdamage, cvar_knockbackzvel, cvar_multiratio, cvar_swarmratio, cvar_flaresize[2], cvar_spawndelay, cvar_extraantidote, cvar_extramadness, cvar_extraantidote_ze, cvar_extramadness_ze,
-cvar_extraweapons, cvar_extranvision, cvar_zm_nvggive[MAX_SPECIALS_ZOMBIES], cvar_hm_nvggive[MAX_SPECIALS_HUMANS], cvar_spec_nvggive, cvar_preventconsecutive, cvar_botquota, cvar_buycustom, cvar_fireslowdown, cvar_sniperfraggore, cvar_nemfraggore, cvar_humansurvive, cvar_antidote_minzms,
+cvar_extraweapons, cvar_extranvision, cvar_zm_nvggive[MAX_SPECIALS_ZOMBIES], cvar_hm_nvggive[MAX_SPECIALS_HUMANS], cvar_spec_nvggive, cvar_preventconsecutive, cvar_buycustom, cvar_fireslowdown, cvar_sniperfraggore, cvar_nemfraggore, cvar_humansurvive, cvar_antidote_minzms,
 cvar_extrainfbomb, cvar_extrainfbomb_ze, cvar_knockback, cvar_ammo_disinfect, cvar_fragsinfect, cvar_frags_disinfect, cvar_ammodamage_zombie, cvar_fragskill, cvar_humanarmor, cvar_zombiesilent, cvar_removedropped, cvar_huddisplay, cvar_allow_buy_no_start,
-cvar_plagueratio, cvar_blocksuicide, cvar_knockbackdist,  cvar_respawnonsuicide, cvar_respawnafterlast, cvar_statssave, cvar_adminmodelshuman, cvar_vipmodelshuman,
+cvar_plagueratio, cvar_blocksuicide, cvar_knockbackdist, cvar_respawnonheadshot, cvar_respawnonsuicide, cvar_respawnafterlast, cvar_statssave, cvar_adminmodelshuman, cvar_vipmodelshuman,
 cvar_adminmodelszombie, cvar_vipmodelszombie, cvar_blockpushables, cvar_respawnworldspawnkill, cvar_madnessduration, cvar_plaguenemnum, cvar_plaguenemhpmulti, cvar_plaguesurvhpmulti,
 cvar_survweapon, cvar_plaguesurvnum, cvar_infectionscreenfade, cvar_infectionscreenshake, cvar_infectionsparkle, cvar_infectiontracers, cvar_infectionparticles, cvar_infbomblimit,
 cvar_flashshowall, cvar_hudicons, cvar_startammopacks, cvar_random_weapon[2], cvar_buyzonetime, cvar_antidotelimit, cvar_madnesslimit, cvar_madness_use_countdown, g_madness_used[33], 
@@ -1081,7 +1114,6 @@ public plugin_natives() {
 	register_native("zp_get_default_unlimited_ammo", "native_get_default_unlimited_ammo");
 	register_native("zp_get_default_knockback", "native_get_default_knockback");
 	register_native("zp_get_user_default_maxspeed", "native_get_user_default_maxspeed");
-
 }
 public plugin_precache() {
 	register_plugin(PLUGIN, VERSION, AUTHOR) // Register earlier to show up in plugins list properly after plugin disable/error at loading
@@ -1485,28 +1517,27 @@ public plugin_init() {
 	for(new i = 0; i < MAX_AMBIENCE_SOUNDS; i++) if(g_ambience_sounds[i]) register_event("30", "event_intermission", "a")
 	
 	// HAM Forwards
-	RegisterHam(Ham_Spawn, "player", "fw_PlayerSpawn_Post", 1)
-	RegisterHam(Ham_Killed, "player", "fw_PlayerKilled")
-	RegisterHam(Ham_Killed, "player", "fw_PlayerKilled_Post", 1)
-	RegisterHam(Ham_TakeDamage, "player", "fw_TakeDamage")
-	RegisterHam(Ham_TakeDamage, "player", "fw_TakeDamage_Post", 1)
-	RegisterHam(Ham_TraceAttack, "player", "fw_TraceAttack")
-	RegisterHam(Ham_Player_ResetMaxSpeed, "player", "fw_ResetMaxSpeed_Post", 1)
-	RegisterHam(Ham_Use, "func_tank", "fw_UseStationary")
-	RegisterHam(Ham_Use, "func_tankmortar", "fw_UseStationary")
-	RegisterHam(Ham_Use, "func_tankrocket", "fw_UseStationary")
-	RegisterHam(Ham_Use, "func_tanklaser", "fw_UseStationary")
-	RegisterHam(Ham_Use, "func_tank", "fw_UseStationary_Post", 1)
-	RegisterHam(Ham_Use, "func_tankmortar", "fw_UseStationary_Post", 1)
-	RegisterHam(Ham_Use, "func_tankrocket", "fw_UseStationary_Post", 1)
-	RegisterHam(Ham_Use, "func_tanklaser", "fw_UseStationary_Post", 1)
+	RegisterHam(Ham_Spawn, "player", "fw_PlayerSpawn_Post", 1, true)
+	RegisterHam(Ham_Killed, "player", "fw_PlayerKilled", 0, true)
+	RegisterHam(Ham_Killed, "player", "fw_PlayerKilled_Post", 1, true)
+	RegisterHam(Ham_TakeDamage, "player", "fw_TakeDamage", 0, true)
+	RegisterHam(Ham_TakeDamage, "player", "fw_TakeDamage_Post", 1, true)
+	RegisterHam(Ham_TraceAttack, "player", "fw_TraceAttack", 0, true)
+	RegisterHam(Ham_Player_ResetMaxSpeed, "player", "fw_ResetMaxSpeed_Post", 1, true)
+	RegisterHam(Ham_AddPlayerItem, "player", "fw_AddPlayerItem", 0, true)
+
 	RegisterHam(Ham_Use, "func_pushable", "fw_UsePushable")
 	RegisterHam(Ham_Use, "func_button", "fw_UseButton")
 	RegisterHam(Ham_Touch, "weaponbox", "fw_TouchWeapon")
 	RegisterHam(Ham_Touch, "armoury_entity", "fw_TouchWeapon")
 	RegisterHam(Ham_Touch, "weapon_shield", "fw_TouchWeapon")
-	RegisterHam(Ham_AddPlayerItem, "player", "fw_AddPlayerItem")
-	for(new i = 1; i < sizeof WEAPONENTNAMES; i++)
+	RegisterHam(Ham_Think, "grenade", "fw_ThinkGrenade")
+	new i
+	for(i = 0; i < sizeof stationary_entities; i++) {
+		RegisterHam(Ham_Use, stationary_entities[i], "fw_UseStationary")
+		RegisterHam(Ham_Use, stationary_entities[i], "fw_UseStationary_Post", 1)
+	}
+	for(i = 1; i < sizeof WEAPONENTNAMES; i++)
 		if(WEAPONENTNAMES[i][0]) RegisterHam(Ham_Item_Deploy, WEAPONENTNAMES[i], "fw_Item_Deploy_Post", 1)
 	
 	// FM Forwards
@@ -1518,7 +1549,6 @@ public plugin_init() {
 	register_forward(FM_ClientUserInfoChanged, "fw_ClientUserInfoChanged")
 	register_forward(FM_GetGameDescription, "fw_GetGameDescription")
 	register_forward(FM_SetModel, "fw_SetModel")
-	RegisterHam(Ham_Think, "grenade", "fw_ThinkGrenade")
 	register_forward(FM_CmdStart, "fw_CmdStart")
 	register_forward(FM_PlayerPreThink, "fw_PlayerPreThink")
 	unregister_forward(FM_Spawn, g_fwSpawn)
@@ -1646,6 +1676,7 @@ public plugin_init() {
 	cvar_spawndelay = register_cvar("zp_spawn_delay", "5")
 	cvar_spawnprotection = register_cvar("zp_spawn_protection", "5")
 	cvar_respawnonsuicide = register_cvar("zp_respawn_on_suicide", "0")
+	cvar_respawnonheadshot = register_cvar("zp_respawn_on_headshoot", "1")
 	cvar_respawnafterlast = register_cvar("zp_respawn_after_last_human", "1")
 	cvar_zm_respawn[0] = register_cvar("zp_respawn_zombies", "1")
 	cvar_hm_respawn[0] = register_cvar("zp_respawn_humans", "1")
@@ -2103,7 +2134,6 @@ public plugin_init() {
 	// CVARS - Others
 	cvar_logcommands = register_cvar("zp_logcommands", "1")
 	cvar_showactivity = get_cvar_pointer("amx_show_activity")
-	cvar_botquota = get_cvar_pointer("bot_quota")
 	register_cvar("zombie_plague_special", VERSION, FCVAR_SERVER|FCVAR_SPONLY)
 	set_cvar_string("zombie_plague_special", VERSION)
 	
@@ -2381,7 +2411,6 @@ public fw_PlayerSpawn_Post(id) { // Ham Player Spawn Post Forward
 
 	remove_task(id+TASK_SPAWN)
 	remove_task(id+TASK_BLOOD)
-	remove_task(id+TASK_BURN)		// Remove previous tasks
 	remove_task(id+TASK_AURA)
 	remove_task(id+TASK_CHARGE)
 	remove_task(id+TASK_FLASH)
@@ -2486,8 +2515,12 @@ public fw_PlayerSpawn_Post(id) { // Ham Player Spawn Post Forward
 	}
 	
 	// Replace weapon models (bugfix)
-	static weapon_ent; weapon_ent = fm_cs_get_current_weapon_ent(id)
-	if(pev_valid(weapon_ent)) replace_weapon_models(id, cs_get_weapon_id(weapon_ent))
+	static weapon_ent, weaponid; weapon_ent = fm_cs_get_current_weapon_ent(id)
+	if(pev_valid(weapon_ent)) {
+		weaponid = cs_get_weapon_id(weapon_ent)
+		replace_weapon_models(id, weaponid)
+		ExecuteForward(g_forwards[DEPLOY_WEAPON], g_fwDummyResult, id, weaponid);
+	}
 
 	fnCheckLastZombie() // Last Zombie Check
 	ExecuteForward(g_forwards[PLAYER_SPAWN_POST], g_fwDummyResult, id); // Execute our player spawn post forward
@@ -2531,7 +2564,6 @@ public fw_PlayerKilled(victim, attacker, shouldgib) { // Ham Player Killed Forwa
 	if(g_zombie[victim] || g_hm_special[victim] > 0) { // Stop bleeding/burning/aura when killed
 		remove_task(victim+TASK_BLOOD)
 		remove_task(victim+TASK_AURA)
-		remove_task(victim+TASK_BURN)
 	}
 	if(is_user_valid_connected(attacker)) { // Nemesis and Assassin explode! or when killed by a Assassin victim is cut in pieces
 		if(g_zm_special[victim] > 0 || g_zm_special[attacker] == ASSASSIN && get_pcvar_num(cvar_nemfraggore)) {
@@ -2609,53 +2641,63 @@ public fw_PlayerKilled_Post(victim, attacker, shouldgib) { // Ham Player Killed 
 	static selfkill; // Determine whether the player killed himself
 	selfkill = (victim == attacker || !is_user_valid_connected(attacker)) ? true : false
 
+	// For model fix when thunder weapons is enable
+	if(is_user_valid_alive(attacker) && !selfkill) {
+		// replace_weapon_models(attacker, weaponid) // Is not necessary (Maybe)
+		ExecuteForward(g_forwards[DEPLOY_WEAPON], g_fwDummyResult, attacker, g_currentweapon[attacker]);
+	}
+
 	if((g_newround || g_currentmode == MODE_NONE) && !g_endround) {
-		//respawn_player_task(victim+TASK_SPAWN) 
 		set_task(0.05, "respawn_player_task", victim+TASK_SPAWN) // Instant respawn before round begins
 	}
 
-	else if(get_pcvar_num(cvar_deathmatch) || (isCustomMode() && g_deathmatchmode)) { // Respawn if deathmatch is enabled
-		if(selfkill && !get_pcvar_num(cvar_respawnonsuicide)) 
-			return; // Respawn on suicide?
-
-		// Respawn Limit
-		static limit_resp
-		limit_resp = 0
-
-		if(isCustomMode())
-			limit_resp = ArrayGetCell(g_gm_respawn_limit, (g_currentmode - MAX_GAME_MODES))
-
-		else if(g_currentmode == MODE_INFECTION || g_currentmode == MODE_MULTI)
-			limit_resp = get_pcvar_num(cvar_respawn_limit[MODE_INFECTION])
-
-		else if(g_currentmode != MODE_NONE && g_currentmode < MAX_GAME_MODES)
-			limit_resp = get_pcvar_num(cvar_respawn_limit[g_currentmode])
-
-		if(g_respawn_count[victim] >= limit_resp && limit_resp > 0)	
-			return;
-		
-		// Respawn if only the last human is left?
-		if(!get_pcvar_num(cvar_respawnafterlast) && fnGetHumans() <= 1 && (g_currentmode == MODE_INFECTION || g_currentmode == MODE_MULTI))
-			return;
-		
-		// Respawn if are Special Class
-		if(isDefaultSpecialHuman(victim)) if(!get_pcvar_num(cvar_hm_respawn[g_hm_special[victim]])) return;
-		else if(isCustomSpecialHuman(victim)) if(ArrayGetCell(g_hm_sp_respawn, g_hm_special[victim]-MAX_SPECIALS_HUMANS) <= 0) return;
-		else if(isCustomSpecialZombie(victim)) if(ArrayGetCell(g_zm_sp_respawn, g_zm_special[victim]-MAX_SPECIALS_ZOMBIES) <= 0) return;
-		else if(isDefaultZombie(victim) || isDefaultSpecialZombie(victim)) if(!get_pcvar_num(cvar_zm_respawn[g_zm_special[victim]])) return;
+	// Respawn if deathmatch is enabled
+	if(!get_pcvar_num(cvar_deathmatch) || isCustomMode() && !g_deathmatchmode) 
+		return
 	
-		// Respawn as zombie?
-		if(isCustomMode() && g_deathmatchmode) { // Custom round ?
-			if(RespawnAsZombie(g_deathmatchmode))
-				g_respawn_as_zombie[victim] = true
-		}
-		else if(get_pcvar_num(cvar_deathmatch)) { // Normal round
-			static dm_mode;	dm_mode = get_pcvar_num(cvar_deathmatch);
-			if(RespawnAsZombie(dm_mode))
-				g_respawn_as_zombie[victim] = true
-		}
-		set_task(get_pcvar_float(cvar_spawndelay), "respawn_player_task", victim+TASK_SPAWN) // Set the respawn task
+	if(selfkill && !get_pcvar_num(cvar_respawnonsuicide)) 
+		return; // Respawn on suicide?
+
+	// Respawn on Headshot?
+	if(!selfkill && get_pdata_int(victim, OFFSET_LASTHITGROUP, OFFSET_LINUX) == HIT_HEAD && !get_pcvar_num(cvar_respawnonheadshot))
+		return;
+
+	// Respawn Limit
+	static limit_resp; limit_resp = 0
+
+	if(isCustomMode())
+		limit_resp = ArrayGetCell(g_gm_respawn_limit, (g_currentmode - MAX_GAME_MODES))
+
+	else if(g_currentmode == MODE_INFECTION || g_currentmode == MODE_MULTI)
+		limit_resp = get_pcvar_num(cvar_respawn_limit[MODE_INFECTION])
+
+	else if(g_currentmode != MODE_NONE && g_currentmode < MAX_GAME_MODES)
+		limit_resp = get_pcvar_num(cvar_respawn_limit[g_currentmode])
+
+	if(g_respawn_count[victim] >= limit_resp && limit_resp > 0)	
+		return;
+	
+	// Respawn if only the last human is left?
+	if(!get_pcvar_num(cvar_respawnafterlast) && fnGetHumans() <= 1 && (g_currentmode == MODE_INFECTION || g_currentmode == MODE_MULTI))
+		return;
+	
+	// Respawn if are Special Class
+	if(isDefaultSpecialHuman(victim)) if(!get_pcvar_num(cvar_hm_respawn[g_hm_special[victim]])) return;
+	else if(isCustomSpecialHuman(victim)) if(ArrayGetCell(g_hm_sp_respawn, g_hm_special[victim]-MAX_SPECIALS_HUMANS) <= 0) return;
+	else if(isCustomSpecialZombie(victim)) if(ArrayGetCell(g_zm_sp_respawn, g_zm_special[victim]-MAX_SPECIALS_ZOMBIES) <= 0) return;
+	else if(isDefaultZombie(victim) || isDefaultSpecialZombie(victim)) if(!get_pcvar_num(cvar_zm_respawn[g_zm_special[victim]])) return;
+
+	// Respawn as zombie?
+	if(isCustomMode() && g_deathmatchmode) { // Custom round ?
+		if(RespawnAsZombie(g_deathmatchmode))
+			g_respawn_as_zombie[victim] = true
 	}
+	else if(get_pcvar_num(cvar_deathmatch)) { // Normal round
+		static dm_mode;	dm_mode = get_pcvar_num(cvar_deathmatch);
+		if(RespawnAsZombie(dm_mode))
+			g_respawn_as_zombie[victim] = true
+	}
+	set_task(get_pcvar_float(cvar_spawndelay), "respawn_player_task", victim+TASK_SPAWN) // Set the respawn task
 }
 
 public fw_TakeDamage(victim, inflictor, attacker, Float:damage, damage_type) { // Ham Take Damage Forward
@@ -2744,10 +2786,8 @@ public fw_TakeDamage(victim, inflictor, attacker, Float:damage, damage_type) { /
 	if(!g_allowinfection || fnGetHumans() == 1) return HAM_IGNORED; // Last human or infection not allowed
 	
 	// Does human armor need to be reduced before infecting?
-	static CvarValue;
-	CvarValue = get_pcvar_num(cvar_humanarmor)
+	static CvarValue; CvarValue = get_pcvar_num(cvar_humanarmor)
 	if(CheckAllowed(CvarValue)) {
-		
 		static Float:armor; pev(victim, pev_armorvalue, armor) // Get victim armor
 		if(armor > 0.0) { // If he has some, block the infection and reduce armor instead
 			emit_sound(victim, CHAN_BODY, cs_sounds[2], 1.0, ATTN_NORM, 0, PITCH_NORM)
@@ -2801,8 +2841,8 @@ public fw_TakeDamage_Post(victim, inflictor, attacker, Float:damage, damage_type
 				return; 
 		}
 	}	
-	//if(pev_valid(victim) != PDATA_SAFE) 
-		//return; // Prevent server crash if entity's private data not initalized
+	if(pev_valid(victim) != PDATA_SAFE) 
+		return; // Prevent server crash if entity's private data not initalized
 
 	set_pdata_float(victim, OFFSET_PAINSHOCK, 1.0, OFFSET_LINUX) // Set pain shock free offset
 }
@@ -2883,8 +2923,10 @@ public fw_UseStationary(entity, caller, activator, use_type) { // Ham Use Statio
 	return HAM_IGNORED;
 }
 public fw_UseStationary_Post(entity, caller, activator, use_type) { // Ham Use Stationary Gun Post Forward
-	if(use_type == USE_STOPPED && is_user_valid_connected(caller)) // Someone stopped using a stationary gun
+	if(use_type == USE_STOPPED && is_user_valid_connected(caller)) { // Someone stopped using a stationary gun
 		replace_weapon_models(caller, g_currentweapon[caller]) // replace weapon models (bugfix)
+		ExecuteForward(g_forwards[DEPLOY_WEAPON], g_fwDummyResult, caller, g_currentweapon[caller]);
+	}
 }
 public fw_UsePushable() { // Ham Use Pushable Forward
 	if(get_pcvar_num(cvar_blockpushables)) 
@@ -2966,10 +3008,6 @@ public client_putinserver(id) { // Client joins the game
 	}
 	else {
 		g_isbot[id] = true // Set bot flag
-
-		// CZ bots seem to use a different "classtype" for player entities
-		// (or something like that) which needs to be hooked separately
-		if(!g_hamczbots && cvar_botquota) set_task(0.1, "register_ham_czbots", id) // Set a task to let the private data initialize
 	}
 }
 
@@ -2985,7 +3023,6 @@ public fw_ClientDisconnect(id) { // Client leaving
 	remove_task(id+TASK_SPAWN)
 	remove_task(id+TASK_BLOOD)
 	remove_task(id+TASK_AURA)
-	remove_task(id+TASK_BURN)
 	remove_task(id+TASK_NVISION)
 	remove_task(id+TASK_SHOWHUD)
 	
@@ -3836,116 +3873,29 @@ public show_menu_game_mode(id) { // Custom game mode menu
 }
 
 public show_menu_admin(id) { // Admin Menu
-	static szText[999], userflags; userflags = get_user_flags(id)
+	static szText[999], menu, userflags, i; 
+	userflags = get_user_flags(id)
 	formatex(szText, charsmax(szText), "\y%L\r", id, "MENU_ADMIN_TITLE")
 	
-	new menu = menu_create(szText, "menu_admin")
+	menu = menu_create(szText, "menu_admin")
 	
 	if(g_newround && userflags & (g_access_flag[ACCESS_MODE_INFECTION]) || !g_newround && userflags & (g_access_flag[ACCESS_MAKE_ZOMBIE | ACCESS_MAKE_HUMAN]))
 		formatex(szText, charsmax(szText), "\w%L", id, "MENU_ADMIN1");
 	else formatex(szText, charsmax(szText), "\d%L", id, "MENU_ADMIN1");
-	menu_additem(menu, szText, "1")
-	
-	ExecuteForward(g_forwards[ZM_SP_CHOSSED_PRE], g_fwDummyResult, id, NEMESIS);
-	if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_NEMESIS : ACCESS_MAKE_NEMESIS]) && g_fwDummyResult < ZP_PLUGIN_HANDLED)
-		formatex(szText, charsmax(szText), "\w%L", id, "MENU_ADMIN2")
-	else formatex(szText, charsmax(szText), "\d%L", id, "MENU_ADMIN2");
+	menu_additem(menu, szText, "0")
 
-	if(zm_special_enable[NEMESIS] && g_fwDummyResult < ZP_PLUGIN_SUPERCEDE) { 
-		if(g_fwDummyResult >= ZP_PLUGIN_HANDLED) menu_additem(menu, szText, "2", 0, (1<<30))
-		else menu_additem(menu, szText, "2")
-	}
-	
-	ExecuteForward(g_forwards[HM_SP_CHOSSED_PRE], g_fwDummyResult, id, SURVIVOR);
-	if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_SURVIVOR : ACCESS_MAKE_SURVIVOR]) && g_fwDummyResult < ZP_PLUGIN_HANDLED)
-		formatex(szText, charsmax(szText), "\w%L", id, "MENU_ADMIN3")
-	else formatex(szText, charsmax(szText), "\d%L", id, "MENU_ADMIN3")
+	for(i = 1; i < ACTION_RESPAWN_PLAYER; i++) {
+		ExecuteForward(g_forwards[sp_adm_actions[i][act_iszm] ? ZM_SP_CHOSSED_PRE : HM_SP_CHOSSED_PRE], g_fwDummyResult, id, sp_adm_actions[i][act_classid]);
+		if(userflags & (g_access_flag[g_newround ? sp_adm_actions[i][act_mode_class] : sp_adm_actions[i][act_make_class]]) && g_fwDummyResult < ZP_PLUGIN_HANDLED)
+			formatex(szText, charsmax(szText), "\w%L", id, sp_adm_actions[i][act_lang])
+		else formatex(szText, charsmax(szText), "\d%L", id, sp_adm_actions[i][act_lang]);
 
-	if(hm_special_enable[SURVIVOR] && g_fwDummyResult < ZP_PLUGIN_SUPERCEDE) { 
-		if(g_fwDummyResult >= ZP_PLUGIN_HANDLED) menu_additem(menu, szText, "3", 0, (1<<30))
-		else menu_additem(menu, szText, "3")
+		if(g_fwDummyResult < ZP_PLUGIN_SUPERCEDE && (zm_special_enable[sp_adm_actions[i][act_classid]] && sp_adm_actions[i][act_iszm] || hm_special_enable[sp_adm_actions[i][act_classid]] && !sp_adm_actions[i][act_iszm])) { 
+			if(g_fwDummyResult >= ZP_PLUGIN_HANDLED) menu_additem(menu, szText, fmt("%d", i), 0, (1<<30))
+			else menu_additem(menu, szText, fmt("%d", i))
+		}
 	}
 
-	ExecuteForward(g_forwards[HM_SP_CHOSSED_PRE], g_fwDummyResult, id, SNIPER);
-	if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_SNIPER : ACCESS_MAKE_SNIPER]) && g_fwDummyResult < ZP_PLUGIN_HANDLED)
-		formatex(szText, charsmax(szText), "\w%L", id, "MENU_ADMIN8")
-	else formatex(szText, charsmax(szText), "\d%L", id, "MENU_ADMIN8")
-
-	if(hm_special_enable[SNIPER] && g_fwDummyResult < ZP_PLUGIN_SUPERCEDE) { 
-		if(g_fwDummyResult >= ZP_PLUGIN_HANDLED) menu_additem(menu, szText, "4", 0, (1<<30))
-		else menu_additem(menu, szText, "4")
-	}
-	
-	ExecuteForward(g_forwards[ZM_SP_CHOSSED_PRE], g_fwDummyResult, id, ASSASSIN);
-	if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_ASSASSIN : ACCESS_MAKE_ASSASSIN]) && g_fwDummyResult < ZP_PLUGIN_HANDLED)
-		formatex(szText, charsmax(szText), "\w%L", id, "MENU_ADMIN9")
-	else formatex(szText, charsmax(szText), "\d%L", id, "MENU_ADMIN9")
-
-	if(zm_special_enable[ASSASSIN] && g_fwDummyResult < ZP_PLUGIN_SUPERCEDE) { 
-		if(g_fwDummyResult >= ZP_PLUGIN_HANDLED) menu_additem(menu, szText, "5", 0, (1<<30))
-		else menu_additem(menu, szText, "5")
-	}
-	
-	ExecuteForward(g_forwards[HM_SP_CHOSSED_PRE], g_fwDummyResult, id, BERSERKER);
-	if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_BERSERKER : ACCESS_MAKE_BERSERKER]) && g_fwDummyResult < ZP_PLUGIN_HANDLED)
-		formatex(szText, charsmax(szText), "\w%L", id, "MENU_ADMIN13")
-	else formatex(szText, charsmax(szText), "\d%L", id, "MENU_ADMIN13")
-
-	if(hm_special_enable[BERSERKER] && g_fwDummyResult < ZP_PLUGIN_SUPERCEDE) { 
-		if(g_fwDummyResult >= ZP_PLUGIN_HANDLED) menu_additem(menu, szText, "6", 0, (1<<30))
-		else menu_additem(menu, szText, "6")
-	}
-	
-	ExecuteForward(g_forwards[ZM_SP_CHOSSED_PRE], g_fwDummyResult, id, PREDATOR);
-	if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_PREDATOR : ACCESS_MAKE_PREDATOR]) && g_fwDummyResult < ZP_PLUGIN_HANDLED)
-		formatex(szText, charsmax(szText), "\w%L", id, "MENU_ADMIN11")
-	else formatex(szText, charsmax(szText), "\d%L", id, "MENU_ADMIN11")
-
-	if(zm_special_enable[PREDATOR] && g_fwDummyResult < ZP_PLUGIN_SUPERCEDE) { 
-		if(g_fwDummyResult >= ZP_PLUGIN_HANDLED) menu_additem(menu, szText, "7", 0, (1<<30))
-		else menu_additem(menu, szText, "7")
-	}
-	
-	ExecuteForward(g_forwards[HM_SP_CHOSSED_PRE], g_fwDummyResult, id, WESKER);
-	if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_WESKER : ACCESS_MAKE_WESKER]) && g_fwDummyResult < ZP_PLUGIN_HANDLED)
-		formatex(szText, charsmax(szText), "\w%L", id, "MENU_ADMIN14")
-	else formatex(szText, charsmax(szText), "\d%L", id, "MENU_ADMIN14")
-
-	if(hm_special_enable[WESKER] && g_fwDummyResult < ZP_PLUGIN_SUPERCEDE) { 
-		if(g_fwDummyResult >= ZP_PLUGIN_HANDLED) menu_additem(menu, szText, "8", 0, (1<<30))
-		else menu_additem(menu, szText, "8")
-	}
-	
-	ExecuteForward(g_forwards[ZM_SP_CHOSSED_PRE], g_fwDummyResult, id, BOMBARDIER);
-	if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_BOMBARDIER : ACCESS_MAKE_BOMBARDIER]) && g_fwDummyResult < ZP_PLUGIN_HANDLED)
-		formatex(szText, charsmax(szText), "\w%L", id, "MENU_ADMIN12")
-	else formatex(szText, charsmax(szText), "\d%L", id, "MENU_ADMIN12")
-
-	if(zm_special_enable[BOMBARDIER] && g_fwDummyResult < ZP_PLUGIN_SUPERCEDE) { 
-		if(g_fwDummyResult >= ZP_PLUGIN_HANDLED) menu_additem(menu, szText, "9", 0, (1<<30))
-		else menu_additem(menu, szText, "9")
-	}
-	
-	ExecuteForward(g_forwards[HM_SP_CHOSSED_PRE], g_fwDummyResult, id, SPY);
-	if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_SPY : ACCESS_MAKE_SPY]) && g_fwDummyResult < ZP_PLUGIN_HANDLED)
-		formatex(szText, charsmax(szText), "\w%L", id, "MENU_ADMIN15")
-	else formatex(szText, charsmax(szText), "\w%L", id, "MENU_ADMIN15")
-
-	if(hm_special_enable[SPY] && g_fwDummyResult < ZP_PLUGIN_SUPERCEDE) { 
-		if(g_fwDummyResult >= ZP_PLUGIN_HANDLED) menu_additem(menu, szText, "10", 0, (1<<30))
-		else menu_additem(menu, szText, "10")
-	}
-	
-	ExecuteForward(g_forwards[ZM_SP_CHOSSED_PRE], g_fwDummyResult, id, DRAGON);
-	if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_DRAGON : ACCESS_MAKE_DRAGON]) && g_fwDummyResult < ZP_PLUGIN_HANDLED)
-		formatex(szText, charsmax(szText), "\w%L", id, "MENU_ADMIN16")
-	else formatex(szText, charsmax(szText), "\w%L", id, "MENU_ADMIN16")
-
-	if(zm_special_enable[DRAGON] && g_fwDummyResult < ZP_PLUGIN_SUPERCEDE) { 
-		if(g_fwDummyResult >= ZP_PLUGIN_HANDLED) menu_additem(menu, szText, "11", 0, (1<<30))
-		else menu_additem(menu, szText, "11")
-	}
-	
 	// Back - Next - Exit
 	menu_setprop(menu, MPROP_BACKNAME, fmt("%L", id, "MENU_BACK"))
 	menu_setprop(menu, MPROP_NEXTNAME, fmt("%L", id, "MENU_NEXT"))
@@ -4224,7 +4174,6 @@ public make_user_sp_pl(id, zombie) {
 			else ArrayGetString(g_zm_sp_name, sp_id, special_name, charsmax(special_name))
 		}
 		else if(isCustomSpecialHuman(player)) {
-
 			sp_id = g_hm_special[player]-MAX_SPECIALS_HUMANS
 
 			if(ArrayGetCell(g_hm_sp_name_by_lang, sp_id)) {
@@ -4309,20 +4258,7 @@ show_menu_player_list(id) { // Player List Menu
 	static menuid, menu[9999], player, userflags, buffer[4], special_name[128], sp_id
 	userflags = get_user_flags(id)
 
-	switch (PL_ACTION) { // Title
-		case ACTION_ZOMBIEFY_HUMANIZE: formatex(menu, charsmax(menu), "%L\r", id, "MENU_ADMIN1")
-		case ACTION_MAKE_NEMESIS: formatex(menu, charsmax(menu), "%L\r", id, "MENU_ADMIN2")
-		case ACTION_MAKE_SURVIVOR: formatex(menu, charsmax(menu), "%L\r", id, "MENU_ADMIN3")
-		case ACTION_MAKE_SNIPER: formatex(menu, charsmax(menu), "%L\r", id, "MENU_ADMIN8")
-		case ACTION_MAKE_ASSASSIN: formatex(menu, charsmax(menu), "%L\r", id, "MENU_ADMIN9")
-		case ACTION_MAKE_PREDATOR: formatex(menu, charsmax(menu), "%L\r", id, "MENU_ADMIN11")
-		case ACTION_MAKE_BOMBARDIER: formatex(menu, charsmax(menu), "%L\r", id, "MENU_ADMIN12")
-		case ACTION_MAKE_BERSERKER: formatex(menu, charsmax(menu), "%L\r", id, "MENU_ADMIN13")
-		case ACTION_MAKE_WESKER: formatex(menu, charsmax(menu), "%L\r", id, "MENU_ADMIN14")
-		case ACTION_MAKE_SPY: formatex(menu, charsmax(menu), "%L\r", id, "MENU_ADMIN15")
-		case ACTION_MAKE_DRAGON: formatex(menu, charsmax(menu), "%L\r", id, "MENU_ADMIN16")
-		case ACTION_RESPAWN_PLAYER: formatex(menu, charsmax(menu), "%L\r", id, "MENU_ADMIN4")
-	}
+	formatex(menu, charsmax(menu), "%L\r", id, sp_adm_actions[PL_ACTION][act_lang])
 	menuid = menu_create(menu, "menu_player_list")
 	
 	for(player = 1; player <= MaxPlayers; player++) { // Player List
@@ -4345,68 +4281,22 @@ show_menu_player_list(id) { // Player List Menu
 			else ArrayGetString(g_hm_sp_name, sp_id, special_name, charsmax(special_name))
 		}
 		else formatex(special_name, charsmax(special_name), "%L", id, g_zombie[player] ? zm_special_class_langs[g_zm_special[player]] : hm_special_class_langs[g_hm_special[player]])
-
-		switch (PL_ACTION) { // Format text depending on the action to take
-			case ACTION_ZOMBIEFY_HUMANIZE: {  // Zombiefy/Humanize command
-				if(!g_zombie[player] && allowed_zombie(player) && ((userflags & g_access_flag[g_newround ? ACCESS_MODE_INFECTION : ACCESS_MAKE_ZOMBIE]))
-				|| g_zombie[player] && allowed_human(player) && (userflags & g_access_flag[ACCESS_MAKE_HUMAN]))
-					formatex(menu, charsmax(menu), "%s %s[%s]", g_playername[player], g_zombie[player] ? "\r" : "\y", special_name)
-				else formatex(menu, charsmax(menu), "\d%s [%s]", g_playername[player], special_name)
-			}
-			case ACTION_MAKE_NEMESIS: { // Nemesis command
-				if(allowed_special(player, 1, NEMESIS) && ((userflags & g_access_flag[g_newround ? ACCESS_MODE_NEMESIS : ACCESS_MAKE_NEMESIS])))
-					formatex(menu, charsmax(menu), "%s %s[%s]", g_playername[player], g_zombie[player] ? "\r" : "\y", special_name)
-				else formatex(menu, charsmax(menu), "\d%s [%s]", g_playername[player], special_name)
-			}
-			case ACTION_MAKE_SURVIVOR: { // Survivor command
-				if(allowed_special(player, 0, SURVIVOR) && ((userflags & g_access_flag[g_newround ? ACCESS_MODE_SURVIVOR : ACCESS_MAKE_SURVIVOR])))
-					formatex(menu, charsmax(menu), "%s %s[%s]", g_playername[player], g_zombie[player] ? "\r" : "\y", special_name)
-				else formatex(menu, charsmax(menu), "\d%s [%s]", g_playername[player], special_name)
-			}
-			case ACTION_MAKE_SNIPER: { // Sniper command
-				if(allowed_special(player, 0, SNIPER) && ((userflags & g_access_flag[g_newround ? ACCESS_MODE_SNIPER : ACCESS_MAKE_SNIPER])))
-					formatex(menu, charsmax(menu), "%s %s[%s]", g_playername[player], g_zombie[player] ? "\r" : "\y", special_name)
-				else formatex(menu, charsmax(menu), "\d%s [%s]", g_playername[player], special_name)
-			}
-			case ACTION_MAKE_ASSASSIN: { // Assassin command
-				if(allowed_special(player, 1, ASSASSIN) && ((userflags & g_access_flag[g_newround ? ACCESS_MODE_ASSASSIN : ACCESS_MAKE_ASSASSIN])))
-					formatex(menu, charsmax(menu), "%s %s[%s]", g_playername[player], g_zombie[player] ? "\r" : "\y", special_name)
-				else formatex(menu, charsmax(menu), "\d%s [%s]", g_playername[player], special_name)
-			}
-			case ACTION_MAKE_PREDATOR: { // Predator command
-				if(allowed_special(player, 1, PREDATOR) && ((userflags & g_access_flag[g_newround ? ACCESS_MODE_PREDATOR : ACCESS_MAKE_PREDATOR])))
-					formatex(menu, charsmax(menu), "%s %s[%s]", g_playername[player], g_zombie[player] ? "\r" : "\y", special_name)
-				else formatex(menu, charsmax(menu), "\d%s [%s]", g_playername[player], special_name)
-			}
-			case ACTION_MAKE_BOMBARDIER: { // Bombardier command
-				if(allowed_special(player, 1, BOMBARDIER) && ((userflags & g_access_flag[g_newround ? ACCESS_MODE_BOMBARDIER : ACCESS_MAKE_BOMBARDIER])))
-					formatex(menu, charsmax(menu), "%s %s[%s]", g_playername[player], g_zombie[player] ? "\r" : "\y", special_name)
-				else formatex(menu, charsmax(menu), "\d%s [%s]", g_playername[player], special_name)
-			}
-			case ACTION_MAKE_BERSERKER: { // Berserker command
-				if(allowed_special(player, 0, BERSERKER) && ((userflags & g_access_flag[g_newround ? ACCESS_MODE_BERSERKER : ACCESS_MAKE_BERSERKER])))
-					formatex(menu, charsmax(menu), "%s %s[%s]", g_playername[player], g_zombie[player] ? "\r" : "\y", special_name)
-				else formatex(menu, charsmax(menu), "\d%s [%s]", g_playername[player], special_name)
-			}
-			case ACTION_MAKE_WESKER: { // Wesker command
-				if(allowed_special(player, 0, WESKER) && ((userflags & g_access_flag[g_newround ? ACCESS_MODE_WESKER : ACCESS_MAKE_WESKER])))
-					formatex(menu, charsmax(menu), "%s %s[%s]", g_playername[player], g_zombie[player] ? "\r" : "\y", special_name)
-				else formatex(menu, charsmax(menu), "\d%s [%s]", g_playername[player], special_name)
-			}
-			case ACTION_MAKE_SPY: { // Spy command
-				if(allowed_special(player, 0, SPY) && ((userflags & g_access_flag[g_newround ? ACCESS_MODE_SPY : ACCESS_MAKE_SPY])))
-					formatex(menu, charsmax(menu), "%s %s[%s]", g_playername[player], g_zombie[player] ? "\r" : "\y", special_name)
-				else formatex(menu, charsmax(menu), "\d%s [%s]", g_playername[player], special_name)
-			}
-			case ACTION_MAKE_DRAGON: { // Dragon command
-				if(allowed_special(player, 1, DRAGON) && ((userflags & g_access_flag[g_newround ? ACCESS_MODE_DRAGON : ACCESS_MAKE_DRAGON])))
-					formatex(menu, charsmax(menu), "%s %s[%s]", g_playername[player], g_zombie[player] ? "\r" : "\y", special_name)
-				else formatex(menu, charsmax(menu), "\d%s [%s]", g_playername[player], special_name)
-			}		
-			case ACTION_RESPAWN_PLAYER: { // Respawn command
-				if(allowed_respawn(player) && (userflags & g_access_flag[ACCESS_RESPAWN_PLAYERS])) formatex(menu, charsmax(menu), "%s", g_playername[player])
-				else formatex(menu, charsmax(menu), "\d%s", g_playername[player])
-			}
+		
+		
+		if(PL_ACTION == ACTION_ZOMBIEFY_HUMANIZE)  {  // Zombiefy/Humanize command
+			if(!g_zombie[player] && allowed_zombie(player) && ((userflags & g_access_flag[g_newround ? ACCESS_MODE_INFECTION : ACCESS_MAKE_ZOMBIE]))
+			|| g_zombie[player] && allowed_human(player) && (userflags & g_access_flag[ACCESS_MAKE_HUMAN]))
+				formatex(menu, charsmax(menu), "%s %s[%s]", g_playername[player], g_zombie[player] ? "\r" : "\y", special_name)
+			else formatex(menu, charsmax(menu), "\d%s [%s]", g_playername[player], special_name)
+		}
+		else if(PL_ACTION == ACTION_RESPAWN_PLAYER) { // Respawn command
+			if(allowed_respawn(player) && (userflags & g_access_flag[ACCESS_RESPAWN_PLAYERS])) formatex(menu, charsmax(menu), "%s", g_playername[player])
+			else formatex(menu, charsmax(menu), "\d%s", g_playername[player])
+		}
+		else {
+			if(allowed_special(player, sp_adm_actions[PL_ACTION][act_iszm], sp_adm_actions[PL_ACTION][act_classid]) && ((userflags & g_access_flag[g_newround ? sp_adm_actions[PL_ACTION][act_mode_class] : sp_adm_actions[PL_ACTION][act_make_class]])))
+				formatex(menu, charsmax(menu), "%s %s[%s]", g_playername[player], g_zombie[player] ? "\r" : "\y", special_name)
+			else formatex(menu, charsmax(menu), "\d%s [%s]", g_playername[player], special_name)
 		}
 		
 		// Add player
@@ -4504,7 +4394,6 @@ public menu_game(id, key) { // Game Menu
 			remove_task(id+TASK_SPAWN)
 			remove_task(id+TASK_BLOOD)
 			remove_task(id+TASK_AURA)
-			remove_task(id+TASK_BURN)
 			
 			// Then move him to the spectator team
 			fm_cs_set_user_team(id, FM_CS_TEAM_SPECTATOR)
@@ -4912,6 +4801,9 @@ public menu_mode(id, menuid, item) { // Custom game mode menu
 	menu_destroy(menuid);
 	return PLUGIN_HANDLED;
 }
+
+
+
 public menu_admin(id, menu, item) { // Admin Menu
 	if(!is_user_connected(id)) {
 		menu_destroy(menu)
@@ -4925,125 +4817,28 @@ public menu_admin(id, menu, item) { // Admin Menu
 		return PLUGIN_HANDLED
 	}
 
-
-	static data[6], iName[64], access, callback, key, userflags
+	static data[6], iName[64], access, callback,  userflags
 	menu_item_getinfo(menu, item, access, data, charsmax(data), iName, charsmax(iName), callback)
 	userflags = get_user_flags(id)
-	key = str_to_num(data)  
-	
-	switch (key) {
-		case 1: { // Zombiefy/Humanize command
-			if(g_newround && userflags & (g_access_flag[ACCESS_MODE_INFECTION])
-			|| !g_newround && userflags & (g_access_flag[ACCESS_MAKE_ZOMBIE] | g_access_flag[ACCESS_MAKE_HUMAN])) {
-				PL_ACTION = ACTION_ZOMBIEFY_HUMANIZE
-				show_menu_player_list(id) // Show player list for admin to pick a target
-			}
-			else {
-				client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-				show_menu_admin(id)
-			}
-		}
-		case 2: { // Nemesis command
-			if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_NEMESIS : ACCESS_MAKE_NEMESIS])) {
-				PL_ACTION = ACTION_MAKE_NEMESIS
-				show_menu_player_list(id) // Show player list for admin to pick a target
-			}
-			else {
-				client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-				show_menu_admin(id)
-			}
-		}
-		case 3: { // Survivor command
-			if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_SURVIVOR : ACCESS_MAKE_SURVIVOR])) {
-				PL_ACTION = ACTION_MAKE_SURVIVOR
-				show_menu_player_list(id) // Show player list for admin to pick a target
-			}
-			else {
-				client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-				show_menu_admin(id)
-			}
-		}
-		case 4: { // Sniper command
-			if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_SNIPER : ACCESS_MAKE_SNIPER])) {
-				PL_ACTION = ACTION_MAKE_SNIPER // Show player list for admin to pick a target
-				show_menu_player_list(id)
-			}
-			else {
-				client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-				show_menu_admin(id)
-			}
-		}
-		case 5: { // Assassin command
-			if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_ASSASSIN : ACCESS_MAKE_ASSASSIN])) {
-				PL_ACTION = ACTION_MAKE_ASSASSIN
-				show_menu_player_list(id) // Show player list for admin to pick a target
-			}
-			else {
-				client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-				show_menu_admin(id)
-			}
-		}
-		case 6: { // Berserker command
-			if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_BERSERKER : ACCESS_MAKE_BERSERKER])) {
-				PL_ACTION = ACTION_MAKE_BERSERKER
-				show_menu_player_list(id) // Show player list for admin to pick a target
-			}
-			else {
-				client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-				show_menu_admin(id)
-			}
-		}		
-		case 7: { // Predator command
-			if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_PREDATOR : ACCESS_MAKE_PREDATOR])) {
-				PL_ACTION = ACTION_MAKE_PREDATOR
-				show_menu_player_list(id) // Show player list for admin to pick a target
-			}
-			else {
-				client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-				show_menu_admin(id)
-			}
-		}
-		case 8: { // Wesker command
-			if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_WESKER : ACCESS_MAKE_WESKER])) {
-				PL_ACTION = ACTION_MAKE_WESKER
-				show_menu_player_list(id) // Show player list for admin to pick a target
-			}
-			else {
-				client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-				show_menu_admin(id)
-			}
-		}
-		case 9: { // Bombardier command
-			if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_BOMBARDIER : ACCESS_MAKE_BOMBARDIER])) {
-				PL_ACTION = ACTION_MAKE_BOMBARDIER
-				show_menu_player_list(id) // Show player list for admin to pick a target
-			}
-			else {
-				client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-				show_menu_admin(id)
-			}
-		}
-		case 10: { // Spy command
-			if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_SPY : ACCESS_MAKE_SPY])) {
-				PL_ACTION = ACTION_MAKE_SPY
-				show_menu_player_list(id)
-			}
-			else {
-				client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-				show_menu_admin(id)
-			}
-		}
-		case 11: { // Dragon command
-			if(userflags & (g_access_flag[g_newround ? ACCESS_MODE_DRAGON : ACCESS_MAKE_DRAGON])) {
-				PL_ACTION = ACTION_MAKE_DRAGON
-				show_menu_player_list(id)
-			}
-			else {
-				client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-				show_menu_admin(id)
-			}
+	PL_ACTION = str_to_num(data)  
+	if(PL_ACTION == ACTION_ZOMBIEFY_HUMANIZE) {
+		if(g_newround && userflags & (g_access_flag[ACCESS_MODE_INFECTION]) 
+		|| !g_newround && userflags & (g_access_flag[ACCESS_MAKE_ZOMBIE] | g_access_flag[ACCESS_MAKE_HUMAN])) 
+			show_menu_player_list(id) // Show player list for admin to pick a target
+		else {
+			client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
+			show_menu_admin(id)
 		}
 	}
+	else {
+		if(userflags & (g_access_flag[g_newround ? sp_adm_actions[PL_ACTION][act_mode_class] : sp_adm_actions[PL_ACTION][act_make_class]]))
+			show_menu_player_list(id) // Show player list for admin to pick a target
+		else {
+			client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
+			show_menu_admin(id)
+		}
+	}
+
 	return PLUGIN_HANDLED;
 }
 public menu2_admin(id, menu, item) {
@@ -5136,101 +4931,40 @@ public menu_player_list(id, menuid, item) { // Player List Menu
 	static buffer[2], dummy, playerid // Retrieve player id
 	menu_item_getinfo(menuid, item, dummy, buffer, charsmax(buffer), _, _, dummy)
 	playerid = buffer[0]
-	
-	// Perform action on player
-	static userflags; userflags = get_user_flags(id) // Get admin flags
-	if(g_isconnected[playerid]) { // Make sure it's still connected
-		switch (PL_ACTION) { // Perform the right action if allowed
-			case ACTION_ZOMBIEFY_HUMANIZE: { // Zombiefy/Humanize command
-				if(g_newround && (userflags & g_access_flag[ACCESS_MODE_INFECTION])
-				|| !g_newround && (userflags & g_access_flag[g_zombie[playerid] ? ACCESS_MAKE_HUMAN : ACCESS_MAKE_ZOMBIE])) {
-					if(!g_zombie[playerid] && allowed_zombie(playerid)) command_zombie(id, playerid)
-					else if(g_zombie[playerid] && allowed_human(playerid)) command_human(id, playerid)
-					else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
-				}
-				else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-			}
-			case ACTION_MAKE_NEMESIS: { // Nemesis command
-				if(userflags & g_access_flag[g_newround ? ACCESS_MODE_NEMESIS : ACCESS_MAKE_NEMESIS]) {
-					if(allowed_special(playerid, 1, NEMESIS)) command_special(id, playerid, NEMESIS, 1)
-					else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
-				}
-				else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-			}
-			case ACTION_MAKE_SURVIVOR: { // Survivor command
-				if(userflags & g_access_flag[g_newround ? ACCESS_MODE_SURVIVOR : ACCESS_MAKE_SURVIVOR]) {
-					if(allowed_special(playerid, 0, SURVIVOR)) command_special(id, playerid, SURVIVOR, 0)
-					else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
-				}
-				else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-			}
-			case ACTION_MAKE_SNIPER: { // Sniper command
-				if(userflags & g_access_flag[g_newround ? ACCESS_MODE_SNIPER : ACCESS_MAKE_SNIPER]) {
-					if(allowed_special(playerid, 0, SNIPER)) command_special(id, playerid, SNIPER, 0)
-					else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
-				}
-				else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-			}
-			case ACTION_MAKE_ASSASSIN: { // Assassin command
-				if(userflags & g_access_flag[g_newround ? ACCESS_MODE_ASSASSIN : ACCESS_MAKE_ASSASSIN]) {
-					if(allowed_special(playerid, 1, ASSASSIN)) command_special(id, playerid, ASSASSIN, 1)
-					else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
-				}
-				else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-			}
-			case ACTION_MAKE_PREDATOR: { // Predator command
-				if(userflags & g_access_flag[g_newround ? ACCESS_MODE_PREDATOR : ACCESS_MAKE_PREDATOR]) {
-					if(allowed_special(playerid, 1, PREDATOR)) command_special(id, playerid, PREDATOR, 1)
-					else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
-				}
-				else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-			}
-			case ACTION_MAKE_BERSERKER: { // Berserker command
-				if(userflags & g_access_flag[g_newround ? ACCESS_MODE_BERSERKER : ACCESS_MAKE_BERSERKER]) {
-					if(allowed_special(playerid, 0, BERSERKER)) command_special(id, playerid, BERSERKER, 0)
-					else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
-				}
-				else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-			}
-			case ACTION_MAKE_WESKER: { // Wesker command
-				if(userflags & g_access_flag[g_newround ? ACCESS_MODE_WESKER : ACCESS_MAKE_WESKER]) {
-					if(allowed_special(playerid, 0, WESKER)) command_special(id, playerid, WESKER, 0)
-					else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
-				}
-				else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-			}
-			case ACTION_MAKE_BOMBARDIER: { // Bombardier command
-				if(userflags & g_access_flag[g_newround ? ACCESS_MODE_BOMBARDIER : ACCESS_MAKE_BOMBARDIER]) {
-					if(allowed_special(playerid, 1, BOMBARDIER)) command_special(id, playerid, BOMBARDIER, 1)
-					else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
-				}
-				else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-			}
-			case ACTION_MAKE_SPY: { // Spy command
-				if(userflags & g_access_flag[g_newround ? ACCESS_MODE_SPY : ACCESS_MAKE_SPY]) {
-					if(allowed_special(playerid, 0, SPY)) command_special(id, playerid, SPY, 0)
-					else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
-				}
-				else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-			}
-			case ACTION_MAKE_DRAGON: { // Dragon command
-				if(userflags & g_access_flag[g_newround ? ACCESS_MODE_DRAGON : ACCESS_MAKE_DRAGON]) {
-					if(allowed_special(playerid, 1, DRAGON)) command_special(id, playerid, DRAGON, 1)
-					else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
-				}
-				else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-			}
-			case ACTION_RESPAWN_PLAYER: { // Respawn command
-				if(userflags & g_access_flag[ACCESS_RESPAWN_PLAYERS]) {
-					if(allowed_respawn(playerid)) command_respawn(id, playerid)
-					else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
-				}
-				else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
-			}
-		}
-	}
-	else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
 
+	if(!g_isconnected[playerid]) {
+		client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
+		menu_destroy(menuid)
+		show_menu_player_list(id)
+		return PLUGIN_HANDLED;
+	}
+	static userflags; userflags = get_user_flags(id) // Get admin flags
+
+	if(PL_ACTION == ACTION_ZOMBIEFY_HUMANIZE) { // Zombiefy/Humanize command
+		if(g_newround && (userflags & g_access_flag[ACCESS_MODE_INFECTION])
+		|| !g_newround && (userflags & g_access_flag[g_zombie[playerid] ? ACCESS_MAKE_HUMAN : ACCESS_MAKE_ZOMBIE])) {
+			if(!g_zombie[playerid] && allowed_zombie(playerid)) command_zombie(id, playerid)
+			else if(g_zombie[playerid] && allowed_human(playerid)) command_human(id, playerid)
+			else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
+		}
+		else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
+	}
+	else if(PL_ACTION == ACTION_RESPAWN_PLAYER) { // Respawn command
+		if(userflags & g_access_flag[ACCESS_RESPAWN_PLAYERS]) {
+			if(allowed_respawn(playerid)) command_respawn(id, playerid)
+			else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
+		}
+		else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
+	}
+	else {
+		if(userflags & g_access_flag[g_newround ? sp_adm_actions[PL_ACTION][act_mode_class] : sp_adm_actions[PL_ACTION][act_make_class]]) {
+			if(allowed_special(playerid, sp_adm_actions[PL_ACTION][act_iszm], sp_adm_actions[PL_ACTION][act_classid])) 
+				command_special(id, playerid, sp_adm_actions[PL_ACTION][act_classid], sp_adm_actions[PL_ACTION][act_iszm]);
+			else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT")
+		}
+		else client_print_color(id, print_team_default, "%L %L", id, "ZP_CHAT_TAG", id, "CMD_NOT_ACCESS")
+	}
+	
 	menu_destroy(menuid)
 	show_menu_player_list(id)
 	return PLUGIN_HANDLED;
@@ -6405,8 +6139,10 @@ zombieme(id, infector, classid, silentmode, rewards) {
 	set_pev(id, pev_effects, pev(id, pev_effects) &~ EF_NODRAW)
 	
 	// Reset burning duration counter (bugfix)
-	g_burning_dur[id] = 0
-	if(silentmode != 2 || classid > 0) set_user_frozen(id, 0, 0.1)
+	if(silentmode != 2 || classid > 0) {
+		remove_freeze(id) // Remove Frost
+		g_burning[id] = false // Remove burn
+	}
 	
 	// Show deathmsg and reward infector?
 	if(rewards && infector) {
@@ -6519,7 +6255,6 @@ zombieme(id, infector, classid, silentmode, rewards) {
 	// Remove previous tasks
 	remove_task(id+TASK_BLOOD)
 	remove_task(id+TASK_AURA)
-	remove_task(id+TASK_BURN)
 	
 	// Switch to T
 	if(fm_cs_get_user_team(id) != FM_CS_TEAM_T) { // need to change team?
@@ -6623,7 +6358,6 @@ humanme(id, classid, silentmode, attacker) { // Function Human Me (player id, tu
 	// Remove previous tasks
 	remove_task(id+TASK_BLOOD)
 	remove_task(id+TASK_AURA)
-	remove_task(id+TASK_BURN)
 	remove_task(id+TASK_NVISION)
 	remove_task(id)
 	
@@ -6644,9 +6378,8 @@ humanme(id, classid, silentmode, attacker) { // Function Human Me (player id, tu
 	set_pev(id, pev_takedamage, DAMAGE_AIM)
 	set_pev(id, pev_effects, pev(id, pev_effects) &~ EF_NODRAW)
 
-	set_user_frozen(id, 0, 0.1)
-
-	g_burning_dur[id] = 0 // Reset burning duration counter (bugfix)
+	remove_freeze(id)
+	g_burning[id] = false
 
 	if(cs_get_user_nvg(id)) { // Remove CS nightvision if player owns one (bugfix)
 		cs_set_user_nvg(id, 0)
@@ -6901,10 +6634,14 @@ load_customization_from_files() {
 
 	// File not present
 	if(!file_exists(path)) {
-		static error[100]
-		formatex(error, charsmax(error), "[ZP Special] Cannot load customization file %s!", path)
-		set_fail_state(error)
+		set_fail_state("[ZP Special] Cannot load customization file %s!", path)
 		return;
+	}
+
+	// Automate for noobs
+	if(!amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "Advanced Configs", "ENABLE AUTO SETTINGS", g_automate_setting)) {
+		amx_save_setting_int(ZP_CUSTOMIZATION_FILE, "Advanced Configs", "ENABLE AUTO SETTINGS", 1)
+		g_automate_setting = 1
 	}
 
 	// Zombie Escape Map Suport
@@ -6953,28 +6690,41 @@ load_customization_from_files() {
 		amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", human_special_names[i], model_human[i])
 		amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", fmt("%s BODY", human_special_names[i]), model_human_body[i])
 		amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", fmt("%s SKIN", human_special_names[i]), model_human_skin[i])
+		AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, model_human[i], model_human_body[i], "Player Models", fmt("%s BODY", human_special_names[i]), 0)
+		AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, model_human[i], model_human_skin[i], "Player Models", fmt("%s SKIN", human_special_names[i]), 0)
+		
 	}
 	for(i = 1; i < MAX_SPECIALS_ZOMBIES; i++) {
 		amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", zombie_special_names[i], model_zm_special[i])
 		amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", fmt("%s BODY", zombie_special_names[i]), model_zm_special_body[i])
 		amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", fmt("%s SKIN", zombie_special_names[i]), model_zm_special_skin[i])
+		AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, model_zm_special[i], model_zm_special_body[i], "Player Models", fmt("%s BODY", human_special_names[i]), 0)
+		AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, model_zm_special[i], model_zm_special_skin[i], "Player Models", fmt("%s SKIN", human_special_names[i]), 0)
 	}
 
 	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ADMIN ZOMBIE", model_adm_zm)
 	amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ADMIN ZOMBIE BODY", model_adm_zm_body)
 	amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ADMIN ZOMBIE SKIN", model_adm_zm_skin)
+	AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, model_adm_zm, model_adm_zm_body, "Player Models", "ADMIN ZOMBIE BODY", 0)
+	AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, model_adm_zm, model_adm_zm_skin, "Player Models", "ADMIN ZOMBIE SKIN", 0)
 
 	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "VIP ZOMBIE", model_vip_zm)
 	amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "VIP ZOMBIE BODY", model_vip_zm_body)
 	amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "VIP ZOMBIE SKIN", model_vip_zm_skin)
+	AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, model_vip_zm, model_vip_zm_body, "Player Models", "VIP ZOMBIE BODY", 0)
+	AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, model_vip_zm, model_vip_zm_skin, "Player Models", "VIP ZOMBIE SKIN", 0)
 
 	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ADMIN HUMAN", model_adm_hm)
 	amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ADMIN HUMAN BODY", model_adm_hm_body)
 	amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ADMIN HUMAN SKIN", model_adm_hm_skin)
+	AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, model_adm_hm, model_adm_hm_body, "Player Models", "ADMIN HUMAN BODY", 0)
+	AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, model_adm_hm, model_adm_hm_skin, "Player Models", "ADMIN HUMAN SKIN", 0)
 
 	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "VIP HUMAN", model_vip_hm)
 	amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "VIP HUMAN BODY", model_vip_hm_body)
 	amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "VIP HUMAN SKIN", model_vip_hm_skin)
+	AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, model_vip_hm, model_vip_hm_body, "Player Models", "VIP HUMAN BODY", 0)
+	AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, model_vip_hm, model_vip_hm_skin, "Player Models", "VIP HUMAN SKIN", 0)
 
 	amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "Player Models", "FORCE CONSISTENCY", g_force_consistency)
 	amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "Player Models", "SAME MODELS FOR ALL", g_same_models_for_all)
@@ -6983,6 +6733,8 @@ load_customization_from_files() {
 		amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ZOMBIE", g_zclass_playermodel)
 		amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ZOMBIE BODY", g_zclass_body)
 		amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Player Models", "ZOMBIE SKIN", g_zclass_skin)
+		AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, g_zclass_playermodel, g_zclass_body, "Player Models", "ZOMBIE BODY", 0)
+		AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, g_zclass_playermodel, g_zclass_skin, "Player Models", "ZOMBIE SKIN", 0)
 
 		for(i = 0; i < ArraySize(g_zclass_playermodel); i++) { // Precache model and retrieve its modelindex
 			ArrayGetString(g_zclass_playermodel, i, szKey, charsmax(szKey))
@@ -7077,6 +6829,7 @@ load_customization_from_files() {
 		if(g_ambience_sounds[i]) {
 			amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s SOUNDS", ambience_snd_names[i]), sound_ambience[i])
 			amx_load_setting_float_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s DURATIONS", ambience_snd_names[i]), sound_ambience_duration[i])
+			AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, sound_ambience[i], sound_ambience_duration[i], "Ambience Sounds", fmt("%s DURATIONS", ambience_snd_names[i]), 2)
 		}
 	}
 
@@ -7103,6 +6856,10 @@ load_customization_from_files() {
 	amx_load_setting_int_arr(ZP_CUSTOMIZATION_FILE, "Extra Items: Weapons and their costs", "COSTS", g_extraweapon_costs)	
 	amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "Extra Items: Weapons and their costs", "NAMES BY LANG", g_extraweapon_name_by_lang)	
 	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Extra Items: Weapons and their costs", "LANG KEY", g_extraweapon_lang_key)
+	AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, g_extraweapon_items, g_extraweapon_names, "Extra Items: Weapons and their costs", "NAMES", 1)
+	AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, g_extraweapon_names, g_extraweapon_items, "Extra Items: Weapons and their costs", "ITEMS", 1)
+	AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, g_extraweapon_names, g_extraweapon_lang_key, "Extra Items: Weapons and their costs", "LANG KEY", 1)
+	AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, g_extraweapon_names, g_extraweapon_costs, "Extra Items: Weapons and their costs", "COSTS", 0)
 
 	// Hard Coded Items Costs
 	amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "Hard Coded Items Costs", "NIGHT VISION", g_extra_costs2[EXTRA_NVISION])
@@ -7176,20 +6933,6 @@ load_customization_from_files() {
 	}
 }
 
-public register_ham_czbots(id) { // Register Ham Forwards for CZ bots
-	if(g_hamczbots || !g_isconnected[id] || !get_pcvar_num(cvar_botquota)) return; // Make sure it's a CZ bot and it's still connected
-	
-	RegisterHamFromEntity(Ham_Spawn, id, "fw_PlayerSpawn_Post", 1)
-	RegisterHamFromEntity(Ham_Killed, id, "fw_PlayerKilled")
-	RegisterHamFromEntity(Ham_Killed, id, "fw_PlayerKilled_Post", 1)
-	RegisterHamFromEntity(Ham_TakeDamage, id, "fw_TakeDamage")
-	RegisterHamFromEntity(Ham_TakeDamage, id, "fw_TakeDamage_Post", 1)
-	RegisterHamFromEntity(Ham_TraceAttack, id, "fw_TraceAttack")
-
-	g_hamczbots = true // Ham forwards for CZ bots succesfully registered
-
-	if(is_user_alive(id)) fw_PlayerSpawn_Post(id) // If the bot has already spawned, call the forward manually for him
-}
 public disable_minmodels(id) { // Disable minmodels task
 	if(!g_isconnected[id]) return;
 	client_cmd(id, "cl_minmodels 0")
@@ -7798,9 +7541,9 @@ reset_vars(id, resetall) { // Reset Player Vars
 	g_flashlight[id] = false
 	g_flashbattery[id] = 100
 	g_canbuy[id] = 2
-	g_burning_dur[id] = 0
 	g_user_custom_speed[id] = false
 	g_madness_used[id] = false
+	g_burning[id] = false
 
 	if(resetall) {
 		g_ammopacks[id] = get_pcvar_num(cvar_startammopacks)
@@ -8229,6 +7972,9 @@ allowed_respawn(id) { // Checks if a player is allowed to respawn
 	return true;
 }
 allowed_game_mode(mode) {
+	static alive_count;
+	alive_count = fnGetAlive();
+
 	switch(mode) {
 		case MODE_NEMESIS: if(!zm_special_enable[NEMESIS]) return -1;
 		case MODE_ASSASSIN: if(!zm_special_enable[ASSASSIN]) return -1;
@@ -8241,14 +7987,14 @@ allowed_game_mode(mode) {
 		case MODE_WESKER: if(!hm_special_enable[WESKER]) return -1;
 		case MODE_SPY: if(!hm_special_enable[SPY]) return -1;
 		case MODE_MULTI: {
-			if(floatround(fnGetAlive()*get_pcvar_float(cvar_multiratio), floatround_ceil) < 2 || floatround(fnGetAlive()*get_pcvar_float(cvar_multiratio), floatround_ceil) >= fnGetAlive())
+			if(floatround(alive_count*get_pcvar_float(cvar_multiratio), floatround_ceil) < 2 || floatround(alive_count*get_pcvar_float(cvar_multiratio), floatround_ceil) >= alive_count)
 				return 0;
 		}
 		case MODE_PLAGUE: {
 			if(!hm_special_enable[SURVIVOR] || !zm_special_enable[NEMESIS]) return -1
 
-			if(floatround((fnGetAlive()-(get_pcvar_num(cvar_plaguenemnum)+get_pcvar_num(cvar_plaguesurvnum)))*get_pcvar_float(cvar_plagueratio), floatround_ceil) < 1
-			|| fnGetAlive()-(get_pcvar_num(cvar_plaguesurvnum)+get_pcvar_num(cvar_plaguenemnum)+floatround((fnGetAlive()-(get_pcvar_num(cvar_plaguenemnum)+get_pcvar_num(cvar_plaguesurvnum)))*get_pcvar_float(cvar_plagueratio), floatround_ceil)) < 1)
+			if(floatround((alive_count-(get_pcvar_num(cvar_plaguenemnum)+get_pcvar_num(cvar_plaguesurvnum)))*get_pcvar_float(cvar_plagueratio), floatround_ceil) < 1
+			|| alive_count-(get_pcvar_num(cvar_plaguesurvnum)+get_pcvar_num(cvar_plaguenemnum)+floatround((alive_count-(get_pcvar_num(cvar_plaguenemnum)+get_pcvar_num(cvar_plaguesurvnum)))*get_pcvar_float(cvar_plagueratio), floatround_ceil)) < 1)
 				return 0;
 		}
 		case MODE_LNJ: if(!hm_special_enable[SURVIVOR] || !zm_special_enable[NEMESIS]) return -1;
@@ -8256,7 +8002,7 @@ allowed_game_mode(mode) {
 
 	if(g_endround || !g_newround || task_exists(TASK_WELCOMEMSG)) return 0;
 
-	if(mode > MODE_INFECTION && mode < MAX_GAME_MODES) if(fnGetAlive() < get_pcvar_num(cvar_mod_minplayers[mode])) return 0;
+	if(mode > MODE_INFECTION && mode < MAX_GAME_MODES) if(alive_count < get_pcvar_num(cvar_mod_minplayers[mode])) return 0;
 
 	return 1;
 }
@@ -8691,7 +8437,7 @@ public native_get_user_frozen(plugin_id, num_params) { // Native: zp_get_user_fr
 public native_get_user_burn(plugin_id, num_params) { // Native: zp_get_user_burn
 	static id; id = get_param(1)
 	if(!is_user_valid(id)) return -1;
-	return g_burning_dur[id] > 0
+	return (g_burning[id]) 
 }
 public native_get_user_infectnade(plugin_id, num_params) { // Native: zp_get_user_infectnade
 	static id; id = get_param(1)
@@ -8976,7 +8722,6 @@ public native_get_extra_item_realname(plugin_id, num_params) { // Native: zp_get
 	set_string(2, buffer, get_param(3))
 	return 1;
 }
-
 
 public native_get_human_class_name(plugin_id, num_params) { // Native: zp_get_human_class_name
 	if(num_params != 3) return -1;
@@ -9453,18 +9198,17 @@ public set_user_burn(id, set, Float:Duration) {
 		}
 
 		if(Duration) {
-			if(!get_allowed_burn(id)  && set > 2|| g_hm_special[id] > 0 && set > 2) g_burning_dur[id] += floatround(Duration)
-			else g_burning_dur[id] += floatround(Duration * 5)
+			if(!get_allowed_burn(id) && set > 2 || g_hm_special[id] > 0 && set > 2)
+				Flame_Create(id, Duration * 0.5)
+			else 
+				Flame_Create(id, Duration)
 		}
-		else g_burning_dur[id] = 999999 // Permanent
-		
-		if(g_burning_dur[id] > 0) ExecuteForward(g_forwards[BURN_POST], g_fwDummyResult, id);
-
-		if(!task_exists(id+TASK_BURN)) set_task(0.2, "burning_flame", id+TASK_BURN, _, _, "b") // Set burning task on id if not present
+		else Flame_Create(id, -1.0)
+	
+		ExecuteForward(g_forwards[BURN_POST], g_fwDummyResult, id);
 	}
-	else g_burning_dur[id] = 0
-
-	return true
+	else g_burning[id] = false
+	return true;
 }
 public native_set_user_infectnade(plugin_id, num_params) {
 	static id, set;
@@ -9526,9 +9270,7 @@ public native_make_user_dragon(plugin_id, num_params) return make_user_special(g
 public native_make_user_berserker(plugin_id, num_params) return make_user_special(get_param(1), BERSERKER, 0);  // Native: zp_make_user_berserker
 public native_make_user_wesker(plugin_id, num_params) return make_user_special(get_param(1), WESKER, 0);  // Native: zp_make_user_wesker
 public native_make_user_spy(plugin_id, num_params) return make_user_special(get_param(1), SPY, 0); // Native: zp_make_user_spy
-public native_make_user_special(plugin_id, num_params) { // Native: zp_make_user_special
-	return make_user_special(get_param(1), get_param(2), get_param(3));
-}
+public native_make_user_special(plugin_id, num_params) return make_user_special(get_param(1), get_param(2), get_param(3)); // Native: zp_make_user_special
 public make_user_special(id, spid, zombie) {
 	if(!is_user_valid_alive(id)) return -1;
 
@@ -9791,6 +9533,9 @@ public native_register_human_special(plugin_id, num_params) {
 	amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", ArrModelTemp)
 	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "BODY", ArrBodyTemp)
 	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", ArrSkinTemp)
+	AddSettingParamForNoobs(ZP_SPECIAL_CLASSES_FILE, ArrModelTemp, ArrBodyTemp, section, "BODY", 0)
+	AddSettingParamForNoobs(ZP_SPECIAL_CLASSES_FILE, ArrModelTemp, ArrSkinTemp, section, "SKIN", 0)
+
 	if(ArraySize(ArrModelTemp) > 0) {
 		// Precache player models
 		for (i = 0; i < ArraySize(ArrModelTemp); i++) {
@@ -9995,6 +9740,8 @@ public native_register_zombie_special(plugin_id, num_params) {
 	amx_load_setting_string_arr(ZP_SPECIAL_CLASSES_FILE, section, "MODEL", ArrModelTemp)
 	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "BODY", ArrBodyTemp)
 	amx_load_setting_int_arr(ZP_SPECIAL_CLASSES_FILE, section, "SKIN", ArrSkinTemp)
+	AddSettingParamForNoobs(ZP_SPECIAL_CLASSES_FILE, ArrModelTemp, ArrBodyTemp, section, "BODY", 0)
+	AddSettingParamForNoobs(ZP_SPECIAL_CLASSES_FILE, ArrModelTemp, ArrSkinTemp, section, "SKIN", 0)
 	if(ArraySize(ArrModelTemp) > 0) {
 		// Precache player models
 		for (i = 0; i < ArraySize(ArrModelTemp); i++) {
@@ -10304,6 +10051,7 @@ public native_register_gamemode(plugin_id, num_params) { // Native: zp_register_
 
 	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s SOUNDS", section), ArrSound)
 	amx_load_setting_float_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s DURATION", section), ArrDuration)
+	AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, ArrSound, ArrDuration, "Ambience Sounds", fmt("%s DURATION", section), 0)
 
 	if(ArraySize(ArrSound) > 0) {
 		ArrayPushCell(g_gm_use_amb, true)
@@ -10697,6 +10445,9 @@ public native_register_human_class(plugin_id, num_params) {
 	amx_load_setting_string_arr(ZP_HUMANCLASSES_FILE, section, "MODELS", ArrModelTemp)
 	amx_load_setting_int_arr(ZP_HUMANCLASSES_FILE, section, "BODY", ArrBodyTemp)
 	amx_load_setting_int_arr(ZP_HUMANCLASSES_FILE, section, "SKIN", ArrSkinTemp)
+	AddSettingParamForNoobs(ZP_HUMANCLASSES_FILE, ArrModelTemp, ArrBodyTemp, section, "BODY", 0)
+	AddSettingParamForNoobs(ZP_HUMANCLASSES_FILE, ArrModelTemp, ArrSkinTemp, section, "SKIN", 0)
+
 	if(ArraySize(ArrModelTemp) > 0) {
 		ArrayPushCell(g_hclass_mdl_file, true)
 		// Precache player models
@@ -10835,6 +10586,8 @@ public native_register_zombie_class(plugin_id, num_params) {
 		amx_load_setting_string_arr(ZP_ZOMBIECLASSES_FILE, section, "MODELS", ArrModelTemp)
 		amx_load_setting_int_arr(ZP_ZOMBIECLASSES_FILE, section, "BODY", ArrBodyTemp)
 		amx_load_setting_int_arr(ZP_ZOMBIECLASSES_FILE, section, "SKIN", ArrSkinTemp)
+		AddSettingParamForNoobs(ZP_ZOMBIECLASSES_FILE, ArrModelTemp, ArrBodyTemp, section, "BODY", 0)
+		AddSettingParamForNoobs(ZP_ZOMBIECLASSES_FILE, ArrModelTemp, ArrSkinTemp, section, "SKIN", 0)
 		if(ArraySize(ArrModelTemp) > 0) {
 			// Precache player models
 			for (i = 0; i < ArraySize(ArrModelTemp); i++) {
@@ -11322,7 +11075,7 @@ public native_reset_user_knockback(plugin_id, num_params)
 	if(isCustomSpecialZombie(id))
 		g_zombie_knockback[id] = Float:ArrayGetCell(g_zm_sp_knockback, g_zm_special[id]-MAX_SPECIALS_ZOMBIES)
 	else if(isDefaultSpecialZombie(id))
-		g_zombie_knockback[id] = get_pcvar_float(cvar_zmsp_knockback[g_zm_special[id]-MAX_SPECIALS_ZOMBIES])
+		g_zombie_knockback[id] = get_pcvar_float(cvar_zmsp_knockback[g_zm_special[id]])
 	else
 		g_zombie_knockback[id] = Float:ArrayGetCell(g_zclass_kb, g_zombieclass[id])
 	
@@ -11335,16 +11088,17 @@ public Float:native_get_default_knockback(plugin_id, num_params)
 	static id;
 	id = get_param(1)
 	
-	if(!is_user_valid(id))
-		return -1.0;
+	if(!is_user_valid_alive(id))
+		return 0.0;
 
-	if(!g_isalive[id] || !g_zombie[id])
+	if(!g_zombie[id])
 		return 0.0;
 
 	if(isCustomSpecialZombie(id))
 		return Float:ArrayGetCell(g_zm_sp_knockback, g_zm_special[id]-MAX_SPECIALS_ZOMBIES)
+
 	else if(isDefaultSpecialZombie(id))
-		return get_pcvar_float(cvar_zmsp_knockback[g_zm_special[id]-MAX_SPECIALS_ZOMBIES])
+		return get_pcvar_float(cvar_zmsp_knockback[g_zm_special[id]])
 		
 	return Float:ArrayGetCell(g_zclass_kb, g_zombieclass[id])
 }
@@ -11854,63 +11608,7 @@ flare_lighting(entity, duration) { // Flare Lighting Effects
 	engfunc(EngFunc_WriteCoord, originF[2]) // z
 	message_end()
 }
-public burning_flame(taskid) { // Burning Flames
-	// Get player origin and flags
-	static origin[3], flags
-	get_user_origin(ID_BURN, origin)
-	flags = pev(ID_BURN, pev_flags)
 
-	if(!g_isalive[ID_BURN] || g_nodamage[ID_BURN] || (flags & FL_INWATER) || g_burning_dur[ID_BURN] < 1) { // Madness mode - in water - burning stopped
-		// Smoke sprite
-		message_begin(MSG_PVS, SVC_TEMPENTITY, origin)
-		write_byte(TE_SMOKE) // TE id
-		write_coord(origin[0]) // x
-		write_coord(origin[1]) // y
-		write_coord(origin[2]-50) // z
-		write_short(g_smokeSpr) // sprite
-		write_byte(random_num(15, 20)) // scale
-		write_byte(random_num(10, 20)) // framerate
-		message_end()
-		
-		remove_task(taskid); // Task not needed anymore
-		return;
-	}
-	
-	if(isDefaultZombie(ID_BURN)) {
-		// Randomly play burning zombie scream sounds
-		static Float:velocity[3], sound[64]
-		if(!random_num(0, 20)) {
-			ArrayGetString(ar_sound[13], random_num(0, ArraySize(ar_sound[13]) - 1), sound, charsmax(sound))
-			emit_sound(ID_BURN, CHAN_VOICE, sound, 1.0, ATTN_NORM, 0, PITCH_NORM)
-		}
-		
-		// Fire slow down, unless special zombies
-		if((flags & FL_ONGROUND) && get_pcvar_float(cvar_fireslowdown) > 0.0) {
-			pev(ID_BURN, pev_velocity, velocity)
-			xs_vec_mul_scalar(velocity, get_pcvar_float(cvar_fireslowdown), velocity)
-			set_pev(ID_BURN, pev_velocity, velocity)
-		}
-	}
-	// Get player's health
-	static health
-	health = fm_get_user_health(ID_BURN)
-	
-	// Take damage from the fire
-	if(health - floatround(get_pcvar_float(cvar_firedamage), floatround_ceil) > 0) fm_set_user_health(ID_BURN, health - floatround(get_pcvar_float(cvar_firedamage), floatround_ceil))
-
-	// Flame sprite
-	message_begin(MSG_PVS, SVC_TEMPENTITY, origin)
-	write_byte(TE_SPRITE) // TE id
-	write_coord(origin[0]+random_num(-5, 5)) // x
-	write_coord(origin[1]+random_num(-5, 5)) // y
-	write_coord(origin[2]+random_num(-10, 10)) // z
-	write_short(g_flameSpr) // sprite
-	write_byte(random_num(5, 10)) // scale
-	write_byte(200) // brightness
-	message_end()
-
-	g_burning_dur[ID_BURN]-- // Decrease burning duration counter
-}
 create_blast(const Float:originF[3], grenade_type) { // Grenade Blast
 	static radius_shockwave, size
 	size = 0
@@ -12826,7 +12524,7 @@ public reset_player_models(id) {
 
 	for(i = 0; i < ArrSize; i++) {
 		ArrayGetString(Arr_Model, i, newmodel, charsmax(newmodel))
-		if(equal(currentmodel, newmodel) /*&& (g_playerbody[id] == ArrayGetCell(Arr_Body, i)) && (g_playerskin[id] == ArrayGetCell(Arr_Skin, i))*/) {
+		if(equal(currentmodel, newmodel) && (g_playerbody[id] == ArrayGetCell(Arr_Body, i)) && (g_playerskin[id] == ArrayGetCell(Arr_Skin, i))) {
 			already_has_model = true
 			break;
 		}
@@ -13216,10 +12914,155 @@ public nvision_toggle_off(id) {
 	if(g_nvisionenabled[id]) {
 		g_nvisionenabled[id] = false
 		switch(g_nvg_enabled_mode[id]) {
-			case 0: set_user_gnvision(id, 0)
-			case 1: remove_task(id+TASK_NVISION)
-			case 2: set_user_fade_nvg(id, 0)
-			default: set_user_fade_nvg(id, 0)
+			case 0: set_user_gnvision(id, 0);
+			case 1: remove_task(id+TASK_NVISION);
+			case 2: set_user_fade_nvg(id, 0);
+			default: set_user_fade_nvg(id, 0);
 		}
 	}
+}
+
+// Auto Adding Params for Noobs that having "ArrayGet..." Error
+stock AddSettingParamForNoobs(const IniFile[], Array:array_main, Array:array_check, const section_name[], const key[], type=0) {
+	if(!g_automate_setting)
+		return;
+
+	if(array_main == Invalid_Array) {
+		log_error(AMX_ERR_PARAMS, "Invalid array_main, ID: %d, section: %s, key: %s", array_main, section_name, key)
+		return;
+	}
+	else if(array_check == Invalid_Array) {
+		log_error(AMX_ERR_PARAMS, "Invalid array_check, ID: %d, section: %s, key: %s", array_main, section_name, key)
+		return;
+	}
+
+	static ar_size_main, ar_size_check
+	ar_size_main = ArraySize(array_main)
+	ar_size_check = ArraySize(array_check)
+	if(ar_size_main <= ar_size_check) 
+		return;
+
+	static max_param_for_add, i;
+	max_param_for_add = ar_size_main-ar_size_check
+
+	for(i = 0; i < max_param_for_add; i++) {
+		switch(type) {
+			case 1: ArrayPushString(array_check, "!add_the_param_here"); // Not here, in your .ini file
+			case 2: ArrayPushCell(array_check, 0.0);
+			default: ArrayPushCell(array_check, 0);
+		}
+	}
+	
+	switch(type) {
+		case 1: amx_save_setting_string_arr(IniFile, section_name, key, array_check);
+		case 2: amx_save_setting_float_arr(IniFile, section_name, key, array_check);
+		default: amx_save_setting_int_arr(IniFile, section_name, key, array_check);
+	}
+
+	log_amx("[ZPSp] Warning: You need more careful for adding some model/ambience/internal extra item")
+	log_amx("--> File: %s, section: %s, key: %s", IniFile, section_name, key)
+
+	static date[100]; format_time(date, charsmax(date), "%d-%m-%Y");
+	log_to_file(fmt("zombie_plague_special_%s.log", date), "[ZPSp] Warning: You need more careful for adding some model/ambience/internal extra item")
+	log_to_file(fmt("zombie_plague_special_%s.log", date),  "--> File: %s, section: %s, key: %s", IniFile, section_name, key)
+}
+
+static g_flame_reg
+public Flame_Create(victim, Float:Duration) {
+	if(!is_user_valid_alive(victim))
+		return;
+
+	if(g_burning[victim])
+		return;
+
+	static ent, Float:gametime;
+	ent = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "env_sprite")) 
+	if(!pev_valid(ent))
+		return;
+	
+	gametime = get_gametime();
+
+	engfunc(EngFunc_SetModel, ent, sprite_grenade_fire)
+	set_pev(ent, pev_classname, FLAME_CLASSNAME)
+	set_pev(ent, pev_owner, victim)
+	set_pev(ent, pev_aiment, victim)
+	// set_pev(ent, pev_enemy, attacker)
+	set_pev(ent, pev_movetype, MOVETYPE_FOLLOW)
+	set_pev(ent, pev_fuser4, Duration)
+	set_pev(ent, pev_fuser2, gametime)
+	set_pev(ent, pev_solid, SOLID_NOT)
+
+	g_burning[victim] = true
+	
+	set_pev(ent, pev_animtime, gametime)
+	set_pev(ent, pev_framerate, 20.0)
+	// set_pev(ent, pev_frame, 0.0)
+	set_pev(ent, pev_scale, random_float(0.5, 1.2))
+	set_pev(ent, pev_rendermode, kRenderTransAdd)
+	set_pev(ent, pev_renderamt, 255.0)
+	set_pev(ent, pev_nextthink, gametime + 0.2)
+	set_pev(ent, pev_spawnflags, SF_SPRITE_STARTON)
+	dllfunc(DLLFunc_Spawn, ent)
+	
+	if(!g_flame_reg) {
+		RegisterHamFromEntity(Ham_Think, ent, "Flame_Think");
+		g_flame_reg = 1
+	}  
+}
+public Flame_Think(ent) { // Burning Flames
+	if(!pev_valid(ent))
+		return HAM_IGNORED;
+
+	static victim, flags, Float:gametime, Float:Time_A, Float:Time_B;
+	gametime = get_gametime();
+	victim = pev(ent, pev_owner)
+	flags = pev(victim, pev_flags)
+	pev(ent, pev_fuser4, Time_A)
+	pev(ent, pev_fuser2, Time_B)
+
+	if(!g_isalive[victim] || g_nodamage[victim] || (flags & FL_INWATER) || gametime - Time_A > Time_B || !g_burning[victim]) { // Madness mode - in water - burning stopped
+		g_burning[victim] = false
+
+		static origin[3]; get_user_origin(victim, origin)
+		
+		// Smoke sprite
+		message_begin(MSG_PVS, SVC_TEMPENTITY, origin)
+		write_byte(TE_SMOKE) // TE id
+		write_coord(origin[0]) // x
+		write_coord(origin[1]) // y
+		write_coord(origin[2]-50) // z
+		write_short(g_smokeSpr) // sprite
+		write_byte(random_num(15, 20)) // scale
+		write_byte(random_num(10, 20)) // framerate
+		message_end()
+		
+		engfunc(EngFunc_RemoveEntity, ent)
+		return HAM_IGNORED;
+	}
+	
+	if(isDefaultZombie(victim)) {
+		// Randomly play burning zombie scream sounds
+		static Float:velocity[3], sound[64]
+		if(!random_num(0, 20)) {
+			ArrayGetString(ar_sound[13], random_num(0, ArraySize(ar_sound[13]) - 1), sound, charsmax(sound))
+			emit_sound(victim, CHAN_VOICE, sound, 1.0, ATTN_NORM, 0, PITCH_NORM)
+		}
+		
+		// Fire slow down, unless special zombies
+		if((flags & FL_ONGROUND) && get_pcvar_float(cvar_fireslowdown) > 0.0) {
+			pev(victim, pev_velocity, velocity)
+			xs_vec_mul_scalar(velocity, get_pcvar_float(cvar_fireslowdown), velocity)
+			set_pev(victim, pev_velocity, velocity)
+		}
+	}
+	// Get player's health
+	static health; health = fm_get_user_health(victim)
+	
+	// Take damage from the fire
+	if(health - floatround(get_pcvar_float(cvar_firedamage), floatround_ceil) > 0) 
+		fm_set_user_health(victim, health - floatround(get_pcvar_float(cvar_firedamage), floatround_ceil))
+
+	set_pev(ent, pev_scale, random_float(0.5, 1.2))
+	set_pev(ent, pev_nextthink, gametime + 0.2)
+	return HAM_IGNORED;
 }
