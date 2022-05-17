@@ -336,6 +336,7 @@
 				- Fixed Natives: "zp_reset_user_knockback" and "zp_get_default_knockback"
 				- Small otimization on code in Admin actions
 				- Now flame are in entities now.
+				- Fixed Submodel/Skin support (I think)
 
 
 
@@ -10050,8 +10051,8 @@ public native_register_gamemode(plugin_id, num_params) { // Native: zp_register_
 	ArrayPushCell(g_gm_amb_enable, enable)
 
 	amx_load_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s SOUNDS", section), ArrSound)
-	amx_load_setting_float_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s DURATION", section), ArrDuration)
-	AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, ArrSound, ArrDuration, "Ambience Sounds", fmt("%s DURATION", section), 0)
+	amx_load_setting_float_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s DURATIONS", section), ArrDuration)
+	AddSettingParamForNoobs(ZP_CUSTOMIZATION_FILE, ArrSound, ArrDuration, "Ambience Sounds", fmt("%s DURATIONS", section), 0)
 
 	if(ArraySize(ArrSound) > 0) {
 		ArrayPushCell(g_gm_use_amb, true)
@@ -10065,7 +10066,7 @@ public native_register_gamemode(plugin_id, num_params) { // Native: zp_register_
 	else { 
 		amx_save_setting_string(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s ENABLE", section), "-1")
 		amx_save_setting_string(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s SOUNDS", section), "")
-		amx_save_setting_string(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s DURATION", section), "")
+		amx_save_setting_string(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s DURATIONS", section), "")
 		ArrayPushCell(g_gm_use_amb, false)
 	}
 
@@ -10136,7 +10137,7 @@ public native_register_gamemode_ambience(plugin_id, num_params)
 	ArrayPushCell(ArrDuration, Duration)
 
 	amx_save_setting_string_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s SOUNDS", upper_real_name), ArrSound)
-	amx_save_setting_float_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s DURATION", upper_real_name), ArrDuration)
+	amx_save_setting_float_arr(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s DURATIONS", upper_real_name), ArrDuration)
 
 	return true;
 }
