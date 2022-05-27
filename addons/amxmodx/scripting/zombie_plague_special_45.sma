@@ -377,6 +377,7 @@ const MAX_STATS_SAVED = 64;
 #include <hamsandwich>
 #include <xs>
 #include <amx_settings_api>
+#pragma dynamic 32768 // 128kb#pragma dynamic 32768 // 128kb
 
 /*================================================================================
  [Constants, Offsets, Macros]
@@ -3118,7 +3119,7 @@ public fw_ClientUserInfoChanged(id) { // Forward Client User Info Changed -preve
 		return;
 
 	get_user_name(id, g_playername[id], charsmax(g_playername[])) // Cache player's name
-	static currentmodel[32]; cs_get_user_model(id, currentmodel, charsmax(currentmodel)) // Get current model
+	static currentmodel[32]; get_user_info(id, "model", currentmodel, charsmax(currentmodel)) // Get current model
 	if(!equal(currentmodel, g_playermodel[id]) || pev(id, pev_body) != g_playerbody[id] || pev(id, pev_skin) != g_playerskin[id]) {
 		cs_set_user_model(id, g_playermodel[id], g_set_modelindex_offset ? true : false)
 		set_pev(id, pev_body, g_playerbody[id])
@@ -13038,7 +13039,7 @@ public Flame_Think(ent) { // Burning Flames
 		message_end()
 		
 		engfunc(EngFunc_RemoveEntity, ent)
-		return HAM_IGNORED;
+		return HAM_SUPERCEDE;
 	}
 	
 	if(isDefaultZombie(victim)) {
