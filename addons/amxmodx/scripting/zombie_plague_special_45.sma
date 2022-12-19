@@ -7265,7 +7265,7 @@ turn_off_flashlight(id) { // Turn Off Flashlight and Restore Batteries
 public event_show_status(id) { // Some one aimed at someone
 	if(!g_isbot[id] && g_isconnected[id] && get_pcvar_num(cvar_aiminfo)) { // Not a bot and is still connected
 		
-		static aimid, class[32], special_name[32], sp_id; 
+		static aimid, class[64], special_name[64], sp_id; 
 		aimid = read_data(2) // Retrieve the aimed player's id
 		if(g_zombie[id] == g_zombie[aimid] || get_pcvar_num(cvar_aiminfo) == 2) {
 			if(isCustomSpecialZombie(aimid)) {
@@ -13025,7 +13025,10 @@ public Flame_Think(ent) { // Burning Flames
 	if(!g_isalive[victim] || g_nodamage[victim] || (flags & FL_INWATER) || gametime - Time_A > Time_B || !g_burning[victim]) { // Madness mode - in water - burning stopped
 		g_burning[victim] = false
 
-		static origin[3]; get_user_origin(victim, origin)
+		static origin[3], Float:fOrigin[3]; 
+		pev(ent, pev_origin, fOrigin)
+		FVecIVec(fOrigin, origin)
+		// static origin[3]; get_user_origin(victim, origin)
 		
 		// Smoke sprite
 		message_begin(MSG_PVS, SVC_TEMPENTITY, origin)
