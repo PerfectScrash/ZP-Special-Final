@@ -343,3 +343,9 @@
 			- Fixed Native: zp_get_user_default_maxspeed
 			- Fixed Native: zp_set_user_knockback
 			- Fixed weapons menu
+
+	* Fix (18/12/2022):
+		- Fixed Invalid Player Error log in Flame_Think
+
+	* Fix (03/02/2023):
+		- Fix env_sprite Conflict wth other plugins like Salamander
