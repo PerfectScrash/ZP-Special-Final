@@ -12988,7 +12988,6 @@ public Flame_Create(victim, Float:Duration) {
 	set_pev(ent, pev_classname, FLAME_CLASSNAME)
 	set_pev(ent, pev_owner, victim)
 	set_pev(ent, pev_aiment, victim)
-	// set_pev(ent, pev_enemy, attacker)
 	set_pev(ent, pev_movetype, MOVETYPE_FOLLOW)
 	set_pev(ent, pev_fuser4, Duration)
 	set_pev(ent, pev_fuser2, gametime)
@@ -13014,6 +13013,11 @@ public Flame_Create(victim, Float:Duration) {
 public Flame_Think(ent) { // Burning Flames
 	if(!pev_valid(ent))
 		return HAM_IGNORED;
+	
+	static classname[32]; // Fix env_sprite Conflict
+	pev(ent, pev_classname, classname, charsmax(classname))
+	if(!equal(classname, FLAME_CLASSNAME))
+		return HAM_IGNORED
 
 	static victim, flags, Float:gametime, Float:Time_A, Float:Time_B;
 	gametime = get_gametime();
@@ -13029,6 +13033,9 @@ public Flame_Think(ent) { // Burning Flames
 		pev(ent, pev_origin, fOrigin)
 		FVecIVec(fOrigin, origin)
 		// static origin[3]; get_user_origin(victim, origin)
+		set_pev(ent, pev_owner, -1)
+		set_pev(ent, pev_aiment, -1)
+		set_pev(ent, pev_movetype, MOVETYPE_NONE)
 		
 		// Smoke sprite
 		message_begin(MSG_PVS, SVC_TEMPENTITY, origin)
