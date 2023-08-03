@@ -33,7 +33,7 @@
 		- ROKronoS: for idea of Bombardier Mod
 		- abdul-rehman and ZPA Team: for zpa version and some special mods
 		- Junin: For Spy mode Idea
-		- Perfect ScrasH- For Adding New Modes, fix and Optimizing Code
+		- Perfect Scrash: For Adding New Modes, fix and Optimizing Code
 		
 	Official Link of Mod:
 		https://forums.alliedmods.net/showthread.php?t=260845
@@ -337,7 +337,10 @@
 				- Small otimization on code in Admin actions
 				- Now flame are in entities now.
 				- Fixed Submodel/Skin support (I think)
-
+				- Fixed team bug
+				- Fixed native zp_set_lighting
+				- Fixed Forward zp_model_change_pre
+				- Fixed Forward zp_game_mode_selected_pre
 
 
 ============================================================================================================================*/
@@ -377,7 +380,6 @@ const MAX_STATS_SAVED = 64;
 #include <hamsandwich>
 #include <xs>
 #include <amx_settings_api>
-#pragma dynamic 32768 // 128kb#pragma dynamic 32768 // 128kb
 
 /*================================================================================
  [Constants, Offsets, Macros]
@@ -763,7 +765,7 @@ new g_menu_data[33][15], Float:g_current_maxspeed[33], g_user_custom_speed[33], 
 new g_newround, g_endround, g_modestarted, g_allowinfection, g_deathmatchmode, g_currentmode, g_lastmode, g_nextmode;
 new g_scorezombies, g_scorehumans, g_gamecommencing, g_spawnCount, g_spawnCount2, Float:g_spawns[MAX_CSDM_SPAWNS][3], Float:g_spawns2[MAX_CSDM_SPAWNS][3];
 new g_lights_i, g_lights_cycle[32], g_lights_cycle_len, Float:g_teams_targettime, g_MsgSync[3], g_automate_setting;
-new g_trailSpr[MAX_GRENADES], g_ExplodeSpr[MAX_GRENADES], g_GibSpr[MAX_GRENADES], g_RingSpr, g_flameSpr, g_smokeSpr, g_glassSpr, g_modname[32], g_freezetime, MaxPlayers, g_czero;
+new g_trailSpr[MAX_GRENADES], g_ExplodeSpr[MAX_GRENADES], g_GibSpr[MAX_GRENADES], g_RingSpr, g_flameSpr, g_smokeSpr, g_glassSpr, g_modname[32], g_freezetime, g_czero;
 new g_fwSpawn, g_fwPrecacheSound, g_infbombcounter, g_antidotecounter, g_madnesscounter, g_arrays_created, g_escape_map;
 new g_lastplayerleaving, g_switchingteam, g_buyzone_ent, zm_special_enable[MAX_SPECIALS_ZOMBIES], hm_special_enable[MAX_SPECIALS_HUMANS];
 new custom_lighting[2], g_custom_light, g_ForwardParameter[64], g_FW_intParam[10], g_AdditionalHudText[500];
@@ -894,9 +896,9 @@ cvar_zm_red[MAX_SPECIALS_ZOMBIES], cvar_zm_green[MAX_SPECIALS_ZOMBIES], cvar_zm_
 
 // Cached stuff for players
 new g_isconnected[33], g_isalive[33], g_isbot[33], g_currentweapon[33], g_playername[33][32], Float:g_spd[33], Float:g_custom_leap_cooldown[33], Float:g_zombie_knockback[33], g_pl_classname[33][64], g_pl_classname_lang[33];
-#define is_user_valid_connected(%1) (1 <= %1 <= MaxPlayers && g_isconnected[%1])
-#define is_user_valid_alive(%1) (1 <= %1 <= MaxPlayers && g_isalive[%1])
-#define is_user_valid(%1) (1 <= %1 <= MaxPlayers)
+#define is_user_valid_connected(%1) (1 <= %1 <= MaxClients && g_isconnected[%1])
+#define is_user_valid_alive(%1) (1 <= %1 <= MaxClients && g_isalive[%1])
+#define is_user_valid(%1) (1 <= %1 <= MaxClients)
 #define fm_get_user_health(%1) pev(%1, pev_health)
 
 // Cached CVARs
@@ -2207,9 +2209,7 @@ public plugin_init() {
 	// Create the HUD Sync Objects
 	for(new i = 0; i <= 2; i++) g_MsgSync[i] = CreateHudSyncObj()
 
-	MaxPlayers = get_maxplayers() // Get Max Players
-
-	db_slot_i = MaxPlayers+1 // Reserved saving slots starts on maxplayers+1
+	db_slot_i = MaxClients+1 // Reserved saving slots starts on maxplayers+1
 	
 	// Check if it's a CZ server
 	static mymod[6]; get_modname(mymod, charsmax(mymod))
@@ -2250,7 +2250,7 @@ public event_round_start() { // Event Round Start
 	lighting_effects()
 
 	// Reset Respawn Limit
-	for(new i = 1; i <= MaxPlayers; i++)
+	for(new i = 1; i <= MaxClients; i++)
 		g_respawn_count[i] = 0
 
 	remove_task(TASK_WELCOMEMSG)
@@ -2271,14 +2271,14 @@ public logevent_round_end() { // Log Event Round End
 	lastendtime = current_time
 	
 	if(get_pcvar_num(cvar_chosse_instantanly[0]) || get_pcvar_num(cvar_chosse_instantanly[1])) {
-		for(id = 1; id <= MaxPlayers; id++) {
+		for(id = 1; id <= MaxClients; id++) {
 			g_choosed_zclass[id] = false
 			g_choosed_hclass[id] = false
 		}
 	}
 	if(get_pcvar_num(cvar_statssave)) { // Temporarily save player stats?
 		static team
-		for(id = 1; id <= MaxPlayers; id++) {
+		for(id = 1; id <= MaxClients; id++) {
 			if(!g_isconnected[id]) continue;
 
 			team = fm_cs_get_user_team(id)
@@ -2972,7 +2972,7 @@ public fw_Item_Deploy_Post(weapon_ent) { // Ham Weapon Deploy Forward
 
 	static owner; owner = fm_cs_get_weapon_ent_owner(weapon_ent) // Get weapon's owner
 		
-	if(!(1 <= owner <= MaxPlayers)) return; // Invalid player id? (bugfix)
+	if(!(1 <= owner <= MaxClients)) return; // Invalid player id? (bugfix)
 
 	static weaponid; weaponid = cs_get_weapon_id(weapon_ent) // Get weapon's id
 	
@@ -3549,7 +3549,7 @@ public show_menu_game(id) { // Game Menu
 }
 public menu_buy_show(taskid) {	
 	static id // Get player's id
-	(taskid > MaxPlayers) ? (id = ID_SPAWN) : (id = taskid);
+	(taskid > MaxClients) ? (id = ID_SPAWN) : (id = taskid);
 
 	if(!g_isalive[id] || g_zombie[id] || g_hm_special[id] > 0) return; // Zombies, specials get no guns
 
@@ -3765,7 +3765,7 @@ public show_menu_zclass(id) { // Zombie Class Menu
 
 public show_menu_human_class(taskid) { // Zombie Class Menu
 	static id // Get player's id
-	(taskid > MaxPlayers) ? (id = ID_SPAWN) : (id = taskid);
+	(taskid > MaxClients) ? (id = ID_SPAWN) : (id = taskid);
 
 	if(!is_user_valid_connected(id) || !g_hclass_i) return;
 
@@ -4163,7 +4163,7 @@ public make_user_sp_pl(id, zombie) {
 	menuid = menu_create(menu, "make_custom_sp")
 
 	// Player List
-	for(player = 1; player <= MaxPlayers; player++) {
+	for(player = 1; player <= MaxClients; player++) {
 		if(!g_isconnected[player]) continue; // Skip if not connected
 		
 		if(isCustomSpecialZombie(player)) {
@@ -4263,7 +4263,7 @@ show_menu_player_list(id) { // Player List Menu
 	formatex(menu, charsmax(menu), "%L\r", id, sp_adm_actions[PL_ACTION][act_lang])
 	menuid = menu_create(menu, "menu_player_list")
 	
-	for(player = 1; player <= MaxPlayers; player++) { // Player List
+	for(player = 1; player <= MaxClients; player++) { // Player List
 		if(!g_isconnected[player]) continue;
 
 		if(isCustomSpecialZombie(player)) {
@@ -5398,7 +5398,7 @@ public message_teaminfo(msg_id, msg_dest) { // Team Switch (or player joining a 
 	if(g_switchingteam) return; // Don't pick up our own TeamInfo messages for this player (bugfix)
 
 	static id; id = get_msg_arg_int(1) // Get player's id
-	if(!(1 <= id <= MaxPlayers)) return; // Invalid player id? (bugfix)
+	if(!(1 <= id <= MaxClients)) return; // Invalid player id? (bugfix)
 
 	set_task(0.2, "spec_nvision", id) // Enable spectators' nightvision if not spawning right away
 	if(g_newround) return; // Round didn't start yet, nothing to worry about
@@ -5465,7 +5465,7 @@ start_swarm_mode(id, mode) { // Start swarm mode
 
 		// Randomly turn iMaxZombies players into zombies
 		while(iZombies < iMaxZombies) {
-			if(++id > MaxPlayers) id = 1 // Keep looping through all players
+			if(++id > MaxClients) id = 1 // Keep looping through all players
 			if(!g_isalive[id]) continue; // Dead or already a zombie
 
 			if(g_zombie[id] && g_zm_special[id] == 0) {
@@ -5486,7 +5486,7 @@ start_swarm_mode(id, mode) { // Start swarm mode
 		}
 		
 		// Turn the remaining players into humans
-		for(id = 1; id <= MaxPlayers; id++) {
+		for(id = 1; id <= MaxClients; id++) {
 			if(!g_isalive[id]) continue; // Only those of them who aren't zombies
 
 			if(!is_zombie[id] && g_zombie[id] || g_hm_special[id])
@@ -5585,7 +5585,7 @@ start_plague_mode(id, mode) { // Start plague mode
 		iMaxZombies = floatround((iPlayersnum-(get_pcvar_num(cvar_plaguenemnum)+get_pcvar_num(cvar_plaguesurvnum)))*get_pcvar_float(cvar_plagueratio), floatround_ceil)
 		iZombies = 0
 		while(iZombies < iMaxZombies) {
-			if(++id > MaxPlayers) id = 1 // Keep looping through all players
+			if(++id > MaxClients) id = 1 // Keep looping through all players
 
 			// Dead or already a zombie or survivor
 			if(!g_isalive[id] || g_zm_special[id] == NEMESIS || g_hm_special[id] == SURVIVOR) continue;
@@ -5601,10 +5601,15 @@ start_plague_mode(id, mode) { // Start plague mode
 			}
 		}
 
-		for(id = 1; id <= MaxPlayers; id++) { // Turn the remaining players into humans
-			if(!g_isalive[id] || g_zombie[id] || g_hm_special[id] == SURVIVOR) continue; // Only those of them who arent zombies or survivor
+		for(id = 1; id <= MaxClients; id++) { // Turn the remaining players into humans
+			if(!g_isalive[id] || g_zombie[id] /* || g_hm_special[id] == SURVIVOR */) continue; // Only those of them who arent zombies or survivor
 			
-			update_team(id)
+			// Switch to CT
+			if(fm_cs_get_user_team(id) != FM_CS_TEAM_CT) { // need to change team?
+				remove_task(id+TASK_TEAM)
+				fm_cs_set_user_team(id, FM_CS_TEAM_CT)
+				fm_user_team_update(id)
+			}
 		}
 
 		// Play plague sound
@@ -5651,7 +5656,7 @@ start_multi_mode(id, mode) { // Start multiple infection mode
 		iZombies = 0
 
 		while(iZombies < iMaxZombies) { // Randomly turn iMaxZombies players into zombies
-			if(++id > MaxPlayers) id = 1 // Keep looping through all players
+			if(++id > MaxClients) id = 1 // Keep looping through all players
 			
 			if(!g_isalive[id]) continue; // Dead or already a zombie
 
@@ -5673,7 +5678,7 @@ start_multi_mode(id, mode) { // Start multiple infection mode
 			}
 		}
 
-		for(id = 1; id <= MaxPlayers; id++) { // Turn the remaining players into humans
+		for(id = 1; id <= MaxClients; id++) { // Turn the remaining players into humans
 			if(!g_isalive[id]) continue; // Only those of them who aren't zombies
 
 			if(!is_zombie[id] && g_zombie[id] || g_hm_special[id]) 
@@ -5729,7 +5734,7 @@ start_lnj_mode(id, mode) { // Start LNJ mode
 		iZombies = fnGetSpecials(1, NEMESIS)
 		
 		while(iZombies < iMaxZombies) { // Randomly turn iMaxZombies players into Nemesis
-			if(++id > MaxPlayers) id = 1 // Keep looping through all players			
+			if(++id > MaxClients) id = 1 // Keep looping through all players			
 			if(!g_isalive[id] || g_zm_special[id] == NEMESIS) continue; // Dead or already a nemesis
 			
 			if(random_num(0, 1)) { // Random chance
@@ -5746,7 +5751,7 @@ start_lnj_mode(id, mode) { // Start LNJ mode
 			}
 		}
 
-		for(id = 1; id <= MaxPlayers; id++) { // Turn the remaining players into survivors
+		for(id = 1; id <= MaxClients; id++) { // Turn the remaining players into survivors
 			if(!g_isalive[id] || g_zm_special[id] == NEMESIS) continue; // Only those of them who arent nemesis
 			humanme(id, SURVIVOR, 0, 0) // Turn into a Survivor
 			fm_set_user_health(id, floatround(get_pcvar_float(cvar_lnjsurvhpmulti) * fm_get_user_health(id)))
@@ -5879,7 +5884,7 @@ set_special_human_mode(id, mode, class) {
 		forward_id = id // Remember id for calling our forward later
 		humanme(id, class, 0, 0) // Turn player into a special human
 		
-		for(id = 1; id <= MaxPlayers; id++) { // Turn the remaining players into zombies
+		for(id = 1; id <= MaxClients; id++) { // Turn the remaining players into zombies
 			if(!g_isalive[id]) continue; // Not alive
 			if(id == forward_id || g_zombie[id] && g_zm_special[id] == 0) continue; // special human or already a zombie
 			zombieme(id, 0, 0, 1, 0) // Turn into a zombie
@@ -5953,12 +5958,17 @@ set_special_zombie_mode(id, mode, class) {
 				dllfunc(DLLFunc_Use, ent, 0);
 		}
 
-		for(id = 1; id <= MaxPlayers; id++) { // Remaining players should be humans (CTs)
+		for(id = 1; id <= MaxClients; id++) { // Remaining players should be humans (CTs)
 			if(!g_isalive[id]) continue; // Not alive
 			if(forward_id == id) continue;
 			if(g_zombie[id] || g_hm_special[id]) humanme(id, 0, 1, 0) // Turn others players to human (When forces start round after round alterady started by native)
 
-			update_team(id)
+			// Switch to CT
+			if(fm_cs_get_user_team(id) != FM_CS_TEAM_CT) { // need to change team?
+				remove_task(id+TASK_TEAM)
+				fm_cs_set_user_team(id, FM_CS_TEAM_CT)
+				fm_user_team_update(id)
+			}
 			set_screenfadein(id, 5, get_pcvar_num(cvar_zm_red[class]), get_pcvar_num(cvar_zm_green[class]), get_pcvar_num(cvar_zm_blue[class]), 255)
 
 			// Make a screen shake [Make it horrorful]
@@ -6064,14 +6074,19 @@ start_infection_mode(id, mode) { // Start the default infection mode
 	}
 	forward_id = id // Remember id for calling our forward later
 
-	for(id = 1; id <= MaxPlayers; id++) { // Remaining players should be humans (CTs)
+	for(id = 1; id <= MaxClients; id++) { // Remaining players should be humans (CTs)
 		// Not alive / First zombie
 		if(!g_isalive[id] || forward_id == id) continue;
 
 		if(g_zombie[id] || g_hm_special[id])
 			humanme(id, 0, 1, 0)
 		
-		update_team(id)
+		// Switch to CT
+		if(fm_cs_get_user_team(id) != FM_CS_TEAM_CT) { // need to change team?
+			remove_task(id+TASK_TEAM)
+			fm_cs_set_user_team(id, FM_CS_TEAM_CT)
+			fm_user_team_update(id)
+		}
 	}
 	
 	// Show First Zombie HUD notice
@@ -6966,7 +6981,7 @@ balance_teams() { // Balance Teams Task
 	iTerrors = 0
 	
 	// First, set everyone to CT
-	for(id = 1; id <= MaxPlayers; id++) {
+	for(id = 1; id <= MaxClients; id++) {
 		if(!g_isconnected[id]) continue; // Skip if not connected
 
 		team[id] = fm_cs_get_user_team(id)
@@ -6978,7 +6993,7 @@ balance_teams() { // Balance Teams Task
 	}
 
 	while(iTerrors < iMaxTerrors) { // Then randomly set half of the players to Terrorists
-		if(++id > MaxPlayers) id = 1 // Keep looping through all players
+		if(++id > MaxClients) id = 1 // Keep looping through all players
 
 		if(!g_isconnected[id]) continue; // Skip if not connected
 
@@ -7787,26 +7802,26 @@ do_random_spawn(id, regularspawns = 0) { // Place user at a random spawn
 }
 fnGetZombies() { // Get Zombies -returns alive zombies number-
 	static iZombies, id; iZombies = 0
-	for(id = 1; id <= MaxPlayers; id++) if(g_isalive[id] && g_zombie[id]) iZombies++
+	for(id = 1; id <= MaxClients; id++) if(g_isalive[id] && g_zombie[id]) iZombies++
 
 	return iZombies;
 }
 fnGetHumans() { // Get Humans -returns alive humans number-
 	static iHumans, id; iHumans = 0
-	for(id = 1; id <= MaxPlayers; id++) if(g_isalive[id] && !g_zombie[id]) iHumans++
+	for(id = 1; id <= MaxClients; id++) if(g_isalive[id] && !g_zombie[id]) iHumans++
 
 	return iHumans;
 }
 fnGetSpecials(zombie, specialid) { // Get Specials -returns alive Specials number-
 	static count, id; count = 0
-	for(id = 1; id <= MaxPlayers; id++) if(g_isalive[id] && (zombie && g_zm_special[id] == specialid || !zombie && g_hm_special[id] == specialid)) count++
+	for(id = 1; id <= MaxClients; id++) if(g_isalive[id] && (zombie && g_zm_special[id] == specialid || !zombie && g_hm_special[id] == specialid)) count++
 	
 	return count;
 }
 stock fnGetAlive(const team = 0) { // Get Alive -returns alive players number-
 	static iAlive, id; iAlive = 0
 	
-	for(id = 1; id <= MaxPlayers; id++) {
+	for(id = 1; id <= MaxClients; id++) {
 		if(!g_isalive[id]) continue;
 
 		if(team == 1 && g_zombie[id] || team >= 2 && !g_zombie[id]) continue
@@ -7817,7 +7832,7 @@ stock fnGetAlive(const team = 0) { // Get Alive -returns alive players number-
 }
 stock fnGetRandomAlive(n) { // Get Random Alive -returns index of alive player number n -
 	static iAlive, id; iAlive = 0
-	for(id = 1; id <= MaxPlayers; id++) {
+	for(id = 1; id <= MaxClients; id++) {
 		if(!g_isalive[id]) continue;
 
 		iAlive++
@@ -7834,7 +7849,7 @@ stock fnGetRandomAliveByTeam(const team = 0) {
 	if(!fnGetAlive() || !fnGetZombies() && team == 2 || !fnGetHumans() && team == 1) return -1
 
 	while(iRandom == 0) {
-		if((++id) > MaxPlayers) id = 1 // Keep looping through all players
+		if((++id) > MaxClients) id = 1 // Keep looping through all players
 
 		if(!g_isalive[id]) continue; // Dead
 
@@ -7852,7 +7867,7 @@ stock fnGetRandomAliveByTeam(const team = 0) {
 }
 fnGetPlaying() { // Get Playing -returns number of users playing-
 	static iPlaying, id, team; iPlaying = 0
-	for(id = 1; id <= MaxPlayers; id++) {
+	for(id = 1; id <= MaxClients; id++) {
 		if(g_isconnected[id]) {
 			team = fm_cs_get_user_team(id)
 			if(team != FM_CS_TEAM_SPECTATOR && team != FM_CS_TEAM_UNASSIGNED) iPlaying++
@@ -7862,7 +7877,7 @@ fnGetPlaying() { // Get Playing -returns number of users playing-
 }
 fnGetPlayersInTeam(team) { // Get X Team -returns number of X Team connected-
 	static count, id; count = 0
-	for(id = 1; id <= MaxPlayers; id++) if(g_isconnected[id]) if(fm_cs_get_user_team(id) == team) count++
+	for(id = 1; id <= MaxClients; id++) if(g_isconnected[id]) if(fm_cs_get_user_team(id) == team) count++
 
 	return count;
 }
@@ -7871,7 +7886,7 @@ fnCheckLastZombie() { // Last Zombie Check -check for last zombie and set its fl
 	static id, NumZombie, NumHuman
 	NumZombie = fnGetZombies();
 	NumHuman = fnGetHumans();
-	for(id = 1; id <= MaxPlayers; id++) {
+	for(id = 1; id <= MaxClients; id++) {
 		if(!g_isalive[id])
 			continue;
 
@@ -7893,7 +7908,7 @@ fnCheckLastZombie() { // Last Zombie Check -check for last zombie and set its fl
 }
 save_stats(id) { // Save player's stats to database
 	if(db_name[id][0] && !equal(g_playername[id], db_name[id])) { // Check whether there is another record already in that slot
-		if(db_slot_i >= sizeof db_name) db_slot_i = MaxPlayers+1 // If DB size is exceeded, write over old records
+		if(db_slot_i >= sizeof db_name) db_slot_i = MaxClients+1 // If DB size is exceeded, write over old records
 		
 		// Move previous record onto an additional save slot
 		copy(db_name[db_slot_i], charsmax(db_name[]), db_name[id])
@@ -8106,7 +8121,7 @@ command_custom_special(id, player, spid, zombie) {
 		get_user_ip(id, ip, charsmax(ip), 1)
 
 		ArrayGetString(Arr_Sp[2], sp_id, special_name, charsmax(special_name))
-		formatex(logdata, charsmax(logdata), "*ADMIN* %s <%s><%s> - %s %L (Players: %d/%d)", g_playername[id], authid, ip, g_playername[player], LANG_SERVER, "CMD_CUSTOM_SP", special_name, fnGetPlaying(), MaxPlayers)
+		formatex(logdata, charsmax(logdata), "*ADMIN* %s <%s><%s> - %s %L (Players: %d/%d)", g_playername[id], authid, ip, g_playername[player], LANG_SERVER, "CMD_CUSTOM_SP", special_name, fnGetPlaying(), MaxClients)
 		
 		format_time(filename, charsmax(filename), "%d-%m-%Y");
 		format(filename, charsmax(filename), "zombie_plague_special_%s.log", filename);
@@ -8199,7 +8214,7 @@ command_custom_game(gameid, id) { // Admin command for a custom game mode
 			get_user_ip(id, ip, charsmax(ip), 1)
 
 			ArrayGetString(g_gm_name, gm_id, buffer, charsmax(buffer)) // Retrieve the game mode's name
-			formatex(logdata, charsmax(logdata), "*ADMIN* %s <%s><%s> - %L %s (Players: %d/%d)", g_playername[id], authid, ip, LANG_SERVER, "MENU_ADMIN2_CUSTOM", buffer, fnGetPlaying(), MaxPlayers)
+			formatex(logdata, charsmax(logdata), "*ADMIN* %s <%s><%s> - %L %s (Players: %d/%d)", g_playername[id], authid, ip, LANG_SERVER, "MENU_ADMIN2_CUSTOM", buffer, fnGetPlaying(), MaxClients)
 			
 			format_time(filename, charsmax(filename), "%d-%m-%Y");
 			format(filename, charsmax(filename), "zombie_plague_special_%s.log", filename);
@@ -8228,12 +8243,10 @@ command_custom_game(gameid, id) { // Admin command for a custom game mode
 		set_task(2.0, "ambience_sound_effects", TASK_AMBIENCESOUNDS)
 	}
 
+	ExecuteForward(g_forwards[GAME_MODE_SELECTED], g_fwDummyResult, gameid, id) // Execute our game mode selected forward
 	ExecuteForward(g_forwards[ROUND_START], g_fwDummyResult, gameid, 0) // Execute our round start forward with the game mode id [BUGFIX]
 	
-	if(id != 0)
-		ExecuteForward(g_forwards[GAME_MODE_SELECTED], g_fwDummyResult, gameid, id) // Execute our game mode selected forward
-	
-	for(i = 1; i <= MaxPlayers; i++) {
+	for(i = 1; i <= MaxClients; i++) {
 		update_team(i)	// Fix Team Change
 		if(g_zombie[i] && g_escape_map) { // Escape Map Support
 			if(get_pcvar_num(cvar_randspawn)) do_random_spawn(i) // random spawn (including CSDM)
@@ -8260,8 +8273,8 @@ stock zp_log_message(id, player, const lang[]) {
 		get_user_authid(id, authid, charsmax(authid))
 		get_user_ip(id, ip, charsmax(ip), 1)
 
-		if(player > 0) formatex(logdata, charsmax(logdata), "*ADMIN* %s <%s><%s> - %s %L (Players: %d/%d)", g_playername[id], authid, ip, g_playername[player], LANG_SERVER, lang, fnGetPlaying(), MaxPlayers)
-		else formatex(logdata, charsmax(logdata), "*ADMIN* %s <%s><%s> - %L (Players: %d/%d)", g_playername[id], authid, ip, LANG_SERVER, lang, fnGetPlaying(), MaxPlayers)
+		if(player > 0) formatex(logdata, charsmax(logdata), "*ADMIN* %s <%s><%s> - %s %L (Players: %d/%d)", g_playername[id], authid, ip, g_playername[player], LANG_SERVER, lang, fnGetPlaying(), MaxClients)
+		else formatex(logdata, charsmax(logdata), "*ADMIN* %s <%s><%s> - %L (Players: %d/%d)", g_playername[id], authid, ip, LANG_SERVER, lang, fnGetPlaying(), MaxClients)
 
 		format_time(filename, charsmax(filename), "%d-%m-%Y");
 		format(filename, charsmax(filename), "zombie_plague_special_%s.log", filename);
@@ -9303,7 +9316,8 @@ public native_force_user_class(plugin_id, num_params) {
 
 	if(!is_user_valid_alive(id)) return -1;
 
-	if(spid >= g_zm_specials_i && zombie || spid >= g_hm_specials_i && !zombie) {
+	if(spid >= g_zm_specials_i && zombie || spid >= g_hm_specials_i && !zombie
+	|| spid < 0 && zombie || spid < 0 && !zombie) {
 		log_error(AMX_ERR_NATIVE, "[ZP] Invalid Special class id (%d)", spid)
 		return -1;
 	}
@@ -10047,6 +10061,7 @@ public native_register_gamemode(plugin_id, num_params) { // Native: zp_register_
 	enable = 0
 	ArrayPushCell(g_gm_amb_sound_handle, ArrSound)
 	ArrayPushCell(g_gm_amb_duration_handle, ArrDuration)
+
 
 	amx_load_setting_int(ZP_CUSTOMIZATION_FILE, "Ambience Sounds", fmt("%s ENABLE", section), enable)
 	ArrayPushCell(g_gm_amb_enable, enable)
@@ -10936,7 +10951,7 @@ public native_reload_csdm_respawn(plugin_id, num_params) { // Native: zp_reload_
 	return 1
 }
 public native_set_lighting(plugin_id, num_params) { // Native: zp_set_lighting
-	set_string(2, custom_lighting, charsmax(custom_lighting))
+	set_string(1, custom_lighting, charsmax(custom_lighting))
 	g_custom_light = true
 	lighting_effects()
 	return 1
@@ -12531,23 +12546,33 @@ public reset_player_models(id) {
 			break;
 		}
 	}
-	 // Need to change the model?
-	if(already_has_model) {
-		set_pev(id, pev_body, g_playerbody[id]);
-		set_pev(id, pev_skin, g_playerskin[id]);
-		return true;
-	}
-
-	static NewBody, NewSkin
-	iRand = random_num(0, ArrSize - 1)
-	NewBody = ArrayGetCell(Arr_Body, iRand)
-	NewSkin = ArrayGetCell(Arr_Skin, iRand)
-	ArrayGetString(Arr_Model, iRand, newmodel, charsmax(newmodel))
-
+	
 	g_ForwardParameter[0] = 0
 	g_FW_intParam[3] = -1
 	g_FW_intParam[4] = -1
-	ExecuteForward(g_forwards[MODEL_CHANGE_PRE], g_fwDummyResult, id, newmodel, NewBody, NewSkin)
+
+	 // Need to change the model?
+	static NewBody, NewSkin
+	if(already_has_model) {
+		NewBody = g_playerbody[id];
+		NewSkin = g_playerskin[id];
+		set_pev(id, pev_body, g_playerbody[id]);
+		set_pev(id, pev_skin, g_playerskin[id]);
+		ExecuteForward(g_forwards[MODEL_CHANGE_PRE], g_fwDummyResult, id, newmodel, g_playerbody[id], g_playerskin[id])
+
+		if(equal(g_ForwardParameter, newmodel))
+			return true;
+		else
+			already_has_model = false;
+	}	
+	else {
+		
+		iRand = random_num(0, ArrSize - 1)
+		NewBody = ArrayGetCell(Arr_Body, iRand)
+		NewSkin = ArrayGetCell(Arr_Skin, iRand)
+		ArrayGetString(Arr_Model, iRand, newmodel, charsmax(newmodel))
+		ExecuteForward(g_forwards[MODEL_CHANGE_PRE], g_fwDummyResult, id, newmodel, NewBody, NewSkin)
+	}	
 
 	if(g_fwDummyResult >= ZP_PLUGIN_SUPERCEDE) 
 		return false; // The game mode didnt accept some conditions
@@ -12762,8 +12787,11 @@ precache_player_model(const modelname[]) {
 }
 
 public set_player_light(id, const LightStyle[]) {
-	if(!is_user_connected(id))
+	if(!is_user_valid_connected(id))
 		return
+
+	if(is_user_bot(id) || is_user_hltv(id))
+		return;
 	
 	message_begin(MSG_ONE_UNRELIABLE, SVC_LIGHTSTYLE, .player = id)
 	write_byte(0)
@@ -12899,7 +12927,7 @@ public user_nightvision(id, enable) { // Nightvision toggle
 }
 public set_all_light(const lighting[]) {
 	static i;
-	for(i = 1 ; i <= MaxPlayers; i++) {
+	for(i = 1 ; i <= MaxClients; i++) {
 		if(!g_isconnected[i])
 			continue;
 
