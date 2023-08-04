@@ -364,3 +364,4 @@
 		- Fixed Forward zp_model_change_pre
 		- Fixed Forward zp_game_mode_selected_pre
 		- Fixed Cvar "zp_zombie_armor" thanks MolaMASTER999
+		- Fixed some lang mistakes
