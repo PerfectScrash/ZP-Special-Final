@@ -336,11 +336,12 @@
 				- Fixed Natives: "zp_reset_user_knockback" and "zp_get_default_knockback"
 				- Small otimization on code in Admin actions
 				- Now flame are in entities now.
-				- Fixed Submodel/Skin support (I think)
+				- Fixed Submodel/Skin support
 				- Fixed team bug
 				- Fixed native zp_set_lighting
 				- Fixed Forward zp_model_change_pre
 				- Fixed Forward zp_game_mode_selected_pre
+				- Fixed Cvar "zp_zombie_armor" thanks MolaMASTER999
 
 
 ============================================================================================================================*/
@@ -2738,7 +2739,7 @@ public fw_TakeDamage(victim, inflictor, attacker, Float:damage, damage_type) { /
 		return HAM_SUPERCEDE;
 	
 	if(!g_zombie[attacker]) { // Attacker is human...
-		if(g_zm_special[victim] > 0 && g_hm_special[attacker] != SNIPER) { // Armor multiplier for the final damage on normal zombies
+		if(g_zombie[victim] && g_hm_special[attacker] != SNIPER) { // Armor multiplier for the final damage on normal zombies
 			damage *= get_pcvar_float(cvar_zombiearmor)
 			SetHamParamFloat(4, damage)
 		}
