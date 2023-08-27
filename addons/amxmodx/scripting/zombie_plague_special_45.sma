@@ -344,6 +344,7 @@
 				- Fixed Cvar "zp_zombie_armor" thanks MolaMASTER999
 				- Fixed some lang mistakes
 				- Fixed native zp_set_lighting (Again)
+				- Fixed error log when user disconnects with personal menu opened
 
 
 ============================================================================================================================*/
@@ -899,8 +900,10 @@ cvar_zm_red[MAX_SPECIALS_ZOMBIES], cvar_zm_green[MAX_SPECIALS_ZOMBIES], cvar_zm_
 
 // Cached stuff for players
 new g_isconnected[33], g_isalive[33], g_isbot[33], g_currentweapon[33], g_playername[33][32], Float:g_spd[33], Float:g_custom_leap_cooldown[33], Float:g_zombie_knockback[33], g_pl_classname[33][64], g_pl_classname_lang[33];
-#define is_user_valid_connected(%1) (1 <= %1 <= MaxClients && g_isconnected[%1])
-#define is_user_valid_alive(%1) (1 <= %1 <= MaxClients && g_isalive[%1])
+// #define is_user_valid_connected(%1) (1 <= %1 <= MaxClients && g_isconnected[%1])
+// #define is_user_valid_alive(%1) (1 <= %1 <= MaxClients && g_isalive[%1])
+#define is_user_valid_connected(%1) (1 <= %1 <= MaxClients && is_user_connected(%1))
+#define is_user_valid_alive(%1) (1 <= %1 <= MaxClients && is_user_alive(%1))
 #define is_user_valid(%1) (1 <= %1 <= MaxClients)
 #define fm_get_user_health(%1) pev(%1, pev_health)
 
@@ -3609,6 +3612,9 @@ public show_menu_buy(id, wpn_type) { // Buy Menu
 	show_menu(id, KEYSMENU, menu, -1, "Buy Menu")
 }
 show_menu_extras(id) { // Extra Items Menu
+	if(!is_user_valid_connected(id))
+		return;
+
 	static menuid, menu[128], item, team, buffer[64], special_name[128], sp_id
 	if(isCustomSpecialZombie(id)) {
 		sp_id = g_zm_special[id]-MAX_SPECIALS_ZOMBIES
@@ -12125,6 +12131,10 @@ public show_menu_personal(id) {
 	menu_display(id, menu, 0)
 }
 public show_menu_personal_handler(id, menu, item) {
+	if(!is_user_valid_connected(id)) {
+		menu_destroy(menu)
+		return PLUGIN_HANDLED;
+	}
 	if(item == MENU_EXIT) {
 		menu_destroy(menu)
 		return PLUGIN_HANDLED
@@ -12165,6 +12175,10 @@ public menu_hud_config(id) {
 	menu_display(id, menu, 0)
 }
 public menu_hud_config_handler(id, menu, item) {
+	if(!is_user_valid_connected(id)) {
+		menu_destroy(menu)
+		return PLUGIN_HANDLED;
+	}
 	if(item == MENU_EXIT) {
 		menu_destroy(menu)
 		show_menu_personal(id)
@@ -12221,6 +12235,10 @@ public menu_color(id, zm, type) {
 	menu_display(id, menu, 0)
 }
 public menu_color_handler(id, menu, item) {
+	if(!is_user_valid_connected(id)) {
+		menu_destroy(menu)
+		return PLUGIN_HANDLED;
+	}
 	if(item == MENU_EXIT) {
 		menu_destroy(menu)
 		show_menu_personal(id)
@@ -12274,6 +12292,10 @@ public menu_hud_config_type(id) {
 	menu_display(id, menu, 0)
 }
 public menu_hud_config_type_handler(id, menu, item) {
+	if(!is_user_valid_connected(id)) {
+		menu_destroy(menu)
+		return PLUGIN_HANDLED;
+	}
 	if(item == MENU_EXIT) {
 		menu_destroy(menu)
 		menu_hud_config(id)
@@ -12311,6 +12333,11 @@ public menu_nightvision(id) {
 	menu_display(id, menu, 0)
 }
 public menu_nightvision_handler(id, menu, item) {
+	if(!is_user_valid_connected(id)) {
+		menu_destroy(menu)
+		return PLUGIN_HANDLED;
+	}
+
 	if(item == MENU_EXIT) {
 		menu_destroy(menu)
 		show_menu_personal(id)
