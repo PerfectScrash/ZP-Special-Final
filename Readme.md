@@ -365,3 +365,5 @@
 		- Fixed Forward zp_game_mode_selected_pre
 		- Fixed Cvar "zp_zombie_armor" thanks MolaMASTER999
 		- Fixed some lang mistakes
+		- Fixed native zp_set_lighting (Again)
+		- Fixed error log when user disconnects with personal menu opened
