@@ -328,7 +328,7 @@
 				- Fixed Native: zp_set_user_knockback
 				- Fixed weapons menu
 
-			-- Patch v2 (Not ended)
+			-- Patch v2 (03-09-2023)
 				- Removed register_ham_czbot function, now are using "specialbot" param in hamsandwich
 				- Added auto Add Setting in .ini for NOOBS
 				- Added cvar: "zp_respawn_on_headshoot"
@@ -345,6 +345,7 @@
 				- Fixed some lang mistakes
 				- Fixed native zp_set_lighting (Again)
 				- Fixed error log when user disconnects with personal menu opened
+				- Fixed Zombie Armor when Berserker is attacker
 
 
 ============================================================================================================================*/
@@ -2744,7 +2745,7 @@ public fw_TakeDamage(victim, inflictor, attacker, Float:damage, damage_type) { /
 		return HAM_SUPERCEDE;
 
 	if(!g_zombie[attacker]) { // Attacker is human...
-		if(g_zombie[victim] && g_hm_special[attacker] != SNIPER) { // Armor multiplier for the final damage on normal zombies
+		if(g_zombie[victim] && g_hm_special[attacker] != SNIPER && g_hm_special[attacker] != BERSERKER) { // Armor multiplier for the final damage on normal zombies
 			damage *= get_pcvar_float(cvar_zombiearmor)
 			SetHamParamFloat(4, damage)
 		}

@@ -350,7 +350,7 @@
 	* Fix (03/02/2023):
 		- Fix env_sprite Conflict wth other plugins like Salamander
 
-	* 4.5 Patch v2 (Not ended):
+	* 4.5 Patch v2 (03-09-2023)
 		- Removed register_ham_czbot function, now are using "specialbot" param in hamsandwich
 		- Added auto Add Setting in .ini for NOOBS
 		- Added cvar: "zp_respawn_on_headshoot"
@@ -367,3 +367,4 @@
 		- Fixed some lang mistakes
 		- Fixed native zp_set_lighting (Again)
 		- Fixed error log when user disconnects with personal menu opened
+		- Fixed Zombie Armor when Berserker is attacker
